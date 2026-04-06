@@ -8,14 +8,8 @@ function TeacherCoursePage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const token = useAuthStore((state) => state.token);
-    const {
-        allCourses,
-        updateCourse,
-        deleteCourse,
-        getCourse,
-        errMsg,
-        clearErrMsg,
-    } = useTeacherStore();
+    const { allCourses, updateCourse, deleteCourse, getCourse } =
+        useTeacherStore();
     const {
         quizzes,
         createQuiz,
