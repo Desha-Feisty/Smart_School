@@ -5,6 +5,7 @@ import LoginPage from "./pages/LoginPage";
 import StudentPage from "./pages/StudentPage";
 import TeacherPage from "./pages/TeacherPage";
 import TeacherCoursePage from "./pages/TeacherCoursePage";
+import QuizQuestionsPage from "./pages/QuizQuestionsPage";
 
 function App() {
     return (
@@ -14,6 +15,7 @@ function App() {
             <Route path="/student" element={<StudentPage />} />
             <Route path="/teacher" element={<TeacherPage />} />
             <Route path="/teacher/course/:id" element={<TeacherCoursePage />} />
+            <Route path="/teacher/quiz/:id/questions" element={<QuizQuestionsPage />} />
         </Routes>
     );
 }

@@ -9,12 +9,18 @@ const useTeacherStore = create((set) => ({
     allCourses: [],
     setAllCourses: (allCourses) => set({ allCourses: allCourses }),
     createCourse: async (title, description) => {
+        const token = useAuthStore.getState().token;
+        console.log("Token in createCourse:", token);
+        if (!token) {
+            set({ errMsg: "Not authenticated. Please log in again." });
+            return;
+        }
         const courseData = { title, description };
         try {
             const response = await axios.post("/api/courses", courseData, {
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${useAuthStore.getState().token}`,
+                    Authorization: `Bearer ${token}`,
                 },
             });
             if (response.status !== 201) {
@@ -23,13 +29,21 @@ const useTeacherStore = create((set) => ({
             const data = response.data.course;
             set((state) => ({ allCourses: [...state.allCourses, data] }));
         } catch (error) {
-            set({ errMsg: error.message });
+            console.error(
+                "Create course error:",
+                error.response?.data || error.message,
+            );
+            set({ errMsg: error.response?.data?.errMsg || error.message });
         }
     },
     listMyCourses: async () => {
         try {
             const token = useAuthStore.getState().token;
-            if (!token) return;
+            console.log("Token in listMyCourses:", token);
+            if (!token) {
+                set({ errMsg: "Not authenticated. Please log in again." });
+                return;
+            }
             const response = await axios.get("/api/courses/my", {
                 headers: {
                     "Content-Type": "application/json",

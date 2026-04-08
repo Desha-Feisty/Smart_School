@@ -40,7 +40,7 @@ const userSchema = new Schema<IUser, UserModel, UserMethods>(
             required: true,
         },
     },
-    { timestamps: true }
+    { timestamps: true },
 );
 
 userSchema.pre("save", async function hashPassword() {
@@ -50,7 +50,7 @@ userSchema.pre("save", async function hashPassword() {
 });
 
 userSchema.methods.comparePassword = async function (
-    enteredPassword: string
+    enteredPassword: string,
 ): Promise<boolean> {
     const check = await bcrypt.compare(enteredPassword, this.password);
     return check;
@@ -62,15 +62,21 @@ userSchema.methods.createToken = async function () {
         console.error("JWT_SECRET is missing during token generation!");
         throw new Error("JWT secret is not found");
     }
-    const expiresIn: StringValue | number = (process.env.JWTexpiresIn ??
+    console.log(
+        "Signing token with secret starting with:",
+        secret.substring(0, 3),
+    );
+    const expiresIn: StringValue | number = (process.env.JWT_LIFETIME ??
         "1h") as StringValue;
     if (!expiresIn) throw new Error("Token expiresIn is undefined");
-    const token = jwt.sign({ _id: this._id.toString(), role: this.role }, secret, {
-        expiresIn,
-    });
+    const token = jwt.sign(
+        { _id: this._id.toString(), role: this.role },
+        secret,
+        {
+            expiresIn,
+        },
+    );
     return token;
 };
-
-
 
 export default model<IUser, UserModel>("User", userSchema);

@@ -10,16 +10,29 @@ import Enrollment from "../models/enrollment.js";
 const createQuizSchema = Joi.object({
     title: Joi.string().min(2).required(),
     description: Joi.string().allow("").optional(),
-    openAt: Joi.date().required(),
-    closeAt: Joi.date().required(),
+    openAt: Joi.alternatives()
+        .try(Joi.date().iso(), Joi.string().isoDate())
+        .required(),
+    closeAt: Joi.alternatives()
+        .try(Joi.date().iso(), Joi.string().isoDate())
+        .required(),
     attemptsAllowed: Joi.number().min(1).default(1),
     durationMinutes: Joi.number().min(1).required(),
 })
     .unknown(true)
     .custom((value, helpers) => {
-        if (new Date(value.openAt) >= new Date(value.closeAt)) {
+        try {
+            const openDate = new Date(value.openAt);
+            const closeDate = new Date(value.closeAt);
+            if (openDate >= closeDate) {
+                return helpers.error("any.invalid", {
+                    message: "openAt must be before closeAt",
+                });
+            }
+            return value;
+        } catch (err) {
             return helpers.error("any.invalid", {
-                message: "openAt must be before closeAt",
+                message: "Invalid date format",
             });
         }
     });
@@ -28,21 +41,25 @@ const createQuiz = async (req: AuthRequest, res: Response) => {
     try {
         const courseId = req.params.id || req.params.courseId;
         console.log("Creating quiz for courseId:", courseId);
+        console.log("Request body:", {
+            title: req.body.title,
+            description: req.body.description,
+            openAt: req.body.openAt,
+            closeAt: req.body.closeAt,
+            durationMinutes: req.body.durationMinutes,
+            attemptsAllowed: req.body.attemptsAllowed,
+        });
 
         if (!courseId) {
-            return res
-                .status(400)
-                .json({
-                    errMsg: "invalid course id - parameter 'id' is missing",
-                });
+            return res.status(400).json({
+                errMsg: "invalid course id - parameter 'id' is missing",
+            });
         }
 
         if (!req.user || req.user.role !== "teacher") {
-            return res
-                .status(403)
-                .json({
-                    errMsg: "forbidden - only teachers can create quizzes",
-                });
+            return res.status(403).json({
+                errMsg: "forbidden - only teachers can create quizzes",
+            });
         }
 
         const course = await Course.findById(courseId);
@@ -67,15 +84,18 @@ const createQuiz = async (req: AuthRequest, res: Response) => {
 
         const { error, value } = createQuizSchema.validate(req.body);
         if (error) {
+            console.error("Validation error:", error.message);
             return res.status(400).json({ errMsg: error.message });
         }
 
-        const quiz = await Quiz.create({
+        const quiz = new Quiz({
             course: course._id,
             ...value,
             published: false,
         });
+        await quiz.save();
 
+        console.log("Quiz created successfully:", quiz._id);
         res.status(201).json({ quiz });
     } catch (error) {
         console.error("Quiz creation error:", error);
@@ -133,12 +153,13 @@ const addQuestion = async (req: AuthRequest, res: Response) => {
                 .json({ error: error.details[0]?.message || error.message });
         const question = await Question.create({
             quiz: quiz._id,
-            type: "mcq_single",
+            questionType: "mcq_single",
             ...value,
         });
         res.status(201).json({ question });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
+        res.status(500).json({ errMsg: "failed to create question" });
     }
 };
 
@@ -147,14 +168,15 @@ const addQuestionBodySchema = Joi.object({
     prompt: Joi.string().min(2).required(),
     points: Joi.number().integer().min(0).default(1),
     orderIndex: Joi.number().integer().min(0).default(0),
-    choices: Joi.array().items(
-        Joi.object({
-            text: Joi.string().required(),
-            isCorrect: Joi.boolean().default(false),
-        })
-            .min(2)
-            .required(),
-    ),
+    choices: Joi.array()
+        .items(
+            Joi.object({
+                text: Joi.string().required(),
+                isCorrect: Joi.boolean().default(false),
+            }),
+        )
+        .min(2)
+        .required(),
 });
 
 const addQuestionViaBody = async (req: AuthRequest, res: Response) => {
@@ -162,7 +184,7 @@ const addQuestionViaBody = async (req: AuthRequest, res: Response) => {
         const { error, value } = addQuestionBodySchema.validate(req.body);
         if (error) {
             return res
-                .status(401)
+                .status(400)
                 .json({ errMsg: error.details[0]?.message || error.message });
         }
         const quiz = await Quiz.findById(value.quizId).populate("course");
@@ -234,9 +256,7 @@ const updateQuestion = async (req: AuthRequest, res: Response) => {
                 .json({ errMsg: "failed to populate course" });
         }
         if (question.quiz.course.teacher.toString() !== req.user?.id) {
-            return res
-                .status(500)
-                .json({ errMsg: "failed to populate course" });
+            return res.status(403).json({ errMsg: "forbidden" });
         }
         if (value.prompt !== undefined) question.prompt = value.prompt;
         if (value.points !== undefined) question.points = value.points;
@@ -286,7 +306,7 @@ const deleteQuestion = async (req: AuthRequest, res: Response) => {
 
 const publishQuiz = async (req: AuthRequest, res: Response) => {
     try {
-        const { id: quizId } = req.body;
+        const { id: quizId } = req.params;
         if (!quizId) {
             return res.status(400).json({ errMsg: "invalid quiz id" });
         }
@@ -396,8 +416,6 @@ const getQuizDetails = async (req: AuthRequest, res: Response) => {
         const questions = await Question.find({ quiz: quizId }).sort(
             "orderIndex",
         );
-        if (questions.length === 0)
-            return res.status(400).json({ errMsg: "empty quiz" });
         res.status(200).json({ quiz, questions });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
@@ -413,7 +431,11 @@ const updateQuizSchema = Joi.object({
     attemptsAllowed: Joi.number().min(1).default(1),
     durationMinutes: Joi.number().min(1).optional(),
 }).custom((value, helpers) => {
-    if (new Date(value.openAt) >= new Date(value.closeAt)) {
+    if (
+        value.openAt &&
+        value.closeAt &&
+        new Date(value.openAt) >= new Date(value.closeAt)
+    ) {
         return helpers.error("any.invalid", {
             message: "openAt must be before closeAt",
         });
@@ -487,43 +509,44 @@ const updateQuiz = async (req: AuthRequest, res: Response) => {
 };
 
 const deleteQuiz = async (req: AuthRequest, res: Response) => {
-    const session = await startSession();
-    session.startTransaction();
     try {
         const { id: quizId } = req.params;
         if (!quizId) return res.status(400).json({ errMsg: "invalid quiz id" });
         if (!req.user || !req.user.id) {
-            return res.status(403).json({ errMsg: "forbidden" });
+            return res.status(403).json({ errMsg: "forbidden - missing auth" });
         }
-        const quiz = await Quiz.findById(quizId)
-            .select("course")
-            .populate("course")
-            .session(session);
+
+        const quiz = await Quiz.findById(quizId).populate("course");
         if (!quiz) {
-            await session.abortTransaction();
             return res.status(404).json({ errMsg: "quiz not found" });
         }
-        if (quiz.course instanceof Types.ObjectId) {
-            await session.abortTransaction();
+
+        if (!quiz.course || quiz.course instanceof Types.ObjectId) {
             return res
                 .status(500)
-                .json({ errMsg: "Failed to populate course" });
+                .json({ errMsg: "failed to populate course info" });
         }
-        if (quiz.course.teacher.toString() !== req.user.id) {
-            await session.abortTransaction();
-            return res.status(403).json({ errMsg: "forbidden" });
+
+        const teacherId = (quiz.course as any).teacher?.toString();
+        if (teacherId !== req.user.id) {
+            return res
+                .status(403)
+                .json({ errMsg: "forbidden - you do not own this course" });
         }
-        await Question.deleteMany({ quiz: quiz._id }).session(session);
-        const deletedQuiz =
-            await Quiz.findByIdAndDelete(quizId).session(session);
-        await session.commitTransaction();
+
+        // Delete all associated questions first
+        await Question.deleteMany({ quiz: quiz._id });
+
+        // Delete the quiz itself
+        const deletedQuiz = await Quiz.findByIdAndDelete(quizId);
+
         res.status(200).json({ msg: "quiz deleted successfully", deletedQuiz });
     } catch (error) {
-        await session.abortTransaction();
-        console.error(error instanceof Error ? error.message : error);
-        res.status(500).json({ errMsg: "failed to delete quiz" });
-    } finally {
-        await session.endSession();
+        console.error("Delete quiz error:", error);
+        res.status(500).json({
+            errMsg: "failed to delete quiz",
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
     }
 };
 
@@ -549,7 +572,7 @@ const createQuizFromBody = async (req: AuthRequest, res: Response) => {
             ...value,
             published: false,
         });
-        res.status(200).json({ quiz });
+        res.status(201).json({ quiz });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
         res.status(500).json({ errMsg: "failed to create quiz" });

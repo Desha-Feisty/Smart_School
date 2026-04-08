@@ -5,8 +5,9 @@ import { useNavigate } from "react-router-dom";
 function LoginPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [errorMsg, setErrorMsg] = useState("");
     const navigate = useNavigate();
-    const { token, role } = useAuthStore();
+    const { token, role, errMsg } = useAuthStore();
 
     useEffect(() => {
         if (token) {
@@ -19,19 +20,28 @@ function LoginPage() {
     }, [token, role, navigate]);
 
     async function handleLogin() {
+        setErrorMsg("");
+        if (!email || !password) {
+            setErrorMsg("Please enter email and password");
+            return;
+        }
         const response = await useAuthStore.getState().login(email, password);
+        console.log("Login response:", response);
         if (response.success) {
-            if (useAuthStore.getState().role === "teacher") {
+            const state = useAuthStore.getState();
+            console.log("Login successful, role:", state.role, "token:", state.token?.substring(0, 20) + "...");
+            if (state.role === "teacher") {
                 navigate("/teacher");
             } else {
                 navigate("/student");
             }
         } else {
-            // Display error message
-            console.log(response.errMsg);
-            alert(response.errMsg);
+            setErrorMsg(response.errMsg || "Login failed");
         }
     }
+
+    const displayError = errorMsg || errMsg;
+
     return (
         <div className="hero bg-base-200 min-h-screen">
             <div className="hero-content flex-col lg:flex-row">
@@ -44,6 +54,11 @@ function LoginPage() {
                 </div>
                 <div className="card bg-base-100 w-full max-w-sm shrink-0 shadow-2xl">
                     <div className="card-body">
+                        {displayError && (
+                            <div className="alert alert-error">
+                                <span>{displayError}</span>
+                            </div>
+                        )}
                         <fieldset className="fieldset">
                             <label className="label">Email</label>
                             <input

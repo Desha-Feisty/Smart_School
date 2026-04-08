@@ -25,16 +25,23 @@ const register = async (req: Request<{}, {}, RegisterBody>, res: Response) => {
         const { value, error } = registerSchema.validate(req.body, {
             stripUnknown: true,
         });
-        if (error)
+        if (error) {
+            console.log("Register validation error:", error.message);
             return res
                 .status(400)
                 .json({ errMsg: "invalid input", details: error.details });
+        }
         const { name, email, password, role } = value as RegisterBody;
+        console.log("Register attempt for email:", email, "role:", role);
         const exists = await User.findOne({ email });
-        if (exists)
-            return res.status(400).json({ msg: "email is already used" });
+        if (exists) {
+            console.log("Email already exists:", email);
+            return res.status(400).json({ errMsg: "email is already used" });
+        }
         const user = await User.create({ email, name, password, role });
+        console.log("User created, generating token for:", email);
         const token = await user.createToken();
+        console.log("Token generated successfully");
         return res.status(201).json({
             success: true,
             token,
@@ -46,7 +53,8 @@ const register = async (req: Request<{}, {}, RegisterBody>, res: Response) => {
             },
         });
     } catch (error) {
-        res.status(500).json({ errMsg: "An error has occured", error });
+        console.error("Register error:", error instanceof Error ? error.message : error);
+        res.status(500).json({ errMsg: "An error has occurred" });
     }
 };
 
@@ -58,15 +66,25 @@ const loginSchema = joi.object({
 const login = async (req: Request<{}, {}, loginBody>, res: Response) => {
     try {
         const { value, error } = loginSchema.validate(req.body);
-        if (error) return res.status(400).json({ errMsg: "invalid request" });
+        if (error) {
+            console.log("Login validation error:", error.message);
+            return res.status(400).json({ errMsg: "invalid request" });
+        }
         const { email, password } = value as loginBody;
+        console.log("Login attempt for email:", email);
         const user = await User.findOne({ email });
-        if (!user)
+        if (!user) {
+            console.log("User not found for email:", email);
             return res.status(400).json({ errMsg: "email is not registered" });
+        }
         const checkPassword = await user.comparePassword(password);
-        if (!checkPassword)
+        if (!checkPassword) {
+            console.log("Wrong password for email:", email);
             return res.status(401).json({ errMsg: "wrong password" });
+        }
+        console.log("Password correct, generating token for user:", email);
         const token = await user.createToken();
+        console.log("Token generated successfully");
         res.status(200).json({
             success: true,
             token,
@@ -78,6 +96,7 @@ const login = async (req: Request<{}, {}, loginBody>, res: Response) => {
             },
         });
     } catch (error) {
+        console.error("Login error:", error instanceof Error ? error.message : error);
         res.status(500).json({ errMsg: "internal server error" });
     }
 };

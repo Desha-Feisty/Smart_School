@@ -40,13 +40,13 @@ app.post(
     quizController.addQuestionViaBody,
 );
 app.put(
-    "/api/questions/:questionId",
+    "/api/questions/:id",
     authMiddleware,
     requireRole("teacher"),
     quizController.updateQuestion,
 );
 app.delete(
-    "/api/questions/:questionId",
+    "/api/questions/:id",
     authMiddleware,
     requireRole("teacher"),
     quizController.deleteQuestion,

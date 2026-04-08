@@ -17,33 +17,33 @@ router.post(
 );
 router.get("/course/:id", authMiddleware, quizController.listCourseQuizzes);
 router.get("/available", authMiddleware, quizController.listAvailableQuizzes);
-router.get("/:quizId", authMiddleware, quizController.getQuizDetails);
+router.get("/:id", authMiddleware, quizController.getQuizDetails);
 router.put(
-    "/:quizId",
+    "/:id",
     authMiddleware,
     requireRole("teacher"),
     quizController.updateQuiz,
 );
 router.delete(
-    "/:quizId",
+    "/:id",
     authMiddleware,
     requireRole("teacher"),
     quizController.deleteQuiz,
 );
 router.post(
-    "/:quizId/questions",
+    "/:id/questions",
     authMiddleware,
     requireRole("teacher"),
     quizController.addQuestion,
 );
 router.post(
-    "/:quizId/publish",
+    "/:id/publish",
     authMiddleware,
     requireRole("teacher"),
     quizController.publishQuiz,
 );
 router.get(
-    "/:quizId/grades",
+    "/:id/grades",
     authMiddleware,
     requireRole("teacher"),
     attemptController.listQuizGrades,

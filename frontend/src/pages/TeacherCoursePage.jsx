@@ -229,12 +229,15 @@ function TeacherCoursePage() {
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
-                                        <button className="text-blue-600 hover:bg-blue-50 px-3 py-1 rounded border border-blue-600 text-sm">
+                                        <button 
+                                            onClick={() => navigate(`/teacher/quiz/${quiz._id}/questions`)}
+                                            className="text-blue-600 hover:bg-blue-50 px-3 py-1 rounded border border-blue-600 text-sm font-bold"
+                                        >
                                             Edit Questions
                                         </button>
                                         <button
                                             onClick={() => deleteQuiz(quiz._id)}
-                                            className="text-red-600 hover:bg-red-50 px-3 py-1 rounded border border-red-600 text-sm"
+                                            className="text-red-600 hover:bg-red-50 px-3 py-1 rounded border border-red-600 text-sm font-bold"
                                         >
                                             Delete
                                         </button>
