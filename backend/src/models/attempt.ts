@@ -30,6 +30,7 @@ const attemptSchema = new Schema<IAttempt>(
         user: { type: Types.ObjectId, ref: "User", required: true },
         startAt: { type: Date, required: true },
         endAt: { type: Date, required: true },
+        submittedAt: { type: Date },
         status: { type: String, enum: ["inProgress", "graded", "expired"] },
         score: { type: Number, default: 0 },
         responses: [responseSchema],

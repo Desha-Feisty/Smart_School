@@ -13,7 +13,7 @@ function TeacherPage() {
         clearErrMsg,
     } = useTeacherStore();
 
-    const token = useAuthStore((state) => state.token);
+    const { token, logout } = useAuthStore();
     const navigate = useNavigate();
 
     const [newCourse, setNewCourse] = useState({ title: "", description: "" });
@@ -26,6 +26,11 @@ function TeacherPage() {
         }
         listMyCourses();
     }, [listMyCourses, token, navigate]);
+
+    const handleLogout = () => {
+        logout();
+        navigate("/login");
+    };
 
     const handleCreateCourse = async (e) => {
         e.preventDefault();
@@ -44,7 +49,15 @@ function TeacherPage() {
 
     return (
         <div className="max-w-4xl mx-auto p-6">
-            <h1 className="text-3xl font-bold mb-8">Teacher Dashboard</h1>
+            <div className="flex justify-between items-center mb-8">
+                <h1 className="text-3xl font-bold">Teacher Dashboard</h1>
+                <button
+                    onClick={handleLogout}
+                    className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-200"
+                >
+                    Logout
+                </button>
+            </div>
 
             {/* Error Message Section */}
             {errMsg && (
@@ -146,9 +159,14 @@ function TeacherPage() {
                                         )
                                     }
                                 >
-                                    <h3 className="text-lg font-bold text-gray-900 mb-2">
-                                        {course.title}
-                                    </h3>
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h3 className="text-lg font-bold text-gray-900">
+                                            {course.title}
+                                        </h3>
+                                        <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">
+                                            {course.joinCode}
+                                        </span>
+                                    </div>
                                     <p className="text-gray-600 text-sm line-clamp-3">
                                         {course.description}
                                     </p>

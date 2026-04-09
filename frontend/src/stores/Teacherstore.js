@@ -174,6 +174,225 @@ const useTeacherStore = create((set) => ({
             set({ errMsg: error.message });
         }
     },
+
+    // Community Notes Actions
+    createNote: async (courseId, { title, content }) => {
+        try {
+            const token = useAuthStore.getState().token;
+            if (!token) {
+                throw new Error("Not authenticated");
+            }
+
+            const response = await axios.post(
+                `/api/notes/courses/${courseId}/notes`,
+                { title, content },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+
+            if (response.status !== 201) {
+                throw new Error("Failed to create note");
+            }
+
+            return response.data.note;
+        } catch (error) {
+            throw new Error(error.response?.data?.errMsg || error.message);
+        }
+    },
+
+    listCourseNotes: async (courseId) => {
+        try {
+            const token = useAuthStore.getState().token;
+            if (!token) {
+                throw new Error("Not authenticated");
+            }
+
+            const response = await axios.get(
+                `/api/notes/courses/${courseId}/notes`,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+
+            if (response.status !== 200) {
+                throw new Error("Failed to fetch notes");
+            }
+
+            return response.data.notes || [];
+        } catch (error) {
+            throw new Error(error.response?.data?.errMsg || error.message);
+        }
+    },
+
+    getNoteWithComments: async (noteId) => {
+        try {
+            const token = useAuthStore.getState().token;
+            if (!token) {
+                throw new Error("Not authenticated");
+            }
+
+            const response = await axios.get(`/api/notes/${noteId}`, {
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (response.status !== 200) {
+                throw new Error("Failed to fetch note");
+            }
+
+            return {
+                note: response.data.note,
+                comments: response.data.comments,
+            };
+        } catch (error) {
+            throw new Error(error.response?.data?.errMsg || error.message);
+        }
+    },
+
+    updateNote: async (noteId, { title, content }) => {
+        try {
+            const token = useAuthStore.getState().token;
+            if (!token) {
+                throw new Error("Not authenticated");
+            }
+
+            const updateData = {};
+            if (title) updateData.title = title;
+            if (content) updateData.content = content;
+
+            const response = await axios.put(
+                `/api/notes/${noteId}`,
+                updateData,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+
+            if (response.status !== 200) {
+                throw new Error("Failed to update note");
+            }
+
+            return response.data.note;
+        } catch (error) {
+            throw new Error(error.response?.data?.errMsg || error.message);
+        }
+    },
+
+    deleteNote: async (noteId) => {
+        try {
+            const token = useAuthStore.getState().token;
+            if (!token) {
+                throw new Error("Not authenticated");
+            }
+
+            const response = await axios.delete(`/api/notes/${noteId}`, {
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (response.status !== 200) {
+                throw new Error("Failed to delete note");
+            }
+
+            return response.data;
+        } catch (error) {
+            throw new Error(error.response?.data?.errMsg || error.message);
+        }
+    },
+
+    addComment: async (noteId, { content }) => {
+        try {
+            const token = useAuthStore.getState().token;
+            if (!token) {
+                throw new Error("Not authenticated");
+            }
+
+            const response = await axios.post(
+                `/api/comments/${noteId}/comments`,
+                { content },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+
+            if (response.status !== 201) {
+                throw new Error("Failed to add comment");
+            }
+
+            return response.data.comment;
+        } catch (error) {
+            throw new Error(error.response?.data?.errMsg || error.message);
+        }
+    },
+
+    deleteComment: async (commentId) => {
+        try {
+            const token = useAuthStore.getState().token;
+            if (!token) {
+                throw new Error("Not authenticated");
+            }
+
+            const response = await axios.delete(`/api/comments/${commentId}`, {
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (response.status !== 200) {
+                throw new Error("Failed to delete comment");
+            }
+
+            return response.data;
+        } catch (error) {
+            throw new Error(error.response?.data?.errMsg || error.message);
+        }
+    },
+
+    updateComment: async (commentId, { content }) => {
+        try {
+            const token = useAuthStore.getState().token;
+            if (!token) {
+                throw new Error("Not authenticated");
+            }
+
+            const response = await axios.put(
+                `/api/comments/${commentId}`,
+                { content },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+
+            if (response.status !== 200) {
+                throw new Error("Failed to update comment");
+            }
+
+            return response.data.comment;
+        } catch (error) {
+            throw new Error(error.response?.data?.errMsg || error.message);
+        }
+    },
 }));
 
 export default useTeacherStore;

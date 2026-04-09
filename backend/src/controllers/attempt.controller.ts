@@ -24,7 +24,7 @@ const countAttempts = async (userId: string, quizId: string) => {
 
 const startAttempt = async (req: AuthRequest, res: Response) => {
     try {
-        const { id: quizId } = req.params;
+        const { quizId } = req.params;
         if (!quizId) {
             return res.status(400).json({ errMsg: "invalid quiz id" });
         }
@@ -142,7 +142,7 @@ const autoSaveAnswer = async (req: AuthRequest, res: Response) => {
                 .status(400)
                 .json({ errMsg: error.details[0]?.message || error.message });
         }
-        const { id: attemptId } = req.params;
+        const { attemptId } = req.params;
         const attempt = await Attempt.findById(attemptId);
         if (!attempt) {
             return res.status(404).json({ errMsg: "attempt not found" });
@@ -165,7 +165,7 @@ const autoSaveAnswer = async (req: AuthRequest, res: Response) => {
 
 const submitAttempt = async (req: AuthRequest, res: Response) => {
     try {
-        const { id: attemptId } = req.params;
+        const { attemptId } = req.params;
         const attempt = await Attempt.findById(attemptId).populate({
             path: "responses.question",
             model: "Question",
@@ -198,7 +198,13 @@ const submitAttempt = async (req: AuthRequest, res: Response) => {
         attempt.status = "graded";
         attempt.submittedAt = now.toDate();
         await attempt.save();
-        res.json({ score: total });
+        console.log("Attempt submitted:", {
+            id: attempt._id,
+            submittedAt: attempt.submittedAt,
+            status: attempt.status,
+            score: attempt.score,
+        });
+        res.json({ attempt: attempt });
     } catch (err) {
         res.status(500).json({ error: "Submit failed" });
     }
@@ -227,7 +233,7 @@ const getResult = async (req: AuthRequest, res: Response) => {
 
 const listQuizGrades = async (req: AuthRequest, res: Response) => {
     try {
-        const { quizId } = req.params;
+        const { id: quizId } = req.params;
         const quiz = await Quiz.findById(quizId).populate("course");
         if (!quiz) return res.status(404).json({ error: "Quiz not found" });
         if (quiz.course instanceof Types.ObjectId) {
@@ -357,13 +363,16 @@ const getAttemptDetails = async (req: AuthRequest, res: Response) => {
             },
             responses: resp,
         });
+        console.log("Get attempt details response:", {
+            attemptId: attempt._id,
+            submittedAt: attempt.submittedAt,
+            startedAt: attempt.startAt,
+            status: attempt.status,
+        });
     } catch (err) {
         res.status(500).json({ error: "Get attempt details failed" });
     }
 };
-
-
-
 
 export {
     startAttempt,

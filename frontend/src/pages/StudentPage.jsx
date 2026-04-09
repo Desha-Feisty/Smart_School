@@ -1,19 +1,33 @@
 import { useEffect, useState } from "react";
 import useAuthStore from "../stores/Authstore";
 import useTeacherStore from "../stores/Teacherstore";
+import useQuizStore from "../stores/Quizstore";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import NoteCard from "../components/NoteCard";
 
 function StudentPage() {
-    const { token, user } = useAuthStore();
-    const { allCourses, listMyCourses } = useTeacherStore();
+    const { token, user, logout } = useAuthStore();
+    const { allCourses, listMyCourses, listCourseNotes } = useTeacherStore();
+    const {
+        startAttempt,
+        attemptError,
+        myGrades,
+        gradesLoading,
+        gradesError,
+        listMyGrades,
+    } = useQuizStore();
     const navigate = useNavigate();
 
     const [joinCode, setJoinCode] = useState("");
     const [availableQuizzes, setAvailableQuizzes] = useState([]);
-    const [activeTab, setActiveTab] = useState("courses"); // courses, quizzes, grades
+    const [activeTab, setActiveTab] = useState("courses"); // courses, quizzes, grades, community
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [startingQuizId, setStartingQuizId] = useState(null);
+    const [selectedCourse, setSelectedCourse] = useState(null);
+    const [courseNotes, setCourseNotes] = useState([]);
+    const [notesLoading, setNotesLoading] = useState(false);
 
     useEffect(() => {
         if (!token) {
@@ -23,6 +37,35 @@ function StudentPage() {
         listMyCourses();
         fetchAvailableQuizzes();
     }, [token, navigate]);
+
+    useEffect(() => {
+        if (activeTab === "grades") {
+            listMyGrades();
+        }
+    }, [activeTab, listMyGrades]);
+
+    useEffect(() => {
+        if (activeTab === "community" && selectedCourse) {
+            loadCourseNotes();
+        }
+    }, [activeTab, selectedCourse]);
+
+    const loadCourseNotes = async () => {
+        setNotesLoading(true);
+        try {
+            const notes = await listCourseNotes(selectedCourse._id);
+            setCourseNotes(notes);
+        } catch (err) {
+            setError(err.message || "Failed to load notes");
+        } finally {
+            setNotesLoading(false);
+        }
+    };
+
+    const handleLogout = () => {
+        logout();
+        navigate("/login");
+    };
 
     const fetchAvailableQuizzes = async () => {
         try {
@@ -56,32 +99,60 @@ function StudentPage() {
         }
     };
 
+    const handleStartQuiz = async (quizId) => {
+        setStartingQuizId(quizId);
+        setError(null);
+        try {
+            const result = await startAttempt(quizId);
+            if (result && result.attempt) {
+                // Navigate to quiz page with the attempt ID
+                navigate(`/student/quiz/${result.attempt._id}`);
+            } else {
+                setError(attemptError || "Failed to start quiz");
+            }
+        } catch (err) {
+            setError(
+                err.message || "An error occurred while starting the quiz",
+            );
+        } finally {
+            setStartingQuizId(null);
+        }
+    };
+
     return (
         <div className="max-w-6xl mx-auto p-6">
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex justify-between items-start mb-8">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900">
                         Student Dashboard
                     </h1>
                     <p className="text-gray-600">Welcome back, {user?.name}!</p>
                 </div>
-                <form onSubmit={handleJoinCourse} className="flex gap-2">
-                    <input
-                        type="text"
-                        placeholder="Enter Join Code"
-                        value={joinCode}
-                        onChange={(e) => setJoinCode(e.target.value)}
-                        className="border p-2 rounded w-40"
-                        required
-                    />
+                <div className="flex flex-col items-end gap-4">
                     <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="bg-blue-600 text-white px-4 py-2 rounded font-bold disabled:opacity-50"
+                        onClick={handleLogout}
+                        className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-200"
                     >
-                        {isLoading ? "Joining..." : "Join Course"}
+                        Logout
                     </button>
-                </form>
+                    <form onSubmit={handleJoinCourse} className="flex gap-2">
+                        <input
+                            type="text"
+                            placeholder="Enter Join Code"
+                            value={joinCode}
+                            onChange={(e) => setJoinCode(e.target.value)}
+                            className="border p-2 rounded w-40"
+                            required
+                        />
+                        <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="bg-blue-600 text-white px-4 py-2 rounded font-bold disabled:opacity-50"
+                        >
+                            {isLoading ? "Joining..." : "Join Course"}
+                        </button>
+                    </form>
+                </div>
             </div>
 
             {error && (
@@ -109,6 +180,12 @@ function StudentPage() {
                         className={`pb-3 font-semibold ${activeTab === "grades" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
                     >
                         My Grades
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("community")}
+                        className={`pb-3 font-semibold ${activeTab === "community" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
+                    >
+                        Community Notes
                     </button>
                 </div>
             </div>
@@ -192,8 +269,16 @@ function StudentPage() {
                                             </span>
                                         </div>
                                     </div>
-                                    <button className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded font-bold">
-                                        Start Quiz
+                                    <button
+                                        onClick={() =>
+                                            handleStartQuiz(quiz._id)
+                                        }
+                                        disabled={startingQuizId === quiz._id}
+                                        className="bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded font-bold transition-colors"
+                                    >
+                                        {startingQuizId === quiz._id
+                                            ? "Starting..."
+                                            : "Start Quiz"}
                                     </button>
                                 </div>
                             ))}
@@ -203,10 +288,132 @@ function StudentPage() {
             )}
 
             {activeTab === "grades" && (
-                <div className="bg-white p-6 rounded-lg border text-center py-12">
-                    <p className="text-gray-500 italic">
-                        Grade history functionality coming soon...
-                    </p>
+                <div className="bg-white p-6 rounded-lg border">
+                    <h2 className="text-2xl font-bold mb-4">
+                        My Grade History
+                    </h2>
+                    {gradesLoading ? (
+                        <div className="text-center py-12 text-gray-600">
+                            Loading grades...
+                        </div>
+                    ) : gradesError ? (
+                        <div className="text-red-600 py-6">{gradesError}</div>
+                    ) : myGrades.length === 0 ? (
+                        <div className="text-center py-12 text-gray-500">
+                            No graded attempts available yet.
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                            Quiz
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                            Course
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                            Score
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                            Date
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                            Status
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {myGrades.map((grade) => (
+                                        <tr key={grade.attemptId}>
+                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {grade.quiz?.title ||
+                                                    "Unnamed Quiz"}
+                                            </td>
+                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
+                                                {grade.course?.title ||
+                                                    "Unknown Course"}
+                                            </td>
+                                            <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                                {grade.score}
+                                            </td>
+                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
+                                                {grade.submittedAt
+                                                    ? new Date(
+                                                          grade.submittedAt,
+                                                      ).toLocaleString()
+                                                    : "-"}
+                                            </td>
+                                            <td className="px-4 py-4 whitespace-nowrap text-sm">
+                                                <span
+                                                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                                        grade.status ===
+                                                        "graded"
+                                                            ? "bg-green-100 text-green-800"
+                                                            : "bg-yellow-100 text-yellow-800"
+                                                    }`}
+                                                >
+                                                    {grade.status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {activeTab === "community" && (
+                <div>
+                    <div className="mb-6">
+                        <h2 className="text-2xl font-bold mb-4">
+                            Community Notes
+                        </h2>
+                        <select
+                            value={selectedCourse?._id || ""}
+                            onChange={(e) => {
+                                const course = allCourses.find(
+                                    (c) => c._id === e.target.value,
+                                );
+                                setSelectedCourse(course);
+                            }}
+                            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="">Select a course</option>
+                            {allCourses.map((course) => (
+                                <option key={course._id} value={course._id}>
+                                    {course.title}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {selectedCourse && (
+                        <div>
+                            {notesLoading ? (
+                                <p className="text-center text-gray-500 py-8">
+                                    Loading notes...
+                                </p>
+                            ) : courseNotes.length === 0 ? (
+                                <p className="text-center text-gray-500 py-8">
+                                    No notes posted yet for this course.
+                                </p>
+                            ) : (
+                                <div className="grid grid-cols-1 gap-4">
+                                    {courseNotes.map((note) => (
+                                        <NoteCard
+                                            key={note._id}
+                                            note={note}
+                                            isTeacher={false}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
         </div>
