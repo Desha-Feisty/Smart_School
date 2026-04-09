@@ -164,13 +164,13 @@ function QuizQuestionsPage() {
 
     if (isLoading)
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+            <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center">
                 <span className="loading loading-spinner loading-lg text-blue-600"></span>
             </div>
         );
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100">
             {/* Navigation Header */}
             <nav className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
                 <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -496,9 +496,9 @@ function QuizQuestionsPage() {
                                             >
                                                 <div className="flex items-start gap-3">
                                                     {c.isCorrect ? (
-                                                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                                                        <CheckCircle className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
                                                     ) : (
-                                                        <Circle className="w-5 h-5 text-gray-300 flex-shrink-0 mt-0.5" />
+                                                        <Circle className="w-5 h-5 text-gray-300 shrink-0 mt-0.5" />
                                                     )}
                                                     <div className="flex-1">
                                                         <p

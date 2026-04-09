@@ -55,7 +55,7 @@ function QuizResultsPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+            <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center">
                 <span className="loading loading-spinner loading-lg text-blue-600"></span>
             </div>
         );
@@ -63,7 +63,7 @@ function QuizResultsPage() {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center px-6">
+            <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center px-6">
                 <div className="card bg-white shadow-lg border border-slate-200 max-w-md">
                     <div className="card-body text-center">
                         <p className="text-error text-lg mb-4">{error}</p>
@@ -82,7 +82,7 @@ function QuizResultsPage() {
 
     if (!attempt) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center px-6">
+            <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center px-6">
                 <div className="card bg-white shadow-lg border border-slate-200">
                     <div className="card-body text-center">
                         <p className="text-gray-600 text-lg mb-4">
@@ -102,10 +102,18 @@ function QuizResultsPage() {
     }
 
     // Calculate stats
+    const rawScore = Number.isFinite(attempt.score)
+        ? attempt.score
+        : attempt.responses?.reduce(
+              (sum, r) =>
+                  sum +
+                  (Number.isFinite(r.pointsAwarded) ? r.pointsAwarded : 0),
+              0,
+          );
     const totalPointsPossible = attempt.responses?.length || 0;
     const scorePercentage =
         totalPointsPossible > 0
-            ? Math.round((attempt.score / totalPointsPossible) * 100)
+            ? Math.round((rawScore / totalPointsPossible) * 100)
             : 0;
 
     const correctAnswers =
@@ -165,17 +173,25 @@ function QuizResultsPage() {
     const performance = getPerformanceData(scorePercentage);
     const PerformanceIcon = performance.icon;
 
-    const timeTaken =
-        attempt.submittedAt && (attempt.startedAt || attempt.startAt)
-            ? Math.round(
-                  (new Date(attempt.submittedAt) -
-                      new Date(attempt.startedAt || attempt.startAt)) /
-                      60000,
-              )
-            : null;
+    const timeTaken = (() => {
+        if (!attempt.submittedAt || (!attempt.startedAt && !attempt.startAt)) {
+            return null;
+        }
+
+        const submittedTime = new Date(attempt.submittedAt).getTime();
+        const startedTime = new Date(
+            attempt.startedAt || attempt.startAt,
+        ).getTime();
+        const diffMinutes = Math.max(
+            0,
+            Math.round((submittedTime - startedTime) / 60000),
+        );
+
+        return diffMinutes;
+    })();
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-6">
+        <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 py-8 px-6">
             <div className="max-w-3xl mx-auto space-y-8">
                 {/* Main Results Card */}
                 <div
@@ -211,8 +227,9 @@ function QuizResultsPage() {
                                 {scorePercentage}%
                             </div>
                             <div className="text-2xl font-semibold text-gray-800">
-                                Score: {attempt.score} / {totalPointsPossible}{" "}
-                                points
+                                {totalPointsPossible > 0
+                                    ? `Score: ${rawScore} / ${totalPointsPossible} points`
+                                    : `Score: ${rawScore} points`}
                             </div>
                         </div>
 
@@ -247,19 +264,15 @@ function QuizResultsPage() {
                                     Incorrect
                                 </p>
                             </div>
-                            {timeTaken && (
-                                <div className="bg-white bg-opacity-60 rounded-lg p-4">
-                                    <div className="flex items-center justify-center gap-2 mb-1">
-                                        <Clock className="w-5 h-5 text-blue-600" />
-                                    </div>
-                                    <p className="text-3xl font-bold text-blue-600">
-                                        {timeTaken}
-                                    </p>
-                                    <p className="text-sm text-gray-600">
-                                        Minutes
-                                    </p>
+                            <div className="bg-white bg-opacity-60 rounded-lg p-4">
+                                <div className="flex items-center justify-center gap-2 mb-1">
+                                    <Clock className="w-5 h-5 text-blue-600" />
                                 </div>
-                            )}
+                                <p className="text-3xl font-bold text-blue-600">
+                                    {timeTaken !== null ? timeTaken : "--"}
+                                </p>
+                                <p className="text-sm text-gray-600">Minutes</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -283,22 +296,21 @@ function QuizResultsPage() {
                             </p>
                         </div>
                     </div>
-                    {timeTaken && (
-                        <div className="card bg-white shadow-lg border border-slate-200">
-                            <div className="card-body">
-                                <div className="flex items-center gap-3 mb-2">
-                                    <Clock className="w-5 h-5 text-purple-600" />
-                                    <span className="font-semibold text-gray-600">
-                                        Time Taken
-                                    </span>
-                                </div>
-                                <p className="text-gray-900 font-medium">
-                                    {timeTaken} minute
-                                    {timeTaken !== 1 ? "s" : ""}
-                                </p>
+                    <div className="card bg-white shadow-lg border border-slate-200">
+                        <div className="card-body">
+                            <div className="flex items-center gap-3 mb-2">
+                                <Clock className="w-5 h-5 text-purple-600" />
+                                <span className="font-semibold text-gray-600">
+                                    Time Taken
+                                </span>
                             </div>
+                            <p className="text-gray-900 font-medium">
+                                {timeTaken !== null
+                                    ? `${timeTaken} minute${timeTaken !== 1 ? "s" : ""}`
+                                    : "Duration not available"}
+                            </p>
                         </div>
-                    )}
+                    </div>
                 </div>
 
                 {/* Answer Breakdown */}
@@ -339,7 +351,7 @@ function QuizResultsPage() {
                                                             "Question not available"}
                                                     </p>
                                                 </div>
-                                                <div className="text-right ml-4 flex-shrink-0">
+                                                <div className="text-right ml-4 shrink-0">
                                                     <div
                                                         className={`text-2xl font-bold ${
                                                             isCorrect

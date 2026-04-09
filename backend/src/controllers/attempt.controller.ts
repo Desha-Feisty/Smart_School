@@ -9,8 +9,7 @@ import type { IQuestion } from "../models/question.js";
 import Enrollment from "../models/enrollment.js";
 import dayjs from "dayjs";
 import { Types } from "mongoose";
-import type { IQuiz } from "../models/quiz.js";
-import quiz from "../models/quiz.js";
+
 const ensureEnrollment = async (userId: string, courseId: string) => {
     const enrolled = await Enrollment.findOne({
         user: userId,

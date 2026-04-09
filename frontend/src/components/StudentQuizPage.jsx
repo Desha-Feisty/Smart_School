@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import useQuizStore from "../stores/Quizstore";
-import useAuthStore from "../stores/Authstore";
 import toast from "react-hot-toast";
 import {
     ChevronLeft,
@@ -24,21 +23,27 @@ function StudentQuizPage() {
         submitAttempt,
         attemptError,
     } = useQuizStore();
-    const { token } = useAuthStore();
 
-    const [selectedQuestion, setSelectedQuestion] = useState(null);
     const [answers, setAnswers] = useState({});
     const [timeRemaining, setTimeRemaining] = useState(null);
     const [showWarning, setShowWarning] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [savingIndices, setSavingIndices] = useState(new Set());
-    const [isSaved, setIsSaved] = useState(true);
 
-    useEffect(() => {
-        if (attemptQuestions.length > 0 && !selectedQuestion) {
-            setSelectedQuestion(attemptQuestions[0]);
+    const [selectedQuestion, setSelectedQuestion] = useState(() =>
+        attemptQuestions.length > 0 ? attemptQuestions[0] : null,
+    );
+
+    const handleAutoSubmit = useCallback(async () => {
+        setIsSubmitting(true);
+        const result = await submitAttempt(attemptId);
+        if (result) {
+            toast.success("Quiz submitted successfully!");
+            navigate(`/student/quiz/${attemptId}/results`);
+        } else {
+            toast.error("Failed to submit quiz. Please try again.");
         }
-    }, [attemptQuestions, selectedQuestion]);
+    }, [attemptId, submitAttempt, navigate]);
 
     useEffect(() => {
         if (!currentAttempt?.endAt) return;
@@ -68,18 +73,7 @@ function StudentQuizPage() {
         updateTimer();
         const interval = setInterval(updateTimer, 1000);
         return () => clearInterval(interval);
-    }, [currentAttempt?.endAt, showWarning]);
-
-    const handleAutoSubmit = useCallback(async () => {
-        setIsSubmitting(true);
-        const result = await submitAttempt(attemptId);
-        if (result) {
-            toast.success("Quiz submitted successfully!");
-            navigate(`/student/quiz/${attemptId}/results`);
-        } else {
-            toast.error("Failed to submit quiz. Please try again.");
-        }
-    }, [attemptId, submitAttempt, navigate]);
+    }, [currentAttempt?.endAt, showWarning, handleAutoSubmit]);
 
     const handleAnswerChange = useCallback(
         async (questionId, choiceId) => {
@@ -91,14 +85,12 @@ function StudentQuizPage() {
             });
 
             setSavingIndices((prev) => new Set(prev).add(questionId));
-            setIsSaved(false);
 
             const timeoutId = setTimeout(async () => {
                 const success = await submitAnswer(attemptId, questionId, [
                     choiceId,
                 ]);
                 if (success) {
-                    setIsSaved(true);
                     toast.success("Answer saved");
                 }
                 setSavingIndices((prev) => {
@@ -141,14 +133,14 @@ function StudentQuizPage() {
 
     if (!currentAttempt || !attemptQuestions.length) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+            <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center">
                 <span className="loading loading-spinner loading-lg text-blue-600"></span>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100">
             {/* Header with Timer */}
             <div className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
                 <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
@@ -188,7 +180,7 @@ function StudentQuizPage() {
                 {/* Warning Banner */}
                 {showWarning && (
                     <div className="bg-warning/10 border-t border-warning/50 px-6 py-3 flex items-center gap-3">
-                        <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0" />
+                        <AlertTriangle className="w-5 h-5 text-warning shrink-0" />
                         <p className="text-sm font-semibold text-warning-700">
                             ⏰ Only {Math.ceil(timeRemaining / 60)} minutes
                             remaining. Quiz will auto-submit when time runs out.
@@ -245,7 +237,7 @@ function StudentQuizPage() {
                                                 }`}
                                             >
                                                 <div
-                                                    className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                                                    className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                                                         isAnswered
                                                             ? "bg-green-500 text-white"
                                                             : isSelected
@@ -290,7 +282,7 @@ function StudentQuizPage() {
                                                 <h2 className="text-2xl font-bold text-gray-900 flex-1 leading-relaxed">
                                                     {selectedQuestion.prompt}
                                                 </h2>
-                                                <div className="badge badge-primary ml-4 flex-shrink-0">
+                                                <div className="badge badge-primary ml-4 shrink-0">
                                                     {selectedQuestion.points} pt
                                                     {selectedQuestion.points !==
                                                     1
@@ -366,7 +358,7 @@ function StudentQuizPage() {
                                                                     disabled={
                                                                         isSubmitting
                                                                     }
-                                                                    className="radio radio-primary mt-1 flex-shrink-0"
+                                                                    className="radio radio-primary mt-1 shrink-0"
                                                                 />
                                                                 <span
                                                                     className={`ml-4 text-base ${
@@ -380,7 +372,7 @@ function StudentQuizPage() {
                                                                     }
                                                                 </span>
                                                                 {isSelected && (
-                                                                    <CheckCircle className="w-5 h-5 text-blue-600 ml-auto flex-shrink-0" />
+                                                                    <CheckCircle className="w-5 h-5 text-blue-600 ml-auto shrink-0" />
                                                                 )}
                                                             </label>
                                                         );

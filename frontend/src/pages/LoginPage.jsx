@@ -57,16 +57,16 @@ function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50">
             <div className="hero min-h-screen">
                 <div className="hero-content flex-col lg:flex-row-reverse gap-12">
                     {/* Right Side - Branding */}
                     <div className="lg:w-1/2 text-center lg:text-left">
                         <div className="flex items-center justify-center lg:justify-start gap-3 mb-6">
-                            <div className="p-3 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg">
+                            <div className="p-3 bg-linear-to-br from-blue-600 to-purple-600 rounded-lg">
                                 <BookOpen className="w-8 h-8 text-white" />
                             </div>
-                            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                            <h1 className="text-4xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                                 LearnHub
                             </h1>
                         </div>

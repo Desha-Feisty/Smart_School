@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import useAuthStore from "../stores/Authstore";
 import useTeacherStore from "../stores/Teacherstore";
 import useQuizStore from "../stores/Quizstore";
@@ -38,49 +38,24 @@ function StudentPage() {
     const [activeTab, setActiveTab] = useState("courses");
     const [isLoading, setIsLoading] = useState(false);
     const [startingQuizId, setStartingQuizId] = useState(null);
-    const [selectedCourse, setSelectedCourse] = useState(null);
-    const [courseNotes, setCourseNotes] = useState([]);
-    const [notesLoading, setNotesLoading] = useState(false);
     const [viewContentCourse, setViewContentCourse] = useState(null);
     const [courseContentNotes, setCourseContentNotes] = useState([]);
     const [contentNotesLoading, setContentNotesLoading] = useState(false);
     const [allCourseNotes, setAllCourseNotes] = useState([]);
     const [allNotesLoading, setAllNotesLoading] = useState(false);
 
-    useEffect(() => {
-        if (!token) {
-            navigate("/login");
-            return;
-        }
-        listMyCourses();
-        fetchAvailableQuizzes();
-    }, [token, navigate]);
-
-    useEffect(() => {
-        if (activeTab === "grades") {
-            listMyGrades();
-        }
-    }, [activeTab, listMyGrades]);
-
-    useEffect(() => {
-        if (activeTab === "community") {
-            loadAllCourseNotes();
-        }
-    }, [activeTab]);
-
-    const loadCourseNotes = async () => {
-        setNotesLoading(true);
+    const fetchAvailableQuizzes = useCallback(async () => {
         try {
-            const notes = await listCourseNotes(selectedCourse._id);
-            setCourseNotes(notes);
+            const response = await axios.get("/api/quizzes/available", {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setAvailableQuizzes(response.data.quizzes || []);
         } catch (err) {
-            toast.error(err.message || "Failed to load notes");
-        } finally {
-            setNotesLoading(false);
+            console.error("Failed to fetch quizzes", err);
         }
-    };
+    }, [token]);
 
-    const loadAllCourseNotes = async () => {
+    const loadAllCourseNotes = useCallback(async () => {
         setAllNotesLoading(true);
         try {
             const allNotes = [];
@@ -95,7 +70,28 @@ function StudentPage() {
         } finally {
             setAllNotesLoading(false);
         }
-    };
+    }, [allCourses, listCourseNotes]);
+
+    useEffect(() => {
+        if (!token) {
+            navigate("/login");
+            return;
+        }
+        listMyCourses();
+        fetchAvailableQuizzes();
+    }, [token, navigate, fetchAvailableQuizzes, listMyCourses]);
+
+    useEffect(() => {
+        if (activeTab === "grades") {
+            listMyGrades();
+        }
+    }, [activeTab, listMyGrades]);
+
+    useEffect(() => {
+        if (activeTab === "community") {
+            loadAllCourseNotes();
+        }
+    }, [activeTab, loadAllCourseNotes]);
 
     const loadCourseContentNotes = async (courseId) => {
         setContentNotesLoading(true);
@@ -113,17 +109,6 @@ function StudentPage() {
     const handleLogout = () => {
         logout();
         navigate("/login");
-    };
-
-    const fetchAvailableQuizzes = async () => {
-        try {
-            const response = await axios.get("/api/quizzes/available", {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            setAvailableQuizzes(response.data.quizzes || []);
-        } catch (err) {
-            console.error("Failed to fetch quizzes", err);
-        }
     };
 
     const handleJoinCourse = async (e) => {
@@ -179,12 +164,12 @@ function StudentPage() {
             : 0;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100">
             {/* Navigation Header */}
             <nav className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
                 <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg p-2">
+                        <div className="bg-linear-to-br from-blue-600 to-purple-600 rounded-lg p-2">
                             <BookMarked className="w-6 h-6 text-white" />
                         </div>
                         <div>
@@ -313,7 +298,7 @@ function StudentPage() {
                             label: "Community Notes",
                             icon: MessageSquare,
                         },
-                    ].map(({ id, label, icon: Icon }) => (
+                    ].map(({ id, label }) => (
                         <button
                             key={id}
                             onClick={() => setActiveTab(id)}
@@ -323,7 +308,6 @@ function StudentPage() {
                                     : "text-gray-600"
                             }`}
                         >
-                            <Icon className="w-5 h-5" />
                             {label}
                         </button>
                     ))}
@@ -602,7 +586,7 @@ function StudentPage() {
                 <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
                     <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto my-8">
                         {/* Modal Header */}
-                        <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 flex items-center justify-between">
+                        <div className="sticky top-0 bg-linear-to-r from-blue-600 to-purple-600 text-white p-6 flex items-center justify-between">
                             <div>
                                 <h2 className="text-2xl font-bold flex items-center gap-2">
                                     <BookOpen className="w-6 h-6" />
