@@ -2,6 +2,17 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import useQuizStore from "../stores/Quizstore";
 import useAuthStore from "../stores/Authstore";
+import toast from "react-hot-toast";
+import {
+    ChevronLeft,
+    ChevronRight,
+    Send,
+    CheckCircle,
+    Clock,
+    AlertTriangle,
+    Save,
+    AlertCircle,
+} from "lucide-react";
 
 function StudentQuizPage() {
     const { attemptId } = useParams();
@@ -16,21 +27,19 @@ function StudentQuizPage() {
     const { token } = useAuthStore();
 
     const [selectedQuestion, setSelectedQuestion] = useState(null);
-    const [answers, setAnswers] = useState({}); // { questionId: [choiceIds] }
+    const [answers, setAnswers] = useState({});
     const [timeRemaining, setTimeRemaining] = useState(null);
     const [showWarning, setShowWarning] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [savingIndices, setSavingIndices] = useState(new Set());
     const [isSaved, setIsSaved] = useState(true);
 
-    // Initialize with first question
     useEffect(() => {
         if (attemptQuestions.length > 0 && !selectedQuestion) {
             setSelectedQuestion(attemptQuestions[0]);
         }
     }, [attemptQuestions, selectedQuestion]);
 
-    // Timer countdown logic
     useEffect(() => {
         if (!currentAttempt?.endAt) return;
 
@@ -42,16 +51,15 @@ function StudentQuizPage() {
 
             setTimeRemaining(remainingSeconds);
 
-            // Show warning at 5 minutes (300 seconds)
             if (
                 remainingSeconds <= 300 &&
                 remainingSeconds > 0 &&
                 !showWarning
             ) {
                 setShowWarning(true);
+                toast.error("⏰ Only 5 minutes remaining!");
             }
 
-            // Auto-submit when time is up
             if (remainingSeconds <= 0) {
                 handleAutoSubmit();
             }
@@ -62,39 +70,36 @@ function StudentQuizPage() {
         return () => clearInterval(interval);
     }, [currentAttempt?.endAt, showWarning]);
 
-    // Handle auto-submit when time expires
     const handleAutoSubmit = useCallback(async () => {
         setIsSubmitting(true);
         const result = await submitAttempt(attemptId);
         if (result) {
+            toast.success("Quiz submitted successfully!");
             navigate(`/student/quiz/${attemptId}/results`);
+        } else {
+            toast.error("Failed to submit quiz. Please try again.");
         }
     }, [attemptId, submitAttempt, navigate]);
 
-    // Debounced auto-save
     const handleAnswerChange = useCallback(
         async (questionId, choiceId) => {
-            // Update local state
             setAnswers((prev) => {
-                const currentAnswers = prev[questionId] || [];
-                // For MCQ single choice, only one answer allowed
                 return {
                     ...prev,
                     [questionId]: [choiceId],
                 };
             });
 
-            // Debounced API call
             setSavingIndices((prev) => new Set(prev).add(questionId));
             setIsSaved(false);
 
-            // Debounce for 500ms
             const timeoutId = setTimeout(async () => {
                 const success = await submitAnswer(attemptId, questionId, [
                     choiceId,
                 ]);
                 if (success) {
                     setIsSaved(true);
+                    toast.success("Answer saved");
                 }
                 setSavingIndices((prev) => {
                     const newSet = new Set(prev);
@@ -108,7 +113,6 @@ function StudentQuizPage() {
         [attemptId, submitAnswer],
     );
 
-    // Format time as MM:SS
     const formatTime = (seconds) => {
         if (seconds === null) return "00:00";
         const mins = Math.floor(seconds / 60);
@@ -116,125 +120,137 @@ function StudentQuizPage() {
         return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
     };
 
-    // Check if all questions answered
     const allQuestionsAnswered = attemptQuestions.every(
         (q) => answers[q._id]?.length > 0,
     );
 
+    const currentQuestionIndex = selectedQuestion
+        ? attemptQuestions.findIndex((q) => q._id === selectedQuestion._id) + 1
+        : 1;
+
+    const answeredCount = Object.keys(answers).filter(
+        (qId) => answers[qId]?.length > 0,
+    ).length;
+
+    const timeColor =
+        timeRemaining <= 60
+            ? "text-error"
+            : timeRemaining <= 300
+              ? "text-warning"
+              : "text-success";
+
     if (!currentAttempt || !attemptQuestions.length) {
         return (
-            <div className="flex items-center justify-center h-screen bg-gray-100">
-                <div className="text-center">
-                    <p className="text-gray-600 text-lg mb-4">
-                        Loading quiz...
-                    </p>
-                </div>
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+                <span className="loading loading-spinner loading-lg text-blue-600"></span>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header with timer and title */}
-            <div className="bg-white border-b sticky top-0 z-50 shadow-sm">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+            {/* Header with Timer */}
+            <div className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
                 <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">
                             Quiz
                         </h1>
-                        <p className="text-gray-600 text-sm">
-                            Question{" "}
-                            {(selectedQuestion &&
-                                attemptQuestions.findIndex(
-                                    (q) => q._id === selectedQuestion._id,
-                                ) + 1) ||
-                                1}{" "}
-                            of {attemptQuestions.length}
+                        <p className="text-sm text-gray-600">
+                            Question {currentQuestionIndex} of{" "}
+                            {attemptQuestions.length}
                         </p>
                     </div>
+
+                    {/* Timer Display */}
                     <div
-                        className={`text-center ${timeRemaining <= 300 ? "bg-yellow-100" : ""} p-3 rounded-lg`}
+                        className={`card bg-white shadow-lg border-2 ${
+                            timeRemaining <= 60
+                                ? "border-error"
+                                : timeRemaining <= 300
+                                  ? "border-warning"
+                                  : "border-success"
+                        }`}
                     >
-                        <div
-                            className={`text-4xl font-bold font-mono ${
-                                timeRemaining <= 300
-                                    ? "text-yellow-600"
-                                    : timeRemaining <= 60
-                                      ? "text-red-600"
-                                      : "text-green-600"
-                            }`}
-                        >
-                            {formatTime(timeRemaining)}
+                        <div className="card-body p-4 text-center">
+                            <div
+                                className={`text-4xl font-black font-mono ${timeColor}`}
+                            >
+                                {formatTime(timeRemaining)}
+                            </div>
+                            <p className="text-xs text-gray-600 mt-1">
+                                Remaining
+                            </p>
                         </div>
-                        <p className="text-xs text-gray-600 mt-1">
-                            Time Remaining
-                        </p>
-                        {showWarning && timeRemaining > 60 && (
-                            <p className="text-yellow-700 font-semibold text-sm mt-2">
-                                ⚠️ 5 minutes left!
-                            </p>
-                        )}
-                        {timeRemaining <= 60 && timeRemaining > 0 && (
-                            <p className="text-red-700 font-semibold text-sm mt-2">
-                                🔴 Final minute!
-                            </p>
-                        )}
                     </div>
                 </div>
+
+                {/* Warning Banner */}
+                {showWarning && (
+                    <div className="bg-warning/10 border-t border-warning/50 px-6 py-3 flex items-center gap-3">
+                        <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0" />
+                        <p className="text-sm font-semibold text-warning-700">
+                            ⏰ Only {Math.ceil(timeRemaining / 60)} minutes
+                            remaining. Quiz will auto-submit when time runs out.
+                        </p>
+                    </div>
+                )}
             </div>
 
-            {/* Warning banner */}
-            {showWarning && (
-                <div className="bg-yellow-50 border-b border-yellow-200 px-6 py-3">
-                    <p className="text-yellow-800 font-semibold">
-                        ⏰ Quiz will auto-submit when time runs out.
-                    </p>
-                </div>
-            )}
-
-            {/* Main content */}
-            <div className="max-w-7xl mx-auto px-6 py-8">
-                <div className="flex gap-8">
+            {/* Main Content */}
+            <main className="max-w-7xl mx-auto px-6 py-8">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* Sidebar - Question Checklist */}
-                    <div className="w-64 flex-shrink-0">
-                        <div className="bg-white rounded-lg border shadow-sm sticky top-24">
-                            <div className="p-4 border-b">
-                                <h2 className="font-bold text-gray-900">
+                    <div className="lg:col-span-1">
+                        <div className="card bg-white shadow-lg border border-slate-200 sticky top-24">
+                            <div className="card-body">
+                                <h2 className="card-title text-lg mb-1">
                                     Questions
                                 </h2>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    {
-                                        Object.keys(answers).filter(
-                                            (qId) => answers[qId]?.length > 0,
-                                        ).length
-                                    }{" "}
-                                    / {attemptQuestions.length} answered
+                                <p className="text-sm text-gray-600 mb-4">
+                                    {answeredCount} / {attemptQuestions.length}{" "}
+                                    answered
                                 </p>
-                            </div>
-                            <div className="max-h-96 overflow-y-auto">
-                                {attemptQuestions.map((question, index) => {
-                                    const isAnswered =
-                                        answers[question._id]?.length > 0;
-                                    const isSelected =
-                                        selectedQuestion?._id === question._id;
-                                    return (
-                                        <button
-                                            key={question._id}
-                                            onClick={() =>
-                                                setSelectedQuestion(question)
-                                            }
-                                            className={`w-full text-left px-4 py-3 border-b hover:bg-blue-50 transition-colors ${
-                                                isSelected
-                                                    ? "bg-blue-100 border-l-4 border-l-blue-600"
-                                                    : ""
-                                            }`}
-                                        >
-                                            <div className="flex items-center gap-3">
+
+                                {/* Progress Bar */}
+                                <progress
+                                    className="progress progress-primary w-full mb-4"
+                                    value={answeredCount}
+                                    max={attemptQuestions.length}
+                                ></progress>
+
+                                {/* Question List */}
+                                <div className="space-y-1 max-h-96 overflow-y-auto">
+                                    {attemptQuestions.map((question, index) => {
+                                        const isAnswered =
+                                            answers[question._id]?.length > 0;
+                                        const isSelected =
+                                            selectedQuestion?._id ===
+                                            question._id;
+
+                                        return (
+                                            <button
+                                                key={question._id}
+                                                onClick={() =>
+                                                    setSelectedQuestion(
+                                                        question,
+                                                    )
+                                                }
+                                                className={`w-full text-left px-3 py-2 rounded-lg transition-all flex items-center gap-2 ${
+                                                    isSelected
+                                                        ? "bg-blue-100 border border-blue-300"
+                                                        : isAnswered
+                                                          ? "bg-green-50 hover:bg-green-100 border border-green-200"
+                                                          : "hover:bg-slate-100 border border-slate-200"
+                                                }`}
+                                            >
                                                 <div
-                                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                                                    className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                                                         isAnswered
                                                             ? "bg-green-500 text-white"
-                                                            : "bg-gray-300 text-gray-600"
+                                                            : isSelected
+                                                              ? "bg-blue-600 text-white"
+                                                              : "bg-gray-300 text-gray-600"
                                                     }`}
                                                 >
                                                     {isAnswered
@@ -242,216 +258,261 @@ function StudentQuizPage() {
                                                         : index + 1}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                                    <p className="text-sm font-medium text-gray-900">
                                                         Q{index + 1}
                                                     </p>
                                                     {savingIndices.has(
                                                         question._id,
                                                     ) && (
-                                                        <p className="text-xs text-blue-600">
+                                                        <p className="text-xs text-blue-600 flex items-center gap-1">
+                                                            <Save className="w-3 h-3" />
                                                             Saving...
                                                         </p>
                                                     )}
                                                 </div>
-                                            </div>
-                                        </button>
-                                    );
-                                })}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Main content area - Question and Choices */}
-                    <div className="flex-1 max-w-2xl">
-                        <div className="bg-white rounded-lg border shadow-sm p-8">
-                            {selectedQuestion && (
-                                <>
-                                    {/* Question text */}
-                                    <div className="mb-8">
-                                        <div className="flex items-start justify-between mb-2">
-                                            <h2 className="text-xl font-bold text-gray-900 flex-1">
-                                                {selectedQuestion.prompt}
-                                            </h2>
-                                            <span className="ml-4 text-xs font-semibold bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
-                                                {selectedQuestion.points} pt
-                                                {selectedQuestion.points !== 1
-                                                    ? "s"
-                                                    : ""}
-                                            </span>
-                                        </div>
-                                        {savingIndices.has(
-                                            selectedQuestion._id,
-                                        ) && (
-                                            <p className="text-sm text-blue-600 mt-2">
-                                                💾 Saving your answer...
-                                            </p>
-                                        )}
-                                        {!savingIndices.has(
-                                            selectedQuestion._id,
-                                        ) &&
-                                            answers[selectedQuestion._id]
-                                                ?.length > 0 && (
-                                                <p className="text-sm text-green-600 mt-2">
-                                                    ✓ Answer saved
-                                                </p>
+                    {/* Main Question Area */}
+                    <div className="lg:col-span-3">
+                        <div className="card bg-white shadow-lg border border-slate-200">
+                            <div className="card-body p-8">
+                                {selectedQuestion && (
+                                    <>
+                                        {/* Question Header */}
+                                        <div className="mb-8">
+                                            <div className="flex items-start justify-between mb-4">
+                                                <h2 className="text-2xl font-bold text-gray-900 flex-1 leading-relaxed">
+                                                    {selectedQuestion.prompt}
+                                                </h2>
+                                                <div className="badge badge-primary ml-4 flex-shrink-0">
+                                                    {selectedQuestion.points} pt
+                                                    {selectedQuestion.points !==
+                                                    1
+                                                        ? "s"
+                                                        : ""}
+                                                </div>
+                                            </div>
+
+                                            {/* Auto-save Status */}
+                                            {savingIndices.has(
+                                                selectedQuestion._id,
+                                            ) && (
+                                                <div className="flex items-center gap-2 text-blue-600 text-sm">
+                                                    <Save className="w-4 h-4 animate-spin" />
+                                                    <span>
+                                                        Saving your answer...
+                                                    </span>
+                                                </div>
                                             )}
-                                    </div>
+                                            {!savingIndices.has(
+                                                selectedQuestion._id,
+                                            ) &&
+                                                answers[selectedQuestion._id]
+                                                    ?.length > 0 && (
+                                                    <div className="flex items-center gap-2 text-success text-sm">
+                                                        <CheckCircle className="w-4 h-4" />
+                                                        <span>
+                                                            Answer saved
+                                                        </span>
+                                                    </div>
+                                                )}
+                                        </div>
 
-                                    {/* Multiple choice options */}
-                                    <div className="space-y-3">
-                                        {selectedQuestion.choices &&
-                                        selectedQuestion.choices.length > 0 ? (
-                                            selectedQuestion.choices.map(
-                                                (choice) => {
-                                                    const isSelected =
-                                                        answers[
-                                                            selectedQuestion._id
-                                                        ]?.includes(
-                                                            choice._id,
-                                                        ) ?? false;
-                                                    return (
-                                                        <label
-                                                            key={choice._id}
-                                                            className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                                                                isSelected
-                                                                    ? "border-blue-500 bg-blue-50"
-                                                                    : "border-gray-200 hover:border-gray-300"
-                                                            }`}
-                                                        >
-                                                            <input
-                                                                type="radio"
-                                                                name={`question-${selectedQuestion._id}`}
-                                                                value={
-                                                                    choice._id
-                                                                }
-                                                                checked={
+                                        {/* Answer Choices */}
+                                        <div className="space-y-3 mb-8">
+                                            {selectedQuestion.choices &&
+                                            selectedQuestion.choices.length >
+                                                0 ? (
+                                                selectedQuestion.choices.map(
+                                                    (choice) => {
+                                                        const isSelected =
+                                                            answers[
+                                                                selectedQuestion
+                                                                    ._id
+                                                            ]?.includes(
+                                                                choice._id,
+                                                            ) ?? false;
+
+                                                        return (
+                                                            <label
+                                                                key={choice._id}
+                                                                className={`flex items-start p-4 rounded-lg border-2 cursor-pointer transition-all ${
                                                                     isSelected
-                                                                }
-                                                                onChange={() =>
-                                                                    handleAnswerChange(
-                                                                        selectedQuestion._id,
-                                                                        choice._id,
-                                                                    )
-                                                                }
-                                                                className="mt-1 w-4 h-4 cursor-pointer"
-                                                                disabled={
-                                                                    isSubmitting
-                                                                }
-                                                            />
-                                                            <span
-                                                                className={`ml-3 text-base ${
-                                                                    isSelected
-                                                                        ? "font-semibold"
-                                                                        : ""
-                                                                } text-gray-800`}
+                                                                        ? "border-blue-500 bg-blue-50"
+                                                                        : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/50"
+                                                                }`}
                                                             >
-                                                                {choice.text}
-                                                            </span>
-                                                        </label>
-                                                    );
-                                                },
-                                            )
-                                        ) : (
-                                            <p className="text-gray-500">
-                                                No choices available.
-                                            </p>
+                                                                <input
+                                                                    type="radio"
+                                                                    name={`question-${selectedQuestion._id}`}
+                                                                    value={
+                                                                        choice._id
+                                                                    }
+                                                                    checked={
+                                                                        isSelected
+                                                                    }
+                                                                    onChange={() =>
+                                                                        handleAnswerChange(
+                                                                            selectedQuestion._id,
+                                                                            choice._id,
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        isSubmitting
+                                                                    }
+                                                                    className="radio radio-primary mt-1 flex-shrink-0"
+                                                                />
+                                                                <span
+                                                                    className={`ml-4 text-base ${
+                                                                        isSelected
+                                                                            ? "font-semibold text-gray-900"
+                                                                            : "text-gray-700"
+                                                                    }`}
+                                                                >
+                                                                    {
+                                                                        choice.text
+                                                                    }
+                                                                </span>
+                                                                {isSelected && (
+                                                                    <CheckCircle className="w-5 h-5 text-blue-600 ml-auto flex-shrink-0" />
+                                                                )}
+                                                            </label>
+                                                        );
+                                                    },
+                                                )
+                                            ) : (
+                                                <div className="alert alert-info">
+                                                    <AlertCircle className="w-5 h-5" />
+                                                    <span>
+                                                        No choices available
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Navigation */}
+                                        <div className="divider my-6"></div>
+
+                                        <div className="flex gap-4 items-center justify-between">
+                                            <div className="flex gap-4">
+                                                <button
+                                                    onClick={() => {
+                                                        const idx =
+                                                            attemptQuestions.findIndex(
+                                                                (q) =>
+                                                                    q._id ===
+                                                                    selectedQuestion._id,
+                                                            );
+                                                        if (idx > 0) {
+                                                            setSelectedQuestion(
+                                                                attemptQuestions[
+                                                                    idx - 1
+                                                                ],
+                                                            );
+                                                        }
+                                                    }}
+                                                    disabled={
+                                                        attemptQuestions.findIndex(
+                                                            (q) =>
+                                                                q._id ===
+                                                                selectedQuestion._id,
+                                                        ) === 0 || isSubmitting
+                                                    }
+                                                    className="btn btn-ghost gap-2"
+                                                >
+                                                    <ChevronLeft className="w-5 h-5" />
+                                                    Previous
+                                                </button>
+
+                                                <button
+                                                    onClick={() => {
+                                                        const idx =
+                                                            attemptQuestions.findIndex(
+                                                                (q) =>
+                                                                    q._id ===
+                                                                    selectedQuestion._id,
+                                                            );
+                                                        if (
+                                                            idx <
+                                                            attemptQuestions.length -
+                                                                1
+                                                        ) {
+                                                            setSelectedQuestion(
+                                                                attemptQuestions[
+                                                                    idx + 1
+                                                                ],
+                                                            );
+                                                        }
+                                                    }}
+                                                    disabled={
+                                                        attemptQuestions.findIndex(
+                                                            (q) =>
+                                                                q._id ===
+                                                                selectedQuestion._id,
+                                                        ) ===
+                                                            attemptQuestions.length -
+                                                                1 ||
+                                                        isSubmitting
+                                                    }
+                                                    className="btn btn-ghost gap-2"
+                                                >
+                                                    Next
+                                                    <ChevronRight className="w-5 h-5" />
+                                                </button>
+                                            </div>
+
+                                            <button
+                                                onClick={handleAutoSubmit}
+                                                disabled={
+                                                    isSubmitting ||
+                                                    !allQuestionsAnswered
+                                                }
+                                                className="btn btn-success gap-2"
+                                            >
+                                                {isSubmitting ? (
+                                                    <>
+                                                        <span className="loading loading-spinner loading-xs"></span>
+                                                        Submitting...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Send className="w-5 h-5" />
+                                                        Submit Quiz
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+
+                                        {/* Incomplete Warning */}
+                                        {!allQuestionsAnswered && (
+                                            <div className="alert alert-warning mt-6">
+                                                <AlertTriangle className="w-5 h-5" />
+                                                <span>
+                                                    Please answer all questions
+                                                    before submitting.
+                                                </span>
+                                            </div>
                                         )}
-                                    </div>
-
-                                    {/* Navigation buttons */}
-                                    <div className="flex gap-4 mt-12">
-                                        <button
-                                            onClick={() => {
-                                                const currentIndex =
-                                                    attemptQuestions.findIndex(
-                                                        (q) =>
-                                                            q._id ===
-                                                            selectedQuestion._id,
-                                                    );
-                                                if (currentIndex > 0) {
-                                                    setSelectedQuestion(
-                                                        attemptQuestions[
-                                                            currentIndex - 1
-                                                        ],
-                                                    );
-                                                }
-                                            }}
-                                            disabled={
-                                                attemptQuestions.findIndex(
-                                                    (q) =>
-                                                        q._id ===
-                                                        selectedQuestion._id,
-                                                ) === 0 || isSubmitting
-                                            }
-                                            className="px-6 py-2 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                            ← Previous
-                                        </button>
-
-                                        <button
-                                            onClick={() => {
-                                                const currentIndex =
-                                                    attemptQuestions.findIndex(
-                                                        (q) =>
-                                                            q._id ===
-                                                            selectedQuestion._id,
-                                                    );
-                                                if (
-                                                    currentIndex <
-                                                    attemptQuestions.length - 1
-                                                ) {
-                                                    setSelectedQuestion(
-                                                        attemptQuestions[
-                                                            currentIndex + 1
-                                                        ],
-                                                    );
-                                                }
-                                            }}
-                                            disabled={
-                                                attemptQuestions.findIndex(
-                                                    (q) =>
-                                                        q._id ===
-                                                        selectedQuestion._id,
-                                                ) ===
-                                                    attemptQuestions.length -
-                                                        1 || isSubmitting
-                                            }
-                                            className="px-6 py-2 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                            Next →
-                                        </button>
-
-                                        <button
-                                            onClick={handleAutoSubmit}
-                                            disabled={
-                                                isSubmitting ||
-                                                !allQuestionsAnswered
-                                            }
-                                            className="ml-auto px-8 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                        >
-                                            {isSubmitting
-                                                ? "Submitting..."
-                                                : "Submit Quiz"}
-                                        </button>
-                                    </div>
-
-                                    {!allQuestionsAnswered && (
-                                        <p className="text-sm text-yellow-600 mt-4 text-center">
-                                            ⚠️ Please answer all questions
-                                            before submitting.
-                                        </p>
-                                    )}
-                                </>
-                            )}
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </main>
 
-            {/* Error message */}
+            {/* Attempt Error Toast */}
             {attemptError && (
-                <div className="fixed bottom-6 right-6 bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg">
-                    {attemptError}
+                <div className="toast toast-end">
+                    <div className="alert alert-error">
+                        <span>{attemptError}</span>
+                    </div>
                 </div>
             )}
         </div>

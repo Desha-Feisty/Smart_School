@@ -3,6 +3,16 @@ import { useParams, useNavigate } from "react-router-dom";
 import useQuizStore from "../stores/Quizstore";
 import useAuthStore from "../stores/Authstore";
 import axios from "axios";
+import {
+    Home,
+    CheckCircle,
+    XCircle,
+    Clock,
+    Calendar,
+    Trophy,
+    TrendingUp,
+    ArrowLeft,
+} from "lucide-react";
 
 function QuizResultsPage() {
     const { attemptId } = useParams();
@@ -43,33 +53,28 @@ function QuizResultsPage() {
         fetchAttempt();
     }, [attemptId, currentAttempt, token]);
 
-    const handleBackToDashboard = () => {
-        navigate("/student");
-    };
-
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-screen bg-gray-100">
-                <div className="text-center">
-                    <p className="text-gray-600 text-lg mb-4">
-                        Loading results...
-                    </p>
-                </div>
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+                <span className="loading loading-spinner loading-lg text-blue-600"></span>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="flex items-center justify-center h-screen bg-gray-100">
-                <div className="text-center bg-white p-8 rounded-lg shadow-lg max-w-md">
-                    <p className="text-red-600 text-lg mb-4">{error}</p>
-                    <button
-                        onClick={handleBackToDashboard}
-                        className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700"
-                    >
-                        Back to Dashboard
-                    </button>
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center px-6">
+                <div className="card bg-white shadow-lg border border-slate-200 max-w-md">
+                    <div className="card-body text-center">
+                        <p className="text-error text-lg mb-4">{error}</p>
+                        <button
+                            onClick={() => navigate("/student")}
+                            className="btn btn-primary gap-2"
+                        >
+                            <ArrowLeft className="w-5 h-5" />
+                            Back to Dashboard
+                        </button>
+                    </div>
                 </div>
             </div>
         );
@@ -77,98 +82,199 @@ function QuizResultsPage() {
 
     if (!attempt) {
         return (
-            <div className="flex items-center justify-center h-screen bg-gray-100">
-                <div className="text-center bg-white p-8 rounded-lg shadow-lg">
-                    <p className="text-gray-600 text-lg mb-4">
-                        Results not found
-                    </p>
-                    <button
-                        onClick={handleBackToDashboard}
-                        className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700"
-                    >
-                        Back to Dashboard
-                    </button>
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center px-6">
+                <div className="card bg-white shadow-lg border border-slate-200">
+                    <div className="card-body text-center">
+                        <p className="text-gray-600 text-lg mb-4">
+                            Results not found
+                        </p>
+                        <button
+                            onClick={() => navigate("/student")}
+                            className="btn btn-primary gap-2"
+                        >
+                            <ArrowLeft className="w-5 h-5" />
+                            Back to Dashboard
+                        </button>
+                    </div>
                 </div>
             </div>
         );
     }
 
-    // Calculate total points possible
-    // Since backend doesn't return total points, we assume 1 point per question
+    // Calculate stats
     const totalPointsPossible = attempt.responses?.length || 0;
     const scorePercentage =
         totalPointsPossible > 0
             ? Math.round((attempt.score / totalPointsPossible) * 100)
             : 0;
 
-    // Determine performance color
-    const getPerformanceColor = (percentage) => {
-        if (percentage >= 80) return "text-green-600";
-        if (percentage >= 60) return "text-yellow-600";
-        return "text-red-600";
+    const correctAnswers =
+        attempt.responses?.filter((r) => r.pointsAwarded > 0).length || 0;
+    const incorrectAnswers = (attempt.responses?.length || 0) - correctAnswers;
+
+    // Determine performance level
+    const getPerformanceData = (percentage) => {
+        if (percentage >= 90) {
+            return {
+                label: "Outstanding",
+                icon: Trophy,
+                color: "text-emerald-600",
+                bgColor: "bg-emerald-50",
+                borderColor: "border-emerald-200",
+                message: "🎉 Excellent work! Outstanding performance!",
+            };
+        } else if (percentage >= 80) {
+            return {
+                label: "Excellent",
+                icon: Trophy,
+                color: "text-green-600",
+                bgColor: "bg-green-50",
+                borderColor: "border-green-200",
+                message: "🎉 Great job! You passed with flying colors!",
+            };
+        } else if (percentage >= 70) {
+            return {
+                label: "Good",
+                icon: CheckCircle,
+                color: "text-blue-600",
+                bgColor: "bg-blue-50",
+                borderColor: "border-blue-200",
+                message: "👍 Good work! You passed the quiz.",
+            };
+        } else if (percentage >= 60) {
+            return {
+                label: "Satisfactory",
+                icon: CheckCircle,
+                color: "text-yellow-600",
+                bgColor: "bg-yellow-50",
+                borderColor: "border-yellow-200",
+                message: "📊 You passed, but there's room for improvement.",
+            };
+        } else {
+            return {
+                label: "Needs Improvement",
+                icon: XCircle,
+                color: "text-red-600",
+                bgColor: "bg-red-50",
+                borderColor: "border-red-200",
+                message: "📚 Keep practicing! You can improve.",
+            };
+        }
     };
 
-    const getPerformanceBg = (percentage) => {
-        if (percentage >= 80) return "bg-green-50 border-green-200";
-        if (percentage >= 60) return "bg-yellow-50 border-yellow-200";
-        return "bg-red-50 border-red-200";
-    };
+    const performance = getPerformanceData(scorePercentage);
+    const PerformanceIcon = performance.icon;
+
+    const timeTaken =
+        attempt.submittedAt && (attempt.startedAt || attempt.startAt)
+            ? Math.round(
+                  (new Date(attempt.submittedAt) -
+                      new Date(attempt.startedAt || attempt.startAt)) /
+                      60000,
+              )
+            : null;
 
     return (
-        <div className="min-h-screen bg-gray-50 py-12">
-            <div className="max-w-2xl mx-auto px-6">
-                {/* Results Card */}
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-6">
+            <div className="max-w-3xl mx-auto space-y-8">
+                {/* Main Results Card */}
                 <div
-                    className={`bg-white rounded-lg border-2 shadow-lg p-8 mb-8 ${getPerformanceBg(scorePercentage)}`}
+                    className={`card shadow-2xl border-2 ${performance.borderColor} ${performance.bgColor}`}
                 >
-                    <div className="text-center mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                            {attempt.quiz?.title || "Quiz"}
+                    <div className="card-body text-center py-12">
+                        {/* Performance Icon and Label */}
+                        <div className="flex justify-center mb-6">
+                            <div
+                                className={`p-6 rounded-full ${performance.bgColor} border-2 ${performance.borderColor}`}
+                            >
+                                <PerformanceIcon
+                                    className={`w-16 h-16 ${performance.color}`}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Quiz Title */}
+                        <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                            {attempt.quiz?.title || "Quiz Completed"}
                         </h1>
-                        <p className="text-gray-600">
-                            Quiz completed successfully!
-                        </p>
-                    </div>
-
-                    {/* Score Display */}
-                    <div className="text-center mb-8">
-                        <div
-                            className={`text-6xl font-bold ${getPerformanceColor(scorePercentage)} mb-2`}
+                        <p
+                            className={`text-lg font-semibold ${performance.color}`}
                         >
-                            {scorePercentage}%
+                            {performance.label} Performance
+                        </p>
+
+                        {/* Score Display */}
+                        <div className="my-8">
+                            <div
+                                className={`text-7xl font-black ${performance.color} mb-2`}
+                            >
+                                {scorePercentage}%
+                            </div>
+                            <div className="text-2xl font-semibold text-gray-800">
+                                Score: {attempt.score} / {totalPointsPossible}{" "}
+                                points
+                            </div>
                         </div>
-                        <div className="text-2xl font-semibold text-gray-800">
-                            Score: {attempt.score} / {totalPointsPossible}
+
+                        {/* Performance Message */}
+                        <div className="bg-white bg-opacity-60 rounded-lg p-4 mb-6">
+                            <p
+                                className={`text-lg font-semibold ${performance.color}`}
+                            >
+                                {performance.message}
+                            </p>
+                        </div>
+
+                        {/* Stats Grid */}
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="bg-white bg-opacity-60 rounded-lg p-4">
+                                <div className="flex items-center justify-center gap-2 mb-1">
+                                    <CheckCircle className="w-5 h-5 text-green-600" />
+                                </div>
+                                <p className="text-3xl font-bold text-green-600">
+                                    {correctAnswers}
+                                </p>
+                                <p className="text-sm text-gray-600">Correct</p>
+                            </div>
+                            <div className="bg-white bg-opacity-60 rounded-lg p-4">
+                                <div className="flex items-center justify-center gap-2 mb-1">
+                                    <XCircle className="w-5 h-5 text-red-600" />
+                                </div>
+                                <p className="text-3xl font-bold text-red-600">
+                                    {incorrectAnswers}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                    Incorrect
+                                </p>
+                            </div>
+                            {timeTaken && (
+                                <div className="bg-white bg-opacity-60 rounded-lg p-4">
+                                    <div className="flex items-center justify-center gap-2 mb-1">
+                                        <Clock className="w-5 h-5 text-blue-600" />
+                                    </div>
+                                    <p className="text-3xl font-bold text-blue-600">
+                                        {timeTaken}
+                                    </p>
+                                    <p className="text-sm text-gray-600">
+                                        Minutes
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
+                </div>
 
-                    {/* Performance Message */}
-                    <div className="text-center mb-8 p-4 bg-white rounded-lg">
-                        {scorePercentage >= 80 && (
-                            <p className="text-lg text-green-700 font-semibold">
-                                🎉 Excellent work! You passed with flying
-                                colors!
-                            </p>
-                        )}
-                        {scorePercentage >= 60 && scorePercentage < 80 && (
-                            <p className="text-lg text-yellow-700 font-semibold">
-                                👍 Good job! You passed the quiz.
-                            </p>
-                        )}
-                        {scorePercentage < 60 && (
-                            <p className="text-lg text-red-700 font-semibold">
-                                📚 Keep practicing! You can improve.
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Submission Details */}
-                    <div className="grid grid-cols-2 gap-4 mb-8 p-4 bg-white rounded-lg">
-                        <div>
-                            <p className="text-xs text-gray-500 uppercase font-semibold">
-                                Submitted At
-                            </p>
-                            <p className="text-sm text-gray-900 font-semibold mt-1">
+                {/* Submission Details */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="card bg-white shadow-lg border border-slate-200">
+                        <div className="card-body">
+                            <div className="flex items-center gap-3 mb-2">
+                                <Calendar className="w-5 h-5 text-blue-600" />
+                                <span className="font-semibold text-gray-600">
+                                    Submitted
+                                </span>
+                            </div>
+                            <p className="text-gray-900 font-medium">
                                 {attempt.submittedAt
                                     ? new Date(
                                           attempt.submittedAt,
@@ -176,98 +282,109 @@ function QuizResultsPage() {
                                     : "N/A"}
                             </p>
                         </div>
-                        <div>
-                            <p className="text-xs text-gray-500 uppercase font-semibold">
-                                Duration
-                            </p>
-                            <p className="text-sm text-gray-900 font-semibold mt-1">
-                                {attempt.submittedAt &&
-                                (attempt.startedAt || attempt.startAt)
-                                    ? Math.round(
-                                          (new Date(attempt.submittedAt) -
-                                              new Date(
-                                                  attempt.startedAt ||
-                                                      attempt.startAt,
-                                              )) /
-                                              60000,
-                                      )
-                                    : "N/A"}{" "}
-                                min
-                            </p>
-                        </div>
                     </div>
+                    {timeTaken && (
+                        <div className="card bg-white shadow-lg border border-slate-200">
+                            <div className="card-body">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <Clock className="w-5 h-5 text-purple-600" />
+                                    <span className="font-semibold text-gray-600">
+                                        Time Taken
+                                    </span>
+                                </div>
+                                <p className="text-gray-900 font-medium">
+                                    {timeTaken} minute
+                                    {timeTaken !== 1 ? "s" : ""}
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Answer Breakdown */}
                 {attempt.responses && attempt.responses.length > 0 && (
-                    <div className="bg-white rounded-lg border shadow-lg p-8 mb-8">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                            Answer Breakdown
-                        </h2>
-                        <div className="space-y-4">
-                            {attempt.responses.map((response, index) => {
-                                const isCorrect = response.pointsAwarded > 0;
-                                return (
-                                    <div
-                                        key={index}
-                                        className={`p-4 rounded-lg border-l-4 ${
-                                            isCorrect
-                                                ? "bg-green-50 border-l-green-500"
-                                                : "bg-red-50 border-l-red-500"
-                                        }`}
-                                    >
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div className="flex-1">
-                                                <h3 className="font-semibold text-gray-900 mb-1">
-                                                    Question {index + 1}
-                                                </h3>
-                                                <p className="text-gray-700 mb-2">
-                                                    {response.prompt ||
-                                                        "Question not available"}
-                                                </p>
-                                            </div>
-                                            <div className="text-right ml-4">
-                                                <span
-                                                    className={`font-bold text-lg ${
-                                                        isCorrect
-                                                            ? "text-green-600"
-                                                            : "text-red-600"
-                                                    }`}
-                                                >
-                                                    {response.pointsAwarded} / 1
-                                                </span>
-                                                <p
-                                                    className={`text-xs font-semibold ${
-                                                        isCorrect
-                                                            ? "text-green-600"
-                                                            : "text-red-600"
-                                                    }`}
-                                                >
-                                                    {isCorrect
-                                                        ? "✓ Correct"
-                                                        : "✗ Incorrect"}
-                                                </p>
+                    <div className="card bg-white shadow-lg border border-slate-200">
+                        <div className="card-body">
+                            <h2 className="card-title text-2xl mb-6 flex items-center gap-2">
+                                <TrendingUp className="w-6 h-6 text-blue-600" />
+                                Answer Breakdown
+                            </h2>
+                            <div className="space-y-4">
+                                {attempt.responses.map((response, index) => {
+                                    const isCorrect =
+                                        response.pointsAwarded > 0;
+                                    return (
+                                        <div
+                                            key={index}
+                                            className={`p-4 rounded-lg border-l-4 transition-all ${
+                                                isCorrect
+                                                    ? "bg-green-50 border-l-green-500"
+                                                    : "bg-red-50 border-l-red-500"
+                                            }`}
+                                        >
+                                            <div className="flex justify-between items-start mb-3">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <h3 className="font-semibold text-gray-900">
+                                                            Question {index + 1}
+                                                        </h3>
+                                                        {isCorrect ? (
+                                                            <CheckCircle className="w-5 h-5 text-green-600" />
+                                                        ) : (
+                                                            <XCircle className="w-5 h-5 text-red-600" />
+                                                        )}
+                                                    </div>
+                                                    <p className="text-gray-700 leading-relaxed">
+                                                        {response.prompt ||
+                                                            "Question not available"}
+                                                    </p>
+                                                </div>
+                                                <div className="text-right ml-4 flex-shrink-0">
+                                                    <div
+                                                        className={`text-2xl font-bold ${
+                                                            isCorrect
+                                                                ? "text-green-600"
+                                                                : "text-red-600"
+                                                        }`}
+                                                    >
+                                                        {response.pointsAwarded}{" "}
+                                                        / 1
+                                                    </div>
+                                                    <p
+                                                        className={`text-xs font-semibold uppercase tracking-wider ${
+                                                            isCorrect
+                                                                ? "text-green-600"
+                                                                : "text-red-600"
+                                                        }`}
+                                                    >
+                                                        {isCorrect
+                                                            ? "✓ Correct"
+                                                            : "✗ Incorrect"}
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
                 )}
 
                 {/* Action Buttons */}
-                <div className="flex gap-4 justify-center">
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <button
-                        onClick={handleBackToDashboard}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-bold transition-colors shadow-lg"
+                        onClick={() => navigate("/student")}
+                        className="btn btn-primary btn-lg gap-2"
                     >
+                        <Home className="w-5 h-5" />
                         Back to Dashboard
                     </button>
                     <button
                         onClick={() => navigate("/student")}
-                        className="bg-gray-600 hover:bg-gray-700 text-white px-8 py-3 rounded-lg font-bold transition-colors shadow-lg"
+                        className="btn btn-ghost btn-lg gap-2"
                     >
+                        <TrendingUp className="w-5 h-5" />
                         View Other Quizzes
                     </button>
                 </div>

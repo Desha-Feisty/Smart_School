@@ -3,6 +3,7 @@ import type { Response } from "express";
 import type { AuthRequest } from "../types/authRequest.js";
 import Attempt from "../models/attempt.js";
 import Quiz from "../models/quiz.js";
+import Course from "../models/course.js";
 import Question from "../models/question.js";
 import type { IQuestion } from "../models/question.js";
 import Enrollment from "../models/enrollment.js";
@@ -248,16 +249,25 @@ const listQuizGrades = async (req: AuthRequest, res: Response) => {
             status: "graded",
         })
             .populate("user", "name email")
-            .select("user score submittedAt status")
+            .select("user score submittedAt status responses")
             .sort({ submittedAt: -1 })
             .lean();
-        const results = attempts.map((a) => ({
-            attemptId: a._id,
-            student: a.user,
-            score: a.score,
-            submittedAt: a.submittedAt,
-            status: a.status,
-        }));
+        const results = attempts.map((a) => {
+            // Calculate total possible points from responses
+            const totalPossiblePoints = a.responses?.length || 0;
+            const scorePercentage =
+                totalPossiblePoints > 0 && a.score !== undefined
+                    ? Math.round((a.score / totalPossiblePoints) * 100)
+                    : 0;
+
+            return {
+                attemptId: a._id,
+                student: a.user,
+                score: scorePercentage,
+                submittedAt: a.submittedAt,
+                status: a.status,
+            };
+        });
         res.json({
             quiz: {
                 _id: quiz._id,
@@ -282,26 +292,35 @@ const listMyGrades = async (req: AuthRequest, res: Response) => {
                 select: "title course",
                 populate: { path: "course", select: "title" },
             })
-            .select("quiz score submittedAt status")
+            .select("quiz score submittedAt status responses")
             .sort({ submittedAt: -1 })
             .lean();
         if (!attempts || attempts.length === 0)
             return res.status(404).json({ error: "No attempts found" });
 
-        const results = attempts.map((a) => ({
-            attemptId: a._id,
-            quiz: {
-                _id: a.quiz?._id,
-                title: (a.quiz as any)?.title || "Unknown Quiz",
-            },
-            course: {
-                _id: (a.quiz as any)?.course?._id,
-                title: (a.quiz as any)?.course?.title || "Unknown Course",
-            },
-            score: a.score,
-            submittedAt: a.submittedAt,
-            status: a.status,
-        }));
+        const results = attempts.map((a) => {
+            // Calculate total possible points from responses
+            const totalPossiblePoints = a.responses?.length || 0;
+            const scorePercentage =
+                totalPossiblePoints > 0 && a.score !== undefined
+                    ? Math.round((a.score / totalPossiblePoints) * 100)
+                    : 0;
+
+            return {
+                attemptId: a._id,
+                quiz: {
+                    _id: a.quiz?._id,
+                    title: (a.quiz as any)?.title || "Unknown Quiz",
+                },
+                course: {
+                    _id: (a.quiz as any)?.course?._id,
+                    title: (a.quiz as any)?.course?.title || "Unknown Course",
+                },
+                score: scorePercentage,
+                submittedAt: a.submittedAt,
+                status: a.status,
+            };
+        });
         res.json({ results });
     } catch (err) {
         console.error("listMyGrades error:", err);
@@ -374,6 +393,61 @@ const getAttemptDetails = async (req: AuthRequest, res: Response) => {
     }
 };
 
+const getStudentCourseGrades = async (req: AuthRequest, res: Response) => {
+    try {
+        const { studentId, courseId } = req.params;
+
+        // Verify the requester is the course teacher
+        const course = await Course.findById(courseId);
+        if (!course) return res.status(404).json({ error: "Course not found" });
+        if (!req.user || req.user.id !== course.teacher.toString()) {
+            return res.status(403).json({ error: "Forbidden" });
+        }
+
+        const attempts = await Attempt.find({
+            user: new Types.ObjectId(studentId),
+            status: "graded",
+        })
+            .populate({
+                path: "quiz",
+                select: "title course",
+                match: { course: courseId }, // Only quizzes from this course
+                populate: { path: "course", select: "title" },
+            })
+            .select("quiz score submittedAt status responses")
+            .sort({ submittedAt: -1 })
+            .lean();
+
+        // Filter out attempts where quiz population failed (not from this course)
+        const courseAttempts = attempts.filter((a) => a.quiz);
+
+        const results = courseAttempts.map((a) => {
+            // Calculate total possible points from responses
+            const totalPossiblePoints = a.responses?.length || 0;
+            const scorePercentage =
+                totalPossiblePoints > 0 && a.score !== undefined
+                    ? Math.round((a.score / totalPossiblePoints) * 100)
+                    : 0;
+
+            return {
+                attemptId: a._id,
+                quiz: {
+                    _id: a.quiz?._id,
+                    title: (a.quiz as any)?.title || "Unknown Quiz",
+                },
+                score: scorePercentage,
+                submittedAt: a.submittedAt,
+                status: a.status,
+            };
+        });
+
+        res.json({ results });
+    } catch (err) {
+        console.error("getStudentCourseGrades error:", err);
+        res.status(500).json({ error: "Failed to get student course grades" });
+    }
+};
+
 export {
     startAttempt,
     autoSaveAnswer,
@@ -382,5 +456,6 @@ export {
     listQuizGrades,
     listMyGrades,
     startAttemptFromBody,
+    getStudentCourseGrades,
     getAttemptDetails,
 };

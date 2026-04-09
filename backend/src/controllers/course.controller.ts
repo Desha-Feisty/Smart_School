@@ -40,8 +40,23 @@ const listMyCourses = async (req: AuthRequest, res: Response) => {
         if (!req.user) return res.status(403).json({ errMsg: "forbidden" });
         if (req.user.role === "teacher") {
             console.log("Teacher listing courses for user:", req.user.id);
-            const courses = await Course.find({ teacher: req.user.id });
-            return res.status(200).json({ courses });
+            const courses = await Course.find({ teacher: req.user.id }).lean();
+
+            // Add enrollment count for each course
+            const coursesWithCounts = await Promise.all(
+                courses.map(async (course) => {
+                    const enrollmentCount = await Enrollment.countDocuments({
+                        course: course._id,
+                        status: "active",
+                    });
+                    return {
+                        ...course,
+                        enrollmentCount,
+                    };
+                }),
+            );
+
+            return res.status(200).json({ courses: coursesWithCounts });
         } else {
             console.log("Student listing courses for user:", req.user.id);
             const enrollments = await Enrollment.find({
@@ -171,19 +186,38 @@ const joinCourseByCode = async (req: AuthRequest, res: Response) => {
 const getRoster = async (req: AuthRequest, res: Response) => {
     try {
         const { id: courseId } = req.params;
+        console.log(
+            "getRoster called for courseId:",
+            courseId,
+            "by user:",
+            req.user?.id,
+        );
         const course = await Course.findById(courseId);
-        if (!course)
+        if (!course) {
+            console.log("Course not found:", courseId);
             return res.status(404).json({ errMsg: "course not found" });
+        }
         if (!req.user || req.user.id !== course.teacher.toString()) {
+            console.log(
+                "Forbidden: user",
+                req.user?.id,
+                "is not teacher of course",
+                course.teacher.toString(),
+            );
             return res.status(403).json({ errMsg: "forbidden!" });
         }
         const enrollment = await Enrollment.find({
             course: course._id,
             status: "active",
-            roleInCourse: "student",
         })
             .populate("user", "name email")
             .lean();
+        console.log(
+            "Found",
+            enrollment.length,
+            "enrollments for course",
+            courseId,
+        );
         res.status(200).json({ num: enrollment.length, enrollment });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
@@ -220,6 +254,52 @@ const deleteCourse = async (req: AuthRequest, res: Response) => {
     }
 };
 
+const removeEnrollment = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id: courseId } = req.params;
+        const { studentId } = req.body;
+
+        if (!studentId) {
+            return res.status(400).json({ errMsg: "studentId is required" });
+        }
+
+        const course = await Course.findById(courseId);
+        if (!course)
+            return res.status(404).json({ errMsg: "course not found" });
+
+        if (!req.user || req.user.id !== course.teacher.toString()) {
+            return res.status(403).json({
+                errMsg: "forbidden! only course teacher can remove students",
+            });
+        }
+
+        // Find and remove the enrollment
+        const enrollment = await Enrollment.findOneAndDelete({
+            course: course._id,
+            user: studentId,
+            status: "active",
+        });
+
+        if (!enrollment) {
+            return res
+                .status(404)
+                .json({ errMsg: "student not enrolled in this course" });
+        }
+
+        res.status(200).json({
+            message: "Student removed from course successfully",
+        });
+    } catch (error) {
+        console.error(
+            "Remove enrollment error:",
+            error instanceof Error ? error.message : error,
+        );
+        res.status(500).json({
+            errMsg: "failed to remove student from course",
+        });
+    }
+};
+
 export {
     getCourse,
     createCourse,
@@ -227,6 +307,7 @@ export {
     updateCourse,
     deleteCourse,
     getRoster,
+    removeEnrollment,
     listAllCourses,
     listMyCourses,
 };

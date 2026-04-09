@@ -170,8 +170,39 @@ const useTeacherStore = create((set) => ({
                     course.id === id ? data : course,
                 ),
             }));
+            return data; // Return the roster data
         } catch (error) {
             set({ errMsg: error.message });
+            throw error; // Re-throw so the calling function can handle it
+        }
+    },
+
+    removeEnrollment: async (courseId, studentId) => {
+        try {
+            const token = useAuthStore.getState().token;
+            if (!token) {
+                throw new Error("Not authenticated");
+            }
+
+            const response = await axios.delete(
+                `/api/courses/${courseId}/enrollment`,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    data: { studentId },
+                },
+            );
+
+            if (response.status !== 200) {
+                throw new Error("Failed to remove student");
+            }
+
+            return response.data;
+        } catch (error) {
+            set({ errMsg: error.message });
+            throw error;
         }
     },
 

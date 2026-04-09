@@ -1,84 +1,120 @@
 import { useState } from "react";
 import useTeacherStore from "../stores/Teacherstore";
+import toast from "react-hot-toast";
+import { Send, Type, FileText } from "lucide-react";
 
 export default function NoteForm({ courseId, onNoteCreated }) {
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState("");
 
     const createNote = useTeacherStore((state) => state.createNote);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError("");
 
         if (!title.trim() || !content.trim()) {
-            setError("Title and content are required");
+            toast.error("Please fill in all fields");
+            return;
+        }
+
+        if (content.length < 10) {
+            toast.error("Content must be at least 10 characters");
             return;
         }
 
         setIsSubmitting(true);
         try {
             await createNote(courseId, { title, content });
+            toast.success("Note posted successfully!");
             setTitle("");
             setContent("");
             if (onNoteCreated) onNoteCreated();
         } catch (err) {
-            setError(err.message || "Failed to create note");
+            toast.error(err.message || "Failed to create note");
         } finally {
             setIsSubmitting(false);
         }
     };
 
     return (
-        <form
-            onSubmit={handleSubmit}
-            className="bg-white p-4 rounded-lg shadow"
-        >
-            <h3 className="text-lg font-semibold mb-4">Post a Note</h3>
+        <div className="card bg-white shadow-lg border border-slate-200 sticky top-24">
+            <div className="card-body">
+                <h3 className="card-title text-lg mb-4 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                    Post a Note
+                </h3>
 
-            {error && (
-                <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
-                    {error}
-                </div>
-            )}
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Title Input */}
+                    <div className="form-control">
+                        <label className="label">
+                            <span className="label-text font-semibold">
+                                Title
+                            </span>
+                        </label>
+                        <div className="relative">
+                            <Type className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                            <input
+                                type="text"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                className="input input-bordered w-full pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Note title"
+                                disabled={isSubmitting}
+                                maxLength={100}
+                            />
+                        </div>
+                        <label className="label">
+                            <span className="label-text-alt text-gray-400">
+                                {title.length}/100
+                            </span>
+                        </label>
+                    </div>
 
-            <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Title
-                </label>
-                <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Note title"
-                    disabled={isSubmitting}
-                />
+                    {/* Content Input */}
+                    <div className="form-control">
+                        <label className="label">
+                            <span className="label-text font-semibold">
+                                Content
+                            </span>
+                        </label>
+                        <textarea
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                            className="textarea textarea-bordered w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Share your notes with the class..."
+                            rows="5"
+                            disabled={isSubmitting}
+                            maxLength={5000}
+                        />
+                        <label className="label">
+                            <span className="label-text-alt text-gray-400">
+                                {content.length}/5000
+                            </span>
+                        </label>
+                    </div>
+
+                    {/* Submit Button */}
+                    <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="btn btn-primary w-full gap-2"
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <span className="loading loading-spinner loading-sm"></span>
+                                Posting...
+                            </>
+                        ) : (
+                            <>
+                                <Send className="w-5 h-5" />
+                                Post Note
+                            </>
+                        )}
+                    </button>
+                </form>
             </div>
-
-            <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Content
-                </label>
-                <textarea
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Note content"
-                    rows="5"
-                    disabled={isSubmitting}
-                />
-            </div>
-
-            <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-            >
-                {isSubmitting ? "Posting..." : "Post Note"}
-            </button>
-        </form>
+        </div>
     );
 }

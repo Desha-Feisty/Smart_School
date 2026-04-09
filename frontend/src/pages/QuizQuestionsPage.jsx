@@ -2,6 +2,18 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import useQuizStore from "../stores/Quizstore";
 import useAuthStore from "../stores/Authstore";
+import toast from "react-hot-toast";
+import {
+    ArrowLeft,
+    LogOut,
+    Plus,
+    Edit,
+    Trash2,
+    X,
+    CheckCircle,
+    Circle,
+    Copy,
+} from "lucide-react";
 
 function QuizQuestionsPage() {
     const { id: quizId } = useParams();
@@ -20,6 +32,7 @@ function QuizQuestionsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [formData, setFormData] = useState({
         prompt: "",
@@ -29,6 +42,7 @@ function QuizQuestionsPage() {
             { text: "", isCorrect: false },
         ],
     });
+
     const fetchQuestions = async () => {
         setIsLoading(true);
         const data = await listQuizQuestions(quizId);
@@ -53,7 +67,6 @@ function QuizQuestionsPage() {
         const newChoices = [...formData.choices];
         newChoices[index][field] = value;
 
-        // If setting isCorrect to true, set all others to false
         if (field === "isCorrect" && value === true) {
             newChoices.forEach((c, i) => {
                 if (i !== index) c.isCorrect = false;
@@ -70,9 +83,11 @@ function QuizQuestionsPage() {
     };
 
     const removeChoice = (index) => {
-        if (formData.choices.length <= 2) return;
+        if (formData.choices.length <= 2) {
+            toast.error("At least 2 choices are required");
+            return;
+        }
         const newChoices = formData.choices.filter((_, i) => i !== index);
-        // Ensure at least one is correct
         if (!newChoices.some((c) => c.isCorrect)) {
             newChoices[0].isCorrect = true;
         }
@@ -81,11 +96,27 @@ function QuizQuestionsPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!formData.prompt.trim()) {
+            toast.error("Question prompt is required");
+            return;
+        }
+        if (formData.choices.some((c) => !c.text.trim())) {
+            toast.error("All choice text fields must be filled");
+            return;
+        }
+        if (!formData.choices.some((c) => c.isCorrect)) {
+            toast.error("Select a correct answer");
+            return;
+        }
+
+        setIsSubmitting(true);
         try {
             if (editingId) {
                 await updateQuestion(editingId, formData);
+                toast.success("Question updated successfully");
             } else {
                 await addQuestion(quizId, formData);
+                toast.success("Question added successfully");
             }
             setFormData({
                 prompt: "",
@@ -99,7 +130,9 @@ function QuizQuestionsPage() {
             setEditingId(null);
             fetchQuestions();
         } catch (err) {
-            // Error handled by store
+            toast.error(err.message || "Failed to save question");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -122,261 +155,377 @@ function QuizQuestionsPage() {
             try {
                 await deleteQuestion(questionId);
                 fetchQuestions();
-            } catch (err) {}
+                toast.success("Question deleted successfully");
+            } catch (err) {
+                toast.error("Failed to delete question");
+            }
         }
     };
 
     if (isLoading)
-        return <div className="p-8 text-center">Loading questions...</div>;
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+                <span className="loading loading-spinner loading-lg text-blue-600"></span>
+            </div>
+        );
 
     return (
-        <div className="max-w-4xl mx-auto p-6">
-            <div className="flex justify-between items-center mb-8">
-                <div>
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="text-blue-600 hover:underline mb-2 block"
-                    >
-                        &larr; Back to Quiz
-                    </button>
-                    <h1 className="text-3xl font-bold">
-                        Manage Quiz Questions
-                    </h1>
-                </div>
-                <div className="flex gap-3">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+            {/* Navigation Header */}
+            <nav className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
+                <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="btn btn-ghost btn-circle gap-0"
+                        >
+                            <ArrowLeft className="w-5 h-5" />
+                        </button>
+                        <div>
+                            <p className="text-sm text-gray-600">
+                                Manage Questions
+                            </p>
+                            <h1 className="text-xl font-bold text-gray-900">
+                                Quiz Questions
+                            </h1>
+                        </div>
+                    </div>
                     <button
                         onClick={handleLogout}
-                        className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-200"
+                        className="btn btn-ghost gap-2"
                     >
+                        <LogOut className="w-5 h-5" />
                         Logout
                     </button>
-                    {!isAdding && (
+                </div>
+            </nav>
+
+            <main className="max-w-5xl mx-auto px-6 py-8">
+                {/* Error Alert */}
+                {errMsg && (
+                    <div className="alert alert-error mb-8">
+                        <span>{errMsg}</span>
                         <button
-                            onClick={() => setIsAdding(true)}
-                            className="bg-blue-600 text-white px-6 py-2 rounded font-bold"
+                            onClick={clearErrMsg}
+                            className="btn btn-ghost btn-sm"
                         >
-                            Add Question
+                            Dismiss
                         </button>
-                    )}
-                </div>
-            </div>
-
-            {errMsg && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6">
-                    {errMsg}
-                    <button
-                        onClick={clearErrMsg}
-                        className="absolute top-0 right-0 p-3"
-                    >
-                        &times;
-                    </button>
-                </div>
-            )}
-
-            {isAdding && (
-                <div className="bg-white p-6 rounded-lg shadow-md border mb-8">
-                    <h2 className="text-xl font-bold mb-4">
-                        {editingId
-                            ? "Edit Question"
-                            : "New Multiple Choice Question"}
-                    </h2>
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div>
-                            <label className="block text-sm font-bold mb-1">
-                                Question Prompt
-                            </label>
-                            <textarea
-                                required
-                                value={formData.prompt}
-                                onChange={(e) =>
-                                    setFormData({
-                                        ...formData,
-                                        prompt: e.target.value,
-                                    })
-                                }
-                                className="w-full border p-3 rounded h-24"
-                                placeholder="Enter your question here..."
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold mb-1">
-                                Points
-                            </label>
-                            <input
-                                type="number"
-                                min="0"
-                                value={formData.points}
-                                onChange={(e) =>
-                                    setFormData({
-                                        ...formData,
-                                        points: parseInt(e.target.value),
-                                    })
-                                }
-                                className="w-24 border p-2 rounded"
-                            />
-                        </div>
-
-                        <div className="space-y-3">
-                            <label className="block text-sm font-bold">
-                                Choices (Select the correct one)
-                            </label>
-                            {formData.choices.map((choice, index) => (
-                                <div
-                                    key={index}
-                                    className="flex gap-3 items-center"
-                                >
-                                    <input
-                                        type="radio"
-                                        name="correct-choice"
-                                        checked={choice.isCorrect}
-                                        onChange={() =>
-                                            handleChoiceChange(
-                                                index,
-                                                "isCorrect",
-                                                true,
-                                            )
-                                        }
-                                        className="w-5 h-5 text-blue-600"
-                                    />
-                                    <input
-                                        type="text"
-                                        required
-                                        value={choice.text}
-                                        onChange={(e) =>
-                                            handleChoiceChange(
-                                                index,
-                                                "text",
-                                                e.target.value,
-                                            )
-                                        }
-                                        className="flex-grow border p-2 rounded"
-                                        placeholder={`Choice ${index + 1}`}
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => removeChoice(index)}
-                                        className="text-red-500 hover:bg-red-50 p-2 rounded"
-                                        title="Remove choice"
-                                    >
-                                        &times;
-                                    </button>
-                                </div>
-                            ))}
-                            <button
-                                type="button"
-                                onClick={addChoice}
-                                className="text-blue-600 text-sm font-bold hover:underline"
-                            >
-                                + Add Choice
-                            </button>
-                        </div>
-
-                        <div className="flex gap-3 pt-4">
-                            <button
-                                type="submit"
-                                className="bg-green-600 text-white px-8 py-2 rounded font-bold"
-                            >
-                                {editingId
-                                    ? "Update Question"
-                                    : "Create Question"}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setIsAdding(false);
-                                    setEditingId(null);
-                                    setFormData({
-                                        prompt: "",
-                                        points: 1,
-                                        choices: [
-                                            { text: "", isCorrect: true },
-                                            { text: "", isCorrect: false },
-                                        ],
-                                    });
-                                }}
-                                className="bg-gray-200 px-8 py-2 rounded font-bold"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            )}
-
-            <div className="space-y-4">
-                <h2 className="text-xl font-bold mb-4">
-                    Questions ({questions.length})
-                </h2>
-                {questions.length === 0 ? (
-                    <div className="bg-gray-50 p-12 text-center rounded-lg border-2 border-dashed">
-                        <p className="text-gray-500 italic">
-                            No questions added yet.
-                        </p>
                     </div>
-                ) : (
-                    questions.map((q, idx) => (
-                        <div
-                            key={q._id}
-                            className="bg-white p-5 rounded-lg border shadow-sm"
-                        >
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex gap-3">
-                                    <span className="bg-blue-100 text-blue-800 font-bold px-2 py-1 rounded text-sm">
-                                        Q{idx + 1}
-                                    </span>
-                                    <span className="text-gray-500 text-sm font-medium">
-                                        {q.points}{" "}
-                                        {q.points === 1 ? "point" : "points"}
-                                    </span>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => handleEdit(q)}
-                                        className="text-blue-600 hover:bg-blue-50 px-3 py-1 rounded text-sm font-bold border border-blue-600"
-                                    >
-                                        Edit
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(q._id)}
-                                        className="text-red-600 hover:bg-red-50 px-3 py-1 rounded text-sm font-bold border border-red-600"
-                                    >
-                                        Delete
-                                    </button>
-                                </div>
-                            </div>
-                            <p className="font-medium text-lg mb-4 whitespace-pre-wrap">
-                                {q.prompt}
-                            </p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {q.choices.map((c, i) => (
-                                    <div
-                                        key={i}
-                                        className={`p-3 rounded border flex items-center gap-3 ${c.isCorrect ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-100"}`}
-                                    >
-                                        <div
-                                            className={`w-3 h-3 rounded-full ${c.isCorrect ? "bg-green-500" : "bg-gray-300"}`}
-                                        ></div>
-                                        <span
-                                            className={
-                                                c.isCorrect
-                                                    ? "font-bold text-green-800"
-                                                    : "text-gray-700"
-                                            }
-                                        >
-                                            {c.text}
+                )}
+
+                {/* Add/Edit Form */}
+                {isAdding && (
+                    <div className="card bg-white shadow-lg border border-slate-200 mb-8">
+                        <div className="card-body">
+                            <h2 className="card-title text-2xl mb-6">
+                                {editingId
+                                    ? "Edit Question"
+                                    : "Add New Question"}
+                            </h2>
+                            <form onSubmit={handleSubmit} className="space-y-6">
+                                {/* Question Prompt */}
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text font-semibold">
+                                            Question Prompt
                                         </span>
-                                        {c.isCorrect && (
-                                            <span className="ml-auto text-xs font-bold text-green-600 uppercase">
-                                                Correct
-                                            </span>
+                                    </label>
+                                    <textarea
+                                        required
+                                        value={formData.prompt}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                prompt: e.target.value,
+                                            })
+                                        }
+                                        className="textarea textarea-bordered h-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Enter your question here..."
+                                    />
+                                </div>
+
+                                {/* Points */}
+                                <div className="form-control max-w-xs">
+                                    <label className="label">
+                                        <span className="label-text font-semibold">
+                                            Points
+                                        </span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={formData.points}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                points: parseInt(
+                                                    e.target.value,
+                                                ),
+                                            })
+                                        }
+                                        className="input input-bordered w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+
+                                {/* Choices */}
+                                <div className="space-y-4">
+                                    <label className="label">
+                                        <span className="label-text font-semibold text-base">
+                                            Answer Choices (Select the correct
+                                            answer)
+                                        </span>
+                                    </label>
+                                    <div className="space-y-3">
+                                        {formData.choices.map(
+                                            (choice, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="flex gap-3 items-end p-4 bg-slate-50 rounded-lg border border-slate-200 hover:border-blue-300 transition-colors"
+                                                >
+                                                    <div className="form-control flex-1">
+                                                        <input
+                                                            type="text"
+                                                            required
+                                                            value={choice.text}
+                                                            onChange={(e) =>
+                                                                handleChoiceChange(
+                                                                    index,
+                                                                    "text",
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            className="input input-bordered input-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                            placeholder={`Choice ${index + 1}`}
+                                                        />
+                                                    </div>
+
+                                                    <div className="form-control">
+                                                        <label className="label cursor-pointer gap-2">
+                                                            <input
+                                                                type="radio"
+                                                                name="correct"
+                                                                checked={
+                                                                    choice.isCorrect
+                                                                }
+                                                                onChange={() =>
+                                                                    handleChoiceChange(
+                                                                        index,
+                                                                        "isCorrect",
+                                                                        true,
+                                                                    )
+                                                                }
+                                                                className="radio radio-primary radio-sm"
+                                                            />
+                                                            <span
+                                                                className={`label-text font-semibold text-sm ${
+                                                                    choice.isCorrect
+                                                                        ? "text-green-600"
+                                                                        : "text-gray-600"
+                                                                }`}
+                                                            >
+                                                                Correct
+                                                            </span>
+                                                        </label>
+                                                    </div>
+
+                                                    {formData.choices.length >
+                                                        2 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                removeChoice(
+                                                                    index,
+                                                                )
+                                                            }
+                                                            className="btn btn-ghost btn-sm gap-0 text-error"
+                                                        >
+                                                            <X className="w-5 h-5" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ),
                                         )}
                                     </div>
-                                ))}
+
+                                    <button
+                                        type="button"
+                                        onClick={addChoice}
+                                        className="btn btn-ghost gap-2 text-blue-600"
+                                    >
+                                        <Plus className="w-5 h-5" />
+                                        Add Choice
+                                    </button>
+                                </div>
+
+                                {/* Form Actions */}
+                                <div className="flex gap-3 pt-4">
+                                    <button
+                                        type="submit"
+                                        disabled={isSubmitting}
+                                        className="btn btn-success gap-2"
+                                    >
+                                        {isSubmitting ? (
+                                            <>
+                                                <span className="loading loading-spinner loading-xs"></span>
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <CheckCircle className="w-5 h-5" />
+                                                {editingId
+                                                    ? "Update Question"
+                                                    : "Create Question"}
+                                            </>
+                                        )}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsAdding(false);
+                                            setEditingId(null);
+                                            setFormData({
+                                                prompt: "",
+                                                points: 1,
+                                                choices: [
+                                                    {
+                                                        text: "",
+                                                        isCorrect: true,
+                                                    },
+                                                    {
+                                                        text: "",
+                                                        isCorrect: false,
+                                                    },
+                                                ],
+                                            });
+                                        }}
+                                        className="btn btn-ghost"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* Questions List */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-2xl font-bold text-gray-900">
+                            Questions ({questions.length})
+                        </h2>
+                        {!isAdding && (
+                            <button
+                                onClick={() => setIsAdding(true)}
+                                className="btn btn-primary gap-2"
+                            >
+                                <Plus className="w-5 h-5" />
+                                Add Question
+                            </button>
+                        )}
+                    </div>
+
+                    {questions.length === 0 ? (
+                        <div className="card bg-blue-50 border border-blue-200 border-dashed">
+                            <div className="card-body text-center py-12">
+                                <p className="text-gray-600">
+                                    No questions added yet. Create your first
+                                    question!
+                                </p>
                             </div>
                         </div>
-                    ))
-                )}
-            </div>
+                    ) : (
+                        questions.map((q, idx) => (
+                            <div
+                                key={q._id}
+                                className="card bg-white shadow-lg border border-slate-200 hover:shadow-xl transition-shadow"
+                            >
+                                <div className="card-body">
+                                    {/* Question Header */}
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="flex items-center gap-4">
+                                            <div className="badge badge-primary badge-lg">
+                                                Q{idx + 1}
+                                            </div>
+                                            <div>
+                                                <p className="text-gray-600 text-sm">
+                                                    {q.points}{" "}
+                                                    {q.points === 1
+                                                        ? "point"
+                                                        : "points"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleEdit(q)}
+                                                className="btn btn-ghost btn-sm gap-2"
+                                            >
+                                                <Edit className="w-4 h-4" />
+                                                Edit
+                                            </button>
+                                            <button
+                                                onClick={() =>
+                                                    handleDelete(q._id)
+                                                }
+                                                className="btn btn-ghost btn-sm gap-2 text-error"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Question Prompt */}
+                                    <p className="text-lg font-medium text-gray-900 mb-4 whitespace-pre-wrap leading-relaxed">
+                                        {q.prompt}
+                                    </p>
+
+                                    {/* Answer Choices */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {q.choices.map((c, i) => (
+                                            <div
+                                                key={i}
+                                                className={`p-4 rounded-lg border transition-all ${
+                                                    c.isCorrect
+                                                        ? "bg-green-50 border-green-200"
+                                                        : "bg-slate-50 border-slate-200"
+                                                }`}
+                                            >
+                                                <div className="flex items-start gap-3">
+                                                    {c.isCorrect ? (
+                                                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                                                    ) : (
+                                                        <Circle className="w-5 h-5 text-gray-300 flex-shrink-0 mt-0.5" />
+                                                    )}
+                                                    <div className="flex-1">
+                                                        <p
+                                                            className={`${
+                                                                c.isCorrect
+                                                                    ? "font-bold text-green-800"
+                                                                    : "text-gray-700"
+                                                            }`}
+                                                        >
+                                                            {c.text}
+                                                        </p>
+                                                        {c.isCorrect && (
+                                                            <span className="text-xs font-bold text-green-600 uppercase mt-1 inline-block">
+                                                                ✓ Correct Answer
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </main>
         </div>
     );
 }

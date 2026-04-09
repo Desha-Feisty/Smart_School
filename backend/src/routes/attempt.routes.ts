@@ -64,5 +64,11 @@ router.get(
     requireRole("student"),
     attemptController.getAttemptDetails,
 );
+router.get(
+    "/student/:studentId/course/:courseId",
+    authMiddleware,
+    requireRole("teacher"),
+    attemptController.getStudentCourseGrades,
+);
 
 export default router;

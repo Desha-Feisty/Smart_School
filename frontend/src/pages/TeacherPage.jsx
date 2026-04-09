@@ -2,195 +2,343 @@ import { useEffect, useState } from "react";
 import useTeacherStore from "../stores/Teacherstore";
 import useAuthStore from "../stores/Authstore";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+import {
+    LogOut,
+    Plus,
+    Trash2,
+    BookOpen,
+    Users,
+    ArrowRight,
+} from "lucide-react";
 
 function TeacherPage() {
-    const {
-        allCourses,
-        errMsg,
-        listMyCourses,
-        createCourse,
-        deleteCourse,
-        clearErrMsg,
-    } = useTeacherStore();
+    const { allCourses, listMyCourses, createCourse, deleteCourse } =
+        useTeacherStore();
 
-    const { token, logout } = useAuthStore();
+    const { user, logout } = useAuthStore();
     const navigate = useNavigate();
 
     const [newCourse, setNewCourse] = useState({ title: "", description: "" });
     const [isLoading, setIsLoading] = useState(false);
+    const [showForm, setShowForm] = useState(false);
 
     useEffect(() => {
-        if (!token) {
-            navigate("/login");
-            return;
-        }
         listMyCourses();
-    }, [listMyCourses, token, navigate]);
+    }, []);
 
     const handleLogout = () => {
         logout();
+        toast.success("Logged out successfully!");
         navigate("/login");
     };
 
     const handleCreateCourse = async (e) => {
         e.preventDefault();
-        if (!newCourse.title || !newCourse.description) return;
+        if (!newCourse.title.trim() || !newCourse.description.trim()) {
+            toast.error("Please fill in all fields");
+            return;
+        }
+
         setIsLoading(true);
-        await createCourse(newCourse.title, newCourse.description);
-        setNewCourse({ title: "", description: "" });
-        setIsLoading(false);
+        try {
+            await createCourse(newCourse.title, newCourse.description);
+            toast.success("Course created successfully!");
+            setNewCourse({ title: "", description: "" });
+            setShowForm(false);
+        } catch (error) {
+            toast.error(error.message || "Failed to create course");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleDeleteCourse = async (id) => {
-        if (window.confirm("Are you sure you want to delete this course?")) {
-            await deleteCourse(id);
+        if (
+            window.confirm(
+                "Are you sure? This will delete all quizzes and enrollments.",
+            )
+        ) {
+            try {
+                await deleteCourse(id);
+                toast.success("Course deleted successfully");
+            } catch (error) {
+                toast.error("Failed to delete course");
+            }
         }
     };
 
     return (
-        <div className="max-w-4xl mx-auto p-6">
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold">Teacher Dashboard</h1>
-                <button
-                    onClick={handleLogout}
-                    className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-200"
-                >
-                    Logout
-                </button>
-            </div>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+            {/* Navigation Bar */}
+            <nav className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50">
+                <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg">
+                            <BookOpen className="w-6 h-6 text-white" />
+                        </div>
+                        <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                            LearnHub
+                        </h1>
+                    </div>
 
-            {/* Error Message Section */}
-            {errMsg && (
-                <div
-                    className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6"
-                    role="alert"
-                >
-                    <strong className="font-bold">Error: </strong>
-                    <span className="block sm:inline">{errMsg}</span>
-                    <button
-                        onClick={clearErrMsg}
-                        className="absolute top-0 bottom-0 right-0 px-4 py-3"
-                    >
-                        <span className="text-xl">&times;</span>
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <div className="text-right">
+                            <p className="text-sm text-gray-600">
+                                Welcome back,
+                            </p>
+                            <p className="font-semibold text-gray-900">
+                                {user?.name}
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleLogout}
+                            className="btn btn-ghost gap-2"
+                        >
+                            <LogOut className="w-5 h-5" />
+                            Logout
+                        </button>
+                    </div>
                 </div>
-            )}
+            </nav>
 
-            {/* Create Course Form Section */}
-            <section className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8 border border-gray-200">
-                <h2 className="text-xl font-semibold mb-4 text-gray-800">
-                    Create New Course
-                </h2>
-                <form onSubmit={handleCreateCourse} className="space-y-4">
-                    <div>
-                        <label
-                            className="block text-gray-700 text-sm font-bold mb-2"
-                            htmlFor="title"
-                        >
-                            Course Title
-                        </label>
-                        <input
-                            id="title"
-                            type="text"
-                            placeholder="e.g., Advanced React Patterns"
-                            value={newCourse.title}
-                            onChange={(e) =>
-                                setNewCourse({
-                                    ...newCourse,
-                                    title: e.target.value,
-                                })
-                            }
-                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label
-                            className="block text-gray-700 text-sm font-bold mb-2"
-                            htmlFor="description"
-                        >
-                            Description
-                        </label>
-                        <textarea
-                            id="description"
-                            placeholder="Describe what students will learn..."
-                            value={newCourse.description}
-                            onChange={(e) =>
-                                setNewCourse({
-                                    ...newCourse,
-                                    description: e.target.value,
-                                })
-                            }
-                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 h-24"
-                            required
-                        />
-                    </div>
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded focus:outline-none focus:shadow-outline transition duration-200 disabled:opacity-50"
-                    >
-                        {isLoading ? "Creating..." : "Create Course"}
-                    </button>
-                </form>
-            </section>
-
-            {/* Course List Section */}
-            <section>
-                <h2 className="text-xl font-semibold mb-4 text-gray-800">
-                    My Courses
-                </h2>
-                {allCourses.length === 0 ? (
-                    <p className="text-gray-500 italic">
-                        No courses created yet. Start by creating one above!
+            {/* Main Content */}
+            <main className="max-w-7xl mx-auto px-6 py-12">
+                {/* Header Section */}
+                <div className="mb-12">
+                    <h2 className="text-4xl font-bold text-gray-900 mb-2">
+                        Teacher Dashboard
+                    </h2>
+                    <p className="text-gray-600">
+                        Manage your courses and track student progress
                     </p>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {allCourses.map((course) => (
-                            <div
-                                key={course._id || course.id}
-                                className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col"
-                            >
-                                <div
-                                    className="p-5 grow cursor-pointer hover:bg-gray-50 transition-colors"
-                                    onClick={() =>
-                                        navigate(
-                                            `/teacher/course/${course._id || course.id}`,
-                                        )
-                                    }
-                                >
-                                    <div className="flex justify-between items-start mb-2">
-                                        <h3 className="text-lg font-bold text-gray-900">
-                                            {course.title}
-                                        </h3>
-                                        <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">
-                                            {course.joinCode}
-                                        </span>
-                                    </div>
-                                    <p className="text-gray-600 text-sm line-clamp-3">
-                                        {course.description}
+                </div>
+
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                    <div className="card bg-white shadow-md border border-slate-200">
+                        <div className="card-body">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-gray-600 text-sm">
+                                        Total Courses
+                                    </p>
+                                    <p className="text-3xl font-bold text-gray-900">
+                                        {allCourses.length}
                                     </p>
                                 </div>
-                                <div className="bg-gray-50 px-5 py-3 border-t border-gray-200 flex justify-between items-center">
-                                    <button
-                                        onClick={() =>
-                                            handleDeleteCourse(
-                                                course._id || course.id,
-                                            )
-                                        }
-                                        className="text-red-600 hover:text-red-800 text-sm font-semibold transition-colors duration-200"
-                                    >
-                                        Delete Course
-                                    </button>
-                                    <span className="text-gray-400 text-xs uppercase tracking-wider font-medium">
-                                        ID: {course._id || course.id}
-                                    </span>
-                                </div>
+                                <BookOpen className="w-12 h-12 text-blue-100" />
                             </div>
-                        ))}
+                        </div>
+                    </div>
+
+                    <div className="card bg-white shadow-md border border-slate-200">
+                        <div className="card-body">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-gray-600 text-sm">
+                                        Active Students
+                                    </p>
+                                    <p className="text-3xl font-bold text-gray-900">
+                                        {allCourses.reduce(
+                                            (sum, course) =>
+                                                sum +
+                                                (course.enrollmentCount || 0),
+                                            0,
+                                        )}
+                                    </p>
+                                </div>
+                                <Users className="w-12 h-12 text-purple-100" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="card bg-white shadow-md border border-slate-200">
+                        <div className="card-body">
+                            <div
+                                onClick={() => setShowForm(!showForm)}
+                                className="cursor-pointer flex items-center justify-between hover:scale-105 transition"
+                            >
+                                <div>
+                                    <p className="text-gray-600 text-sm">
+                                        Quick Action
+                                    </p>
+                                    <p className="font-semibold text-gray-900">
+                                        Create Course
+                                    </p>
+                                </div>
+                                <Plus className="w-8 h-8 text-green-500" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Create Course Form */}
+                {showForm && (
+                    <div className="card bg-white shadow-lg border border-slate-200 mb-12">
+                        <div className="card-body">
+                            <h3 className="card-title text-xl mb-4">
+                                Create New Course
+                            </h3>
+
+                            <form
+                                onSubmit={handleCreateCourse}
+                                className="space-y-4"
+                            >
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text font-semibold">
+                                            Course Title
+                                        </span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g., Advanced React Patterns"
+                                        className="input input-bordered focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={newCourse.title}
+                                        onChange={(e) =>
+                                            setNewCourse({
+                                                ...newCourse,
+                                                title: e.target.value,
+                                            })
+                                        }
+                                        disabled={isLoading}
+                                    />
+                                </div>
+
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text font-semibold">
+                                            Description
+                                        </span>
+                                    </label>
+                                    <textarea
+                                        placeholder="Describe what students will learn..."
+                                        className="textarea textarea-bordered h-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={newCourse.description}
+                                        onChange={(e) =>
+                                            setNewCourse({
+                                                ...newCourse,
+                                                description: e.target.value,
+                                            })
+                                        }
+                                        disabled={isLoading}
+                                    />
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <button
+                                        type="submit"
+                                        disabled={isLoading}
+                                        className="btn btn-primary gap-2"
+                                    >
+                                        {isLoading ? (
+                                            <>
+                                                <span className="loading loading-spinner loading-sm"></span>
+                                                Creating...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Plus className="w-5 h-5" />
+                                                Create Course
+                                            </>
+                                        )}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowForm(false)}
+                                        className="btn btn-ghost"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 )}
-            </section>
+
+                {/* Courses Grid */}
+                <div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-6">
+                        Your Courses
+                    </h3>
+
+                    {allCourses.length === 0 ? (
+                        <div className="card bg-white shadow-md border border-dashed border-slate-300">
+                            <div className="card-body text-center py-12">
+                                <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                                <p className="text-gray-600 mb-4">
+                                    No courses yet. Start teaching by creating
+                                    your first course!
+                                </p>
+                                <button
+                                    onClick={() => setShowForm(true)}
+                                    className="btn btn-primary gap-2 mx-auto"
+                                >
+                                    <Plus className="w-5 h-5" />
+                                    Create First Course
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {allCourses.map((course) => (
+                                <div
+                                    key={course._id || course.id}
+                                    className="card bg-white shadow-md hover:shadow-lg border border-slate-200 transition-all hover:border-blue-300 group cursor-pointer overflow-hidden"
+                                >
+                                    <div
+                                        className="card-body flex flex-col h-full"
+                                        onClick={() =>
+                                            navigate(
+                                                `/teacher/course/${course._id || course.id}`,
+                                            )
+                                        }
+                                    >
+                                        <div className="flex items-start justify-between mb-3">
+                                            <h4 className="card-title text-lg text-gray-900 group-hover:text-blue-600 transition">
+                                                {course.title}
+                                            </h4>
+                                            <div className="badge badge-primary">
+                                                {course.joinCode}
+                                            </div>
+                                        </div>
+
+                                        <p className="text-gray-600 text-sm flex-grow line-clamp-2 mb-4">
+                                            {course.description}
+                                        </p>
+
+                                        <div className="flex items-center justify-between pt-4 border-t border-slate-200">
+                                            <div className="text-sm text-gray-500">
+                                                <Users className="w-4 h-4 inline mr-1" />
+                                                {course.enrollmentCount || 0}{" "}
+                                                students
+                                            </div>
+                                            <ArrowRight className="w-5 h-5 text-blue-600 group-hover:translate-x-1 transition" />
+                                        </div>
+                                    </div>
+
+                                    {/* Delete Button on Hover */}
+                                    <div className="card-actions p-4 bg-red-50 border-t border-red-200 opacity-0 group-hover:opacity-100 transition">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteCourse(
+                                                    course._id || course.id,
+                                                );
+                                            }}
+                                            className="btn btn-sm btn-outline btn-error gap-1 w-full"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </main>
         </div>
     );
 }

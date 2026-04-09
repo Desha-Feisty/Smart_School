@@ -7,6 +7,7 @@ import {
     updateCourse,
     deleteCourse,
     getRoster,
+    removeEnrollment,
     listAllCourses,
     listMyCourses,
 } from "../controllers/course.controller.js";
@@ -21,5 +22,11 @@ router.patch("/:id", authMiddleware, requireRole("teacher"), updateCourse);
 router.delete("/:id", authMiddleware, requireRole("teacher"), deleteCourse);
 router.post("/join", authMiddleware, requireRole("student"), joinCourseByCode);
 router.get("/:id/roster", authMiddleware, requireRole("teacher"), getRoster);
+router.delete(
+    "/:id/enrollment",
+    authMiddleware,
+    requireRole("teacher"),
+    removeEnrollment,
+);
 router.get("/all", authMiddleware, listAllCourses);
 export default router;

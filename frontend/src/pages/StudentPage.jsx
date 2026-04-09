@@ -5,6 +5,20 @@ import useQuizStore from "../stores/Quizstore";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import NoteCard from "../components/NoteCard";
+import toast from "react-hot-toast";
+import {
+    LogOut,
+    BookOpen,
+    Plus,
+    Zap,
+    TrendingUp,
+    MessageSquare,
+    ChevronRight,
+    BookMarked,
+    Award,
+    Clock,
+    X,
+} from "lucide-react";
 
 function StudentPage() {
     const { token, user, logout } = useAuthStore();
@@ -21,13 +35,17 @@ function StudentPage() {
 
     const [joinCode, setJoinCode] = useState("");
     const [availableQuizzes, setAvailableQuizzes] = useState([]);
-    const [activeTab, setActiveTab] = useState("courses"); // courses, quizzes, grades, community
+    const [activeTab, setActiveTab] = useState("courses");
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState(null);
     const [startingQuizId, setStartingQuizId] = useState(null);
     const [selectedCourse, setSelectedCourse] = useState(null);
     const [courseNotes, setCourseNotes] = useState([]);
     const [notesLoading, setNotesLoading] = useState(false);
+    const [viewContentCourse, setViewContentCourse] = useState(null);
+    const [courseContentNotes, setCourseContentNotes] = useState([]);
+    const [contentNotesLoading, setContentNotesLoading] = useState(false);
+    const [allCourseNotes, setAllCourseNotes] = useState([]);
+    const [allNotesLoading, setAllNotesLoading] = useState(false);
 
     useEffect(() => {
         if (!token) {
@@ -45,10 +63,10 @@ function StudentPage() {
     }, [activeTab, listMyGrades]);
 
     useEffect(() => {
-        if (activeTab === "community" && selectedCourse) {
-            loadCourseNotes();
+        if (activeTab === "community") {
+            loadAllCourseNotes();
         }
-    }, [activeTab, selectedCourse]);
+    }, [activeTab]);
 
     const loadCourseNotes = async () => {
         setNotesLoading(true);
@@ -56,9 +74,39 @@ function StudentPage() {
             const notes = await listCourseNotes(selectedCourse._id);
             setCourseNotes(notes);
         } catch (err) {
-            setError(err.message || "Failed to load notes");
+            toast.error(err.message || "Failed to load notes");
         } finally {
             setNotesLoading(false);
+        }
+    };
+
+    const loadAllCourseNotes = async () => {
+        setAllNotesLoading(true);
+        try {
+            const allNotes = [];
+            for (const course of allCourses) {
+                const notes = await listCourseNotes(course._id);
+                allNotes.push(...notes);
+            }
+            setAllCourseNotes(allNotes);
+        } catch (err) {
+            toast.error(err.message || "Failed to load notes");
+            setAllCourseNotes([]);
+        } finally {
+            setAllNotesLoading(false);
+        }
+    };
+
+    const loadCourseContentNotes = async (courseId) => {
+        setContentNotesLoading(true);
+        try {
+            const notes = await listCourseNotes(courseId);
+            setCourseContentNotes(notes);
+        } catch (err) {
+            console.error("Failed to load course notes:", err);
+            setCourseContentNotes([]);
+        } finally {
+            setContentNotesLoading(false);
         }
     };
 
@@ -80,8 +128,11 @@ function StudentPage() {
 
     const handleJoinCourse = async (e) => {
         e.preventDefault();
+        if (!joinCode.trim()) {
+            toast.error("Please enter a join code");
+            return;
+        }
         setIsLoading(true);
-        setError(null);
         try {
             await axios.post(
                 "/api/courses/join",
@@ -91,9 +142,10 @@ function StudentPage() {
                 },
             );
             setJoinCode("");
-            listMyCourses(); // Refresh list
+            listMyCourses();
+            toast.success("Successfully joined course!");
         } catch (err) {
-            setError(err.response?.data?.errMsg || "Failed to join course");
+            toast.error(err.response?.data?.errMsg || "Failed to join course");
         } finally {
             setIsLoading(false);
         }
@@ -101,17 +153,15 @@ function StudentPage() {
 
     const handleStartQuiz = async (quizId) => {
         setStartingQuizId(quizId);
-        setError(null);
         try {
             const result = await startAttempt(quizId);
             if (result && result.attempt) {
-                // Navigate to quiz page with the attempt ID
                 navigate(`/student/quiz/${result.attempt._id}`);
             } else {
-                setError(attemptError || "Failed to start quiz");
+                toast.error(attemptError || "Failed to start quiz");
             }
         } catch (err) {
-            setError(
+            toast.error(
                 err.message || "An error occurred while starting the quiz",
             );
         } finally {
@@ -119,301 +169,580 @@ function StudentPage() {
         }
     };
 
+    // Calculate stats
+    const avgScore =
+        myGrades.length > 0
+            ? (
+                  myGrades.reduce((sum, g) => sum + g.score, 0) /
+                  myGrades.length
+              ).toFixed(1)
+            : 0;
+
     return (
-        <div className="max-w-6xl mx-auto p-6">
-            <div className="flex justify-between items-start mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">
-                        Student Dashboard
-                    </h1>
-                    <p className="text-gray-600">Welcome back, {user?.name}!</p>
-                </div>
-                <div className="flex flex-col items-end gap-4">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+            {/* Navigation Header */}
+            <nav className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
+                <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg p-2">
+                            <BookMarked className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-600">
+                                Welcome back
+                            </p>
+                            <h1 className="text-xl font-bold text-gray-900">
+                                {user?.name}
+                            </h1>
+                        </div>
+                    </div>
                     <button
                         onClick={handleLogout}
-                        className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-200"
+                        className="btn btn-ghost gap-2"
                     >
+                        <LogOut className="w-5 h-5" />
                         Logout
                     </button>
-                    <form onSubmit={handleJoinCourse} className="flex gap-2">
-                        <input
-                            type="text"
-                            placeholder="Enter Join Code"
-                            value={joinCode}
-                            onChange={(e) => setJoinCode(e.target.value)}
-                            className="border p-2 rounded w-40"
-                            required
-                        />
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            className="bg-blue-600 text-white px-4 py-2 rounded font-bold disabled:opacity-50"
-                        >
-                            {isLoading ? "Joining..." : "Join Course"}
-                        </button>
-                    </form>
                 </div>
-            </div>
+            </nav>
 
-            {error && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6">
-                    {error}
-                </div>
-            )}
-
-            <div className="border-b mb-8">
-                <div className="flex gap-8">
-                    <button
-                        onClick={() => setActiveTab("courses")}
-                        className={`pb-3 font-semibold ${activeTab === "courses" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
-                    >
-                        My Courses
-                    </button>
-                    <button
-                        onClick={() => setActiveTab("quizzes")}
-                        className={`pb-3 font-semibold ${activeTab === "quizzes" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
-                    >
-                        Available Quizzes
-                    </button>
-                    <button
-                        onClick={() => setActiveTab("grades")}
-                        className={`pb-3 font-semibold ${activeTab === "grades" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
-                    >
-                        My Grades
-                    </button>
-                    <button
-                        onClick={() => setActiveTab("community")}
-                        className={`pb-3 font-semibold ${activeTab === "community" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-500"}`}
-                    >
-                        Community Notes
-                    </button>
-                </div>
-            </div>
-
-            {activeTab === "courses" && (
-                <div>
-                    {allCourses.length === 0 ? (
-                        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed">
-                            <p className="text-gray-500 italic">
-                                You haven't joined any courses yet. Use a join
-                                code to get started!
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {allCourses.map((course) => (
-                                <div
-                                    key={course._id}
-                                    className="bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden"
-                                >
-                                    <div className="p-5">
-                                        <h3 className="text-xl font-bold mb-2">
-                                            {course.title}
-                                        </h3>
-                                        <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                                            {course.description}
-                                        </p>
-                                        <div className="flex justify-between items-center text-xs text-gray-400">
-                                            <span>
-                                                Joined:{" "}
-                                                {new Date(
-                                                    course.enrolledAt,
-                                                ).toLocaleDateString()}
-                                            </span>
-                                            <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">
-                                                Active
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="bg-gray-50 px-5 py-3 border-t">
-                                        <button className="text-blue-600 font-bold text-sm hover:underline">
-                                            View Content &rarr;
-                                        </button>
-                                    </div>
+            <main className="max-w-7xl mx-auto px-6 py-8">
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="card bg-white shadow-lg border border-slate-200">
+                        <div className="card-body">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-600 mb-1">
+                                        My Courses
+                                    </p>
+                                    <p className="text-3xl font-bold text-gray-900">
+                                        {allCourses.length}
+                                    </p>
                                 </div>
-                            ))}
+                                <BookOpen className="w-12 h-12 text-blue-500 opacity-20" />
+                            </div>
                         </div>
-                    )}
-                </div>
-            )}
-
-            {activeTab === "quizzes" && (
-                <div>
-                    {availableQuizzes.length === 0 ? (
-                        <p className="italic text-gray-500 text-center py-12">
-                            No quizzes currently available to take.
-                        </p>
-                    ) : (
-                        <div className="space-y-4">
-                            {availableQuizzes.map((quiz) => (
-                                <div
-                                    key={quiz._id}
-                                    className="bg-white p-5 rounded-lg border shadow-sm flex justify-between items-center"
-                                >
-                                    <div>
-                                        <h3 className="text-lg font-bold">
-                                            {quiz.title}
-                                        </h3>
-                                        <p className="text-gray-600 text-sm">
-                                            {quiz.description}
-                                        </p>
-                                        <div className="flex gap-4 mt-2 text-xs text-gray-400">
-                                            <span>
-                                                From: {quiz.course?.title}
-                                            </span>
-                                            <span>
-                                                Ends:{" "}
-                                                {new Date(
-                                                    quiz.closeAt,
-                                                ).toLocaleString()}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() =>
-                                            handleStartQuiz(quiz._id)
-                                        }
-                                        disabled={startingQuizId === quiz._id}
-                                        className="bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2 rounded font-bold transition-colors"
-                                    >
-                                        {startingQuizId === quiz._id
-                                            ? "Starting..."
-                                            : "Start Quiz"}
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {activeTab === "grades" && (
-                <div className="bg-white p-6 rounded-lg border">
-                    <h2 className="text-2xl font-bold mb-4">
-                        My Grade History
-                    </h2>
-                    {gradesLoading ? (
-                        <div className="text-center py-12 text-gray-600">
-                            Loading grades...
-                        </div>
-                    ) : gradesError ? (
-                        <div className="text-red-600 py-6">{gradesError}</div>
-                    ) : myGrades.length === 0 ? (
-                        <div className="text-center py-12 text-gray-500">
-                            No graded attempts available yet.
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                                            Quiz
-                                        </th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                                            Course
-                                        </th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                                            Score
-                                        </th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                                            Date
-                                        </th>
-                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                                            Status
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {myGrades.map((grade) => (
-                                        <tr key={grade.attemptId}>
-                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {grade.quiz?.title ||
-                                                    "Unnamed Quiz"}
-                                            </td>
-                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                                                {grade.course?.title ||
-                                                    "Unknown Course"}
-                                            </td>
-                                            <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                                                {grade.score}
-                                            </td>
-                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
-                                                {grade.submittedAt
-                                                    ? new Date(
-                                                          grade.submittedAt,
-                                                      ).toLocaleString()
-                                                    : "-"}
-                                            </td>
-                                            <td className="px-4 py-4 whitespace-nowrap text-sm">
-                                                <span
-                                                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                        grade.status ===
-                                                        "graded"
-                                                            ? "bg-green-100 text-green-800"
-                                                            : "bg-yellow-100 text-yellow-800"
-                                                    }`}
-                                                >
-                                                    {grade.status}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {activeTab === "community" && (
-                <div>
-                    <div className="mb-6">
-                        <h2 className="text-2xl font-bold mb-4">
-                            Community Notes
-                        </h2>
-                        <select
-                            value={selectedCourse?._id || ""}
-                            onChange={(e) => {
-                                const course = allCourses.find(
-                                    (c) => c._id === e.target.value,
-                                );
-                                setSelectedCourse(course);
-                            }}
-                            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="">Select a course</option>
-                            {allCourses.map((course) => (
-                                <option key={course._id} value={course._id}>
-                                    {course.title}
-                                </option>
-                            ))}
-                        </select>
                     </div>
 
-                    {selectedCourse && (
-                        <div>
-                            {notesLoading ? (
-                                <p className="text-center text-gray-500 py-8">
-                                    Loading notes...
-                                </p>
-                            ) : courseNotes.length === 0 ? (
-                                <p className="text-center text-gray-500 py-8">
-                                    No notes posted yet for this course.
-                                </p>
+                    <div className="card bg-white shadow-lg border border-slate-200">
+                        <div className="card-body">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-600 mb-1">
+                                        Quizzes Available
+                                    </p>
+                                    <p className="text-3xl font-bold text-gray-900">
+                                        {availableQuizzes.length}
+                                    </p>
+                                </div>
+                                <Zap className="w-12 h-12 text-yellow-500 opacity-20" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="card bg-white shadow-lg border border-slate-200">
+                        <div className="card-body">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-600 mb-1">
+                                        Average Score
+                                    </p>
+                                    <p className="text-3xl font-bold text-gray-900">
+                                        {avgScore}%
+                                    </p>
+                                </div>
+                                <Award className="w-12 h-12 text-green-500 opacity-20" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Join Course Section */}
+                <div className="card bg-white shadow-lg border border-slate-200 mb-8">
+                    <div className="card-body">
+                        <h2 className="card-title text-xl mb-4 flex items-center gap-2">
+                            <Plus className="w-6 h-6 text-blue-600" />
+                            Join a New Course
+                        </h2>
+                        <form
+                            onSubmit={handleJoinCourse}
+                            className="flex gap-3"
+                        >
+                            <input
+                                type="text"
+                                placeholder="Enter join code..."
+                                value={joinCode}
+                                onChange={(e) => setJoinCode(e.target.value)}
+                                className="input input-bordered flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                required
+                            />
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className="btn btn-primary gap-2"
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <span className="loading loading-spinner loading-xs"></span>
+                                        Joining...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Plus className="w-5 h-5" />
+                                        Join Course
+                                    </>
+                                )}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                {/* Tabs */}
+                <div className="tabs tabs-lifted border-b border-slate-200 mb-8">
+                    {[
+                        { id: "courses", label: "My Courses", icon: BookOpen },
+                        {
+                            id: "quizzes",
+                            label: "Available Quizzes",
+                            icon: Zap,
+                        },
+                        { id: "grades", label: "My Grades", icon: TrendingUp },
+                        {
+                            id: "community",
+                            label: "Community Notes",
+                            icon: MessageSquare,
+                        },
+                    ].map(({ id, label, icon: Icon }) => (
+                        <button
+                            key={id}
+                            onClick={() => setActiveTab(id)}
+                            className={`tab tab-lg gap-2 font-semibold ${
+                                activeTab === id
+                                    ? "tab-active border-b-2 border-blue-600 text-blue-600"
+                                    : "text-gray-600"
+                            }`}
+                        >
+                            <Icon className="w-5 h-5" />
+                            {label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Tab Content */}
+                {activeTab === "courses" && (
+                    <div>
+                        {allCourses.length === 0 ? (
+                            <div className="card bg-blue-50 border border-blue-200 border-dashed">
+                                <div className="card-body text-center py-12">
+                                    <BookOpen className="w-16 h-16 text-blue-300 mx-auto mb-4" />
+                                    <p className="text-gray-600">
+                                        You haven't joined any courses yet. Use
+                                        a join code to get started!
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {allCourses.map((course) => (
+                                    <div
+                                        key={course._id}
+                                        className="card bg-white shadow-lg border border-slate-200 hover:shadow-xl transition-shadow group cursor-pointer"
+                                    >
+                                        <div className="card-body">
+                                            <h3 className="card-title text-lg text-gray-900 group-hover:text-blue-600 transition-colors">
+                                                {course.title}
+                                            </h3>
+                                            <p className="text-sm text-gray-600 line-clamp-2 mb-4">
+                                                {course.description}
+                                            </p>
+                                            <div className="flex items-center justify-between text-xs text-gray-500">
+                                                <span>
+                                                    Joined{" "}
+                                                    {new Date(
+                                                        course.enrolledAt,
+                                                    ).toLocaleDateString()}
+                                                </span>
+                                                <span className="badge badge-primary">
+                                                    Active
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="card-actions border-t border-slate-200 pt-4 px-6 pb-6">
+                                            <button
+                                                onClick={() => {
+                                                    setViewContentCourse(
+                                                        course,
+                                                    );
+                                                    loadCourseContentNotes(
+                                                        course._id,
+                                                    );
+                                                }}
+                                                className="btn btn-ghost btn-sm gap-2 group-hover:btn-primary w-full"
+                                            >
+                                                View Content
+                                                <ChevronRight className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === "quizzes" && (
+                    <div>
+                        {availableQuizzes.length === 0 ? (
+                            <div className="card bg-yellow-50 border border-yellow-200 border-dashed">
+                                <div className="card-body text-center py-12">
+                                    <Zap className="w-16 h-16 text-yellow-300 mx-auto mb-4" />
+                                    <p className="text-gray-600">
+                                        No quizzes currently available to take.
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {availableQuizzes.map((quiz) => (
+                                    <div
+                                        key={quiz._id}
+                                        className="card bg-white shadow-lg border border-slate-200 hover:shadow-xl transition-shadow"
+                                    >
+                                        <div className="card-body">
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <h3 className="card-title text-lg text-gray-900 mb-2">
+                                                        {quiz.title}
+                                                    </h3>
+                                                    <p className="text-gray-600 text-sm mb-3">
+                                                        {quiz.description}
+                                                    </p>
+                                                    <div className="flex flex-wrap gap-4 text-xs text-gray-500">
+                                                        <div className="flex items-center gap-1">
+                                                            <BookOpen className="w-4 h-4" />
+                                                            {quiz.course?.title}
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <Clock className="w-4 h-4" />
+                                                            Ends{" "}
+                                                            {new Date(
+                                                                quiz.closeAt,
+                                                            ).toLocaleString()}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() =>
+                                                        handleStartQuiz(
+                                                            quiz._id,
+                                                        )
+                                                    }
+                                                    disabled={
+                                                        startingQuizId ===
+                                                        quiz._id
+                                                    }
+                                                    className="btn btn-success gap-2 ml-4"
+                                                >
+                                                    {startingQuizId ===
+                                                    quiz._id ? (
+                                                        <>
+                                                            <span className="loading loading-spinner loading-xs"></span>
+                                                            Starting...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Zap className="w-5 h-5" />
+                                                            Start Quiz
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === "grades" && (
+                    <div className="card bg-white shadow-lg border border-slate-200">
+                        <div className="card-body">
+                            <h2 className="card-title text-2xl mb-6 flex items-center gap-2">
+                                <Award className="w-6 h-6 text-blue-600" />
+                                My Grade History
+                            </h2>
+
+                            {gradesLoading ? (
+                                <div className="flex items-center justify-center py-12">
+                                    <span className="loading loading-spinner loading-lg text-blue-600"></span>
+                                </div>
+                            ) : gradesError ? (
+                                <div className="alert alert-error">
+                                    <span>{gradesError}</span>
+                                </div>
+                            ) : myGrades.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <Award className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                    <p className="text-gray-500">
+                                        No graded attempts available yet.
+                                    </p>
+                                </div>
                             ) : (
-                                <div className="grid grid-cols-1 gap-4">
-                                    {courseNotes.map((note) => (
-                                        <NoteCard
-                                            key={note._id}
-                                            note={note}
-                                            isTeacher={false}
-                                        />
-                                    ))}
+                                <div className="overflow-x-auto">
+                                    <table className="table table-zebra w-full">
+                                        <thead className="bg-slate-50">
+                                            <tr>
+                                                <th className="text-gray-700 font-semibold">
+                                                    Quiz
+                                                </th>
+                                                <th className="text-gray-700 font-semibold">
+                                                    Course
+                                                </th>
+                                                <th className="text-gray-700 font-semibold">
+                                                    Score
+                                                </th>
+                                                <th className="text-gray-700 font-semibold">
+                                                    Date
+                                                </th>
+                                                <th className="text-gray-700 font-semibold">
+                                                    Status
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {myGrades.map((grade) => (
+                                                <tr key={grade.attemptId}>
+                                                    <td className="font-medium text-gray-900">
+                                                        {grade.quiz?.title ||
+                                                            "Unnamed Quiz"}
+                                                    </td>
+                                                    <td className="text-gray-600">
+                                                        {grade.course?.title ||
+                                                            "Unknown Course"}
+                                                    </td>
+                                                    <td className="font-bold text-lg text-gray-900">
+                                                        {grade.score}%
+                                                    </td>
+                                                    <td className="text-gray-600">
+                                                        {grade.submittedAt
+                                                            ? new Date(
+                                                                  grade.submittedAt,
+                                                              ).toLocaleString()
+                                                            : "-"}
+                                                    </td>
+                                                    <td>
+                                                        <span
+                                                            className={`badge ${
+                                                                grade.status ===
+                                                                "graded"
+                                                                    ? "badge-success"
+                                                                    : "badge-warning"
+                                                            }`}
+                                                        >
+                                                            {grade.status}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             )}
                         </div>
-                    )}
+                    </div>
+                )}
+
+                {activeTab === "community" && (
+                    <div>
+                        <div className="card bg-white shadow-lg border border-slate-200 mb-8">
+                            <div className="card-body">
+                                <h2 className="card-title text-2xl mb-4 flex items-center gap-2">
+                                    <MessageSquare className="w-6 h-6 text-purple-600" />
+                                    All Community Notes
+                                </h2>
+                                <p className="text-sm text-gray-600">
+                                    Viewing notes from all your joined courses
+                                </p>
+                            </div>
+                        </div>
+
+                        {allNotesLoading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <span className="loading loading-spinner loading-lg text-blue-600"></span>
+                            </div>
+                        ) : allCourseNotes.length === 0 ? (
+                            <div className="card bg-purple-50 border border-purple-200 border-dashed">
+                                <div className="card-body text-center py-12">
+                                    <MessageSquare className="w-16 h-16 text-purple-300 mx-auto mb-4" />
+                                    <p className="text-gray-600">
+                                        No notes posted yet in any of your
+                                        courses.
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 gap-4">
+                                {allCourseNotes.map((note) => (
+                                    <NoteCard
+                                        key={note._id}
+                                        note={note}
+                                        isTeacher={false}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </main>
+
+            {/* Course Content Modal */}
+            {viewContentCourse && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+                    <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto my-8">
+                        {/* Modal Header */}
+                        <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-2xl font-bold flex items-center gap-2">
+                                    <BookOpen className="w-6 h-6" />
+                                    {viewContentCourse.title}
+                                </h2>
+                                <p className="text-blue-100 mt-1">
+                                    {viewContentCourse.description}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setViewContentCourse(null);
+                                    setCourseContentNotes([]);
+                                }}
+                                className="btn btn-ghost btn-circle text-white hover:bg-white hover:bg-opacity-20"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-8">
+                            {/* Quizzes Section */}
+                            <div>
+                                <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                    <Zap className="w-5 h-5 text-yellow-600" />
+                                    Course Quizzes
+                                </h3>
+                                {availableQuizzes.filter(
+                                    (q) =>
+                                        q.course?._id === viewContentCourse._id,
+                                ).length === 0 ? (
+                                    <div className="card bg-yellow-50 border border-yellow-200">
+                                        <div className="card-body text-center py-8">
+                                            <p className="text-gray-600">
+                                                No quizzes available for this
+                                                course yet.
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {availableQuizzes
+                                            .filter(
+                                                (q) =>
+                                                    q.course?._id ===
+                                                    viewContentCourse._id,
+                                            )
+                                            .map((quiz) => (
+                                                <div
+                                                    key={quiz._id}
+                                                    className="card bg-white border border-slate-200 hover:shadow-lg transition-shadow"
+                                                >
+                                                    <div className="card-body p-4">
+                                                        <div className="flex items-start justify-between">
+                                                            <div className="flex-1">
+                                                                <h4 className="font-semibold text-gray-900 mb-1">
+                                                                    {quiz.title}
+                                                                </h4>
+                                                                <p className="text-sm text-gray-600 mb-2">
+                                                                    {
+                                                                        quiz.description
+                                                                    }
+                                                                </p>
+                                                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                                    <Clock className="w-4 h-4" />
+                                                                    Closes{" "}
+                                                                    {new Date(
+                                                                        quiz.closeAt,
+                                                                    ).toLocaleString()}
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => {
+                                                                    handleStartQuiz(
+                                                                        quiz._id,
+                                                                    );
+                                                                    setViewContentCourse(
+                                                                        null,
+                                                                    );
+                                                                }}
+                                                                disabled={
+                                                                    startingQuizId ===
+                                                                    quiz._id
+                                                                }
+                                                                className="btn btn-success btn-sm gap-2 ml-4"
+                                                            >
+                                                                {startingQuizId ===
+                                                                quiz._id ? (
+                                                                    <>
+                                                                        <span className="loading loading-spinner loading-xs"></span>
+                                                                        Starting...
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <Zap className="w-4 h-4" />
+                                                                        Start
+                                                                    </>
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Notes Section */}
+                            <div>
+                                <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                    <MessageSquare className="w-5 h-5 text-purple-600" />
+                                    Course Notes
+                                </h3>
+                                {contentNotesLoading ? (
+                                    <div className="flex items-center justify-center py-8">
+                                        <span className="loading loading-spinner loading-lg text-blue-600"></span>
+                                    </div>
+                                ) : courseContentNotes.length === 0 ? (
+                                    <div className="card bg-purple-50 border border-purple-200">
+                                        <div className="card-body text-center py-8">
+                                            <p className="text-gray-600">
+                                                No notes posted yet for this
+                                                course.
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {courseContentNotes.map((note) => (
+                                            <NoteCard
+                                                key={note._id}
+                                                note={note}
+                                                isTeacher={false}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
