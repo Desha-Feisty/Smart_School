@@ -1,5 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 import { Navigate } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import LoginPage from "./pages/LoginPage";
 
 import StudentPage from "./pages/StudentPage";
@@ -12,26 +13,32 @@ import NoteDetail from "./components/NoteDetail";
 
 function App() {
     return (
-        <Routes>
-            <Route path="/" element={<Navigate to="/login" />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/student" element={<StudentPage />} />
-            <Route
-                path="/student/quiz/:attemptId"
-                element={<StudentQuizPage />}
-            />
-            <Route
-                path="/student/quiz/:attemptId/results"
-                element={<QuizResultsPage />}
-            />
-            <Route path="/teacher" element={<TeacherPage />} />
-            <Route path="/teacher/course/:id" element={<TeacherCoursePage />} />
-            <Route
-                path="/teacher/quiz/:id/questions"
-                element={<QuizQuestionsPage />}
-            />
-            <Route path="/note/:noteId" element={<NoteDetail />} />
-        </Routes>
+        <>
+            <Toaster position="top-center" />
+            <Routes>
+                <Route path="/" element={<Navigate to="/login" />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/student" element={<StudentPage />} />
+                <Route
+                    path="/student/quiz/:attemptId"
+                    element={<StudentQuizPage />}
+                />
+                <Route
+                    path="/student/quiz/:attemptId/results"
+                    element={<QuizResultsPage />}
+                />
+                <Route path="/teacher" element={<TeacherPage />} />
+                <Route
+                    path="/teacher/course/:id"
+                    element={<TeacherCoursePage />}
+                />
+                <Route
+                    path="/teacher/quiz/:id/questions"
+                    element={<QuizQuestionsPage />}
+                />
+                <Route path="/note/:noteId" element={<NoteDetail />} />
+            </Routes>
+        </>
     );
 }
 

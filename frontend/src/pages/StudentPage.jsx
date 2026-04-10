@@ -79,7 +79,8 @@ function StudentPage() {
         }
         listMyCourses();
         fetchAvailableQuizzes();
-    }, [token, navigate, fetchAvailableQuizzes, listMyCourses]);
+        listMyGrades();
+    }, [token, navigate, fetchAvailableQuizzes, listMyCourses, listMyGrades]);
 
     useEffect(() => {
         if (activeTab === "grades") {
@@ -396,9 +397,19 @@ function StudentPage() {
                                         <div className="card-body">
                                             <div className="flex items-start justify-between">
                                                 <div className="flex-1">
-                                                    <h3 className="card-title text-lg text-gray-900 mb-2">
-                                                        {quiz.title}
-                                                    </h3>
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <h3 className="card-title text-lg text-gray-900">
+                                                            {quiz.title}
+                                                        </h3>
+                                                        {quiz.isAttempted && (
+                                                            <span className="badge badge-success gap-2">
+                                                                <span className="text-xs">
+                                                                    ✓
+                                                                </span>
+                                                                Attempted
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <p className="text-gray-600 text-sm mb-3">
                                                         {quiz.description}
                                                     </p>
@@ -426,7 +437,11 @@ function StudentPage() {
                                                         startingQuizId ===
                                                         quiz._id
                                                     }
-                                                    className="btn btn-success gap-2 ml-4"
+                                                    className={`btn gap-2 ml-4 ${
+                                                        quiz.isAttempted
+                                                            ? "btn-outline"
+                                                            : "btn-success"
+                                                    }`}
                                                 >
                                                     {startingQuizId ===
                                                     quiz._id ? (
@@ -437,7 +452,9 @@ function StudentPage() {
                                                     ) : (
                                                         <>
                                                             <Zap className="w-5 h-5" />
-                                                            Start Quiz
+                                                            {quiz.isAttempted
+                                                                ? "Retake"
+                                                                : "Start Quiz"}
                                                         </>
                                                     )}
                                                 </button>

@@ -4,6 +4,7 @@ import type { Response } from "express";
 import Course from "../models/course.js";
 import Quiz from "../models/quiz.js";
 import Question from "../models/question.js";
+import Attempt from "../models/attempt.js";
 import { startSession, Types } from "mongoose";
 import Enrollment from "../models/enrollment.js";
 
@@ -461,8 +462,25 @@ const listAvailableQuizzes = async (req: AuthRequest, res: Response) => {
         })
             .populate("course")
             .select("-published")
-            .sort({ closeAt: -1 });
-        res.status(200).json({ quizzes });
+            .sort({ _id: -1 });
+
+        // Fetch user attempts to check which quizzes have been answered
+        const userAttempts = await Attempt.find({
+            user: req.user.id,
+            quiz: { $in: quizzes.map((q) => q._id) },
+        }).select("quiz");
+
+        const attemptedQuizIds = new Set(
+            userAttempts.map((a) => a.quiz.toString()),
+        );
+
+        // Add isAttempted flag to each quiz
+        const quizzesWithStatus = quizzes.map((quiz) => ({
+            ...quiz.toObject(),
+            isAttempted: attemptedQuizIds.has(quiz._id.toString()),
+        }));
+
+        res.status(200).json({ quizzes: quizzesWithStatus });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
         res.status(500).json({ errMsg: "failed to fetch quizzes" });
