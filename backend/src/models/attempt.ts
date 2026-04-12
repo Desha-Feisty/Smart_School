@@ -12,7 +12,7 @@ const responseSchema = new Schema<IResponse>({
     pointsAwarded: { type: Number, default: 0 },
 });
 
-export type AttemptStatus = "inProgress" | "graded" | "expired";
+export type AttemptStatus = "inProgress" | "graded" | "expired" | "late";
 export interface IAttempt {
     quiz: Types.ObjectId | Document<IQuiz>;
     user: Types.ObjectId;
@@ -31,7 +31,10 @@ const attemptSchema = new Schema<IAttempt>(
         startAt: { type: Date, required: true },
         endAt: { type: Date, required: true },
         submittedAt: { type: Date },
-        status: { type: String, enum: ["inProgress", "graded", "expired"] },
+        status: {
+            type: String,
+            enum: ["inProgress", "graded", "expired", "late"],
+        },
         score: { type: Number, default: 0 },
         responses: [responseSchema],
     },

@@ -148,9 +148,10 @@ const autoSaveAnswer = async (req: AuthRequest, res: Response) => {
             return res.status(404).json({ errMsg: "attempt not found" });
         }
         const now = dayjs();
-        if (now.isAfter(dayjs(attempt.endAt))) {
-            return res.status(400).json({ error: "Attempt expired" });
-        }
+        // Allow saving even after expiration in case auto-submit fails
+        // if (now.isAfter(dayjs(attempt.endAt))) {
+        //     return res.status(400).json({ error: "Attempt expired" });
+        // }
         const resp = attempt.responses.find(
             (r) => r.question.toString() === value.questionId,
         );
@@ -175,11 +176,8 @@ const submitAttempt = async (req: AuthRequest, res: Response) => {
         if (attempt.user.toString() !== req.user?.id)
             return res.status(403).json({ error: "Forbidden" });
         const now = dayjs();
-        if (now.isAfter(dayjs(attempt.endAt))) {
-            attempt.status = "expired";
-            await attempt.save();
-            return res.status(400).json({ error: "Attempt expired" });
-        }
+        const isLate = now.isAfter(dayjs(attempt.endAt));
+
         // Auto-grade MCQ single
         let total = 0;
         for (const resp of attempt.responses) {
@@ -195,7 +193,7 @@ const submitAttempt = async (req: AuthRequest, res: Response) => {
             total += resp.pointsAwarded;
         }
         attempt.score = total;
-        attempt.status = "graded";
+        attempt.status = isLate ? "late" : "graded";
         attempt.submittedAt = now.toDate();
         await attempt.save();
         console.log("Attempt submitted:", {
@@ -245,7 +243,7 @@ const listQuizGrades = async (req: AuthRequest, res: Response) => {
             return res.status(403).json({ error: "Forbidden" });
         const attempts = await Attempt.find({
             quiz: quiz._id,
-            status: "graded",
+            status: { $in: ["graded", "late"] },
         })
             .populate("user", "name email")
             .select("user score submittedAt status responses")
@@ -284,7 +282,7 @@ const listMyGrades = async (req: AuthRequest, res: Response) => {
         if (!req.user) return res.status(401).json({ errMsg: "forbidden" });
         const attempts = await Attempt.find({
             user: req.user.id,
-            status: "graded",
+            status: { $in: ["graded", "late"] },
         })
             .populate({
                 path: "quiz",
@@ -405,7 +403,7 @@ const getStudentCourseGrades = async (req: AuthRequest, res: Response) => {
 
         const attempts = await Attempt.find({
             user: new Types.ObjectId(studentId),
-            status: "graded",
+            status: { $in: ["graded", "late"] },
         })
             .populate({
                 path: "quiz",

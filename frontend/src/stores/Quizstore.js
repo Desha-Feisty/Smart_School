@@ -114,6 +114,28 @@ const useQuizStore = create((set) => ({
         }
     },
 
+    unpublishQuiz: async (quizId) => {
+        try {
+            const token = useAuthStore.getState().token;
+            const response = await axios.put(
+                `/api/quizzes/${quizId}`,
+                { published: false },
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                },
+            );
+            if (response.status === 200) {
+                set((state) => ({
+                    quizzes: state.quizzes.map((q) =>
+                        q._id === quizId ? { ...q, published: false } : q,
+                    ),
+                }));
+            }
+        } catch (error) {
+            set({ errMsg: error.response?.data?.errMsg || error.message });
+        }
+    },
+
     listQuizQuestions: async (quizId) => {
         try {
             const token = useAuthStore.getState().token;

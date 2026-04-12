@@ -539,7 +539,10 @@ function StudentPage() {
                                                                 grade.status ===
                                                                 "graded"
                                                                     ? "badge-success"
-                                                                    : "badge-warning"
+                                                                    : grade.status ===
+                                                                        "late"
+                                                                      ? "badge-warning"
+                                                                      : "badge-error"
                                                             }`}
                                                         >
                                                             {grade.status}

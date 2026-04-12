@@ -92,7 +92,7 @@ const createQuiz = async (req: AuthRequest, res: Response) => {
         const quiz = new Quiz({
             course: course._id,
             ...value,
-            published: false,
+            published: true,
         });
         await quiz.save();
 
@@ -431,6 +431,7 @@ const updateQuizSchema = Joi.object({
     closeAt: Joi.date().optional(),
     attemptsAllowed: Joi.number().min(1).default(1),
     durationMinutes: Joi.number().min(1).optional(),
+    published: Joi.boolean().optional(),
 }).custom((value, helpers) => {
     if (
         value.openAt &&
@@ -518,6 +519,9 @@ const updateQuiz = async (req: AuthRequest, res: Response) => {
         if (value.attemptsAllowed !== undefined) {
             quiz.attemptsAllowed = value.attemptsAllowed;
         }
+        if (value.published !== undefined) {
+            quiz.published = value.published;
+        }
         await quiz.save();
         res.status(200).json({ quiz });
     } catch (error) {
@@ -588,7 +592,7 @@ const createQuizFromBody = async (req: AuthRequest, res: Response) => {
         const quiz = await Quiz.create({
             course: course._id,
             ...value,
-            published: false,
+            published: true,
         });
         res.status(201).json({ quiz });
     } catch (error) {

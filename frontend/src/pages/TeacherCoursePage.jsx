@@ -41,6 +41,7 @@ function TeacherCoursePage() {
         listCourseQuizzes,
         deleteQuiz,
         publishQuiz,
+        unpublishQuiz,
         listQuizGrades,
         quizGrades,
         gradesLoading,
@@ -261,6 +262,15 @@ function TeacherCoursePage() {
             toast.success("Quiz published successfully");
         } catch (err) {
             toast.error("Failed to publish quiz");
+        }
+    };
+
+    const handleUnpublishQuiz = async (quizId) => {
+        try {
+            await unpublishQuiz(quizId);
+            toast.success("Quiz unpublished successfully");
+        } catch (err) {
+            toast.error("Failed to unpublish quiz");
         }
     };
 
@@ -543,7 +553,7 @@ function TeacherCoursePage() {
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2">
-                                                    {!quiz.published && (
+                                                    {!quiz.published ? (
                                                         <button
                                                             onClick={() =>
                                                                 handlePublishQuiz(
@@ -554,6 +564,18 @@ function TeacherCoursePage() {
                                                         >
                                                             <CheckCircle className="w-4 h-4" />
                                                             Publish
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() =>
+                                                                handleUnpublishQuiz(
+                                                                    quiz._id,
+                                                                )
+                                                            }
+                                                            className="btn btn-warning btn-sm gap-2"
+                                                        >
+                                                            <Clock className="w-4 h-4" />
+                                                            Unpublish
                                                         </button>
                                                     )}
                                                     <button
@@ -1069,7 +1091,10 @@ function TeacherCoursePage() {
                                                                                     grade.status ===
                                                                                     "graded"
                                                                                         ? "badge-success"
-                                                                                        : "badge-warning"
+                                                                                        : grade.status ===
+                                                                                            "late"
+                                                                                          ? "badge-warning"
+                                                                                          : "badge-error"
                                                                                 }`}
                                                                             >
                                                                                 {
