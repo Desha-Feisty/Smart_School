@@ -34,9 +34,15 @@ const useAuthStore = create(
                         });
                         return response.data;
                     }
-                    set({ user: response.data.user });
+                    const loginUser = {
+                        ...response.data.user,
+                        id:
+                            response.data.user.id ||
+                            response.data.user._id?.toString(),
+                    };
+                    set({ user: loginUser });
                     set({ token: response.data.token });
-                    set({ role: response.data.user.role });
+                    set({ role: loginUser.role });
                     set({ isLoggingIn: false });
                     set({ errMsg: null });
                     return response.data;
@@ -64,9 +70,15 @@ const useAuthStore = create(
                         set({ errMsg: response.data.errMsg });
                         return response.data;
                     }
-                    set({ user: response.data.user });
+                    const registerUser = {
+                        ...response.data.user,
+                        id:
+                            response.data.user.id ||
+                            response.data.user._id?.toString(),
+                    };
+                    set({ user: registerUser });
                     set({ token: response.data.token });
-                    set({ role: response.data.user.role });
+                    set({ role: registerUser.role });
                     set({ errMsg: null });
                     return response.data;
                 } catch (error) {

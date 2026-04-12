@@ -53,7 +53,10 @@ const register = async (req: Request<{}, {}, RegisterBody>, res: Response) => {
             },
         });
     } catch (error) {
-        console.error("Register error:", error instanceof Error ? error.message : error);
+        console.error(
+            "Register error:",
+            error instanceof Error ? error.message : error,
+        );
         res.status(500).json({ errMsg: "An error has occurred" });
     }
 };
@@ -89,6 +92,7 @@ const login = async (req: Request<{}, {}, loginBody>, res: Response) => {
             success: true,
             token,
             user: {
+                id: user._id,
                 _id: user._id,
                 name: user.name,
                 email: user.email,
@@ -96,7 +100,10 @@ const login = async (req: Request<{}, {}, loginBody>, res: Response) => {
             },
         });
     } catch (error) {
-        console.error("Login error:", error instanceof Error ? error.message : error);
+        console.error(
+            "Login error:",
+            error instanceof Error ? error.message : error,
+        );
         res.status(500).json({ errMsg: "internal server error" });
     }
 };

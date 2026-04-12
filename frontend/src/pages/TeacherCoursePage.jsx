@@ -5,6 +5,7 @@ import useQuizStore from "../stores/Quizstore";
 import useAuthStore from "../stores/Authstore";
 import NoteForm from "../components/NoteForm";
 import NoteCard from "../components/NoteCard";
+import ChatWindow from "../components/ChatWindow";
 import toast from "react-hot-toast";
 import {
     ArrowLeft,
@@ -61,6 +62,10 @@ function TeacherCoursePage() {
         durationMinutes: 30,
         attemptsAllowed: 1,
     });
+    const [chatOpen, setChatOpen] = useState(false);
+    const [chatCourseId, setChatCourseId] = useState(null);
+    const [chatPeerId, setChatPeerId] = useState(null);
+    const [chatPeerName, setChatPeerName] = useState("");
     const [selectedQuiz, setSelectedQuiz] = useState(null);
     const [selectedQuizTitle, setSelectedQuizTitle] = useState("");
     const [activeTab, setActiveTab] = useState("quizzes");
@@ -936,18 +941,40 @@ function TeacherCoursePage() {
                                                             )}
                                                         </div>
 
-                                                        <button
-                                                            onClick={() =>
-                                                                handleRemoveStudent(
-                                                                    student._id,
-                                                                    student.name,
-                                                                )
-                                                            }
-                                                            className="btn btn-ghost btn-sm text-error gap-2 ml-4"
-                                                        >
-                                                            <UserX className="w-4 h-4" />
-                                                            Remove
-                                                        </button>
+                                                        <div className="flex flex-col gap-2 ml-4">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setChatCourseId(
+                                                                        id,
+                                                                    );
+                                                                    setChatPeerId(
+                                                                        student._id,
+                                                                    );
+                                                                    setChatPeerName(
+                                                                        student.name,
+                                                                    );
+                                                                    setChatOpen(
+                                                                        true,
+                                                                    );
+                                                                }}
+                                                                className="btn btn-outline btn-sm gap-2 w-full"
+                                                            >
+                                                                <MessageSquare className="w-4 h-4" />
+                                                                Chat
+                                                            </button>
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleRemoveStudent(
+                                                                        student._id,
+                                                                        student.name,
+                                                                    )
+                                                                }
+                                                                className="btn btn-ghost btn-sm text-error gap-2 w-full"
+                                                            >
+                                                                <UserX className="w-4 h-4" />
+                                                                Remove
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1164,6 +1191,19 @@ function TeacherCoursePage() {
                     </div>
                 )}
             </main>
+            {chatOpen && chatCourseId && chatPeerId && (
+                <ChatWindow
+                    courseId={chatCourseId}
+                    peerId={chatPeerId}
+                    peerName={chatPeerName}
+                    onClose={() => {
+                        setChatOpen(false);
+                        setChatCourseId(null);
+                        setChatPeerId(null);
+                        setChatPeerName("");
+                    }}
+                />
+            )}
         </div>
     );
 }

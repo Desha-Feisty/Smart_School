@@ -5,6 +5,7 @@ import useQuizStore from "../stores/Quizstore";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import NoteCard from "../components/NoteCard";
+import ChatWindow from "../components/ChatWindow";
 import toast from "react-hot-toast";
 import {
     LogOut,
@@ -43,6 +44,10 @@ function StudentPage() {
     const [contentNotesLoading, setContentNotesLoading] = useState(false);
     const [allCourseNotes, setAllCourseNotes] = useState([]);
     const [allNotesLoading, setAllNotesLoading] = useState(false);
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [chatCourseId, setChatCourseId] = useState(null);
+    const [chatPeerId, setChatPeerId] = useState(null);
+    const [chatPeerName, setChatPeerName] = useState("");
 
     const fetchAvailableQuizzes = useCallback(async () => {
         try {
@@ -354,20 +359,44 @@ function StudentPage() {
                                             </div>
                                         </div>
                                         <div className="card-actions border-t border-slate-200 pt-4 px-6 pb-6">
-                                            <button
-                                                onClick={() => {
-                                                    setViewContentCourse(
-                                                        course,
-                                                    );
-                                                    loadCourseContentNotes(
-                                                        course._id,
-                                                    );
-                                                }}
-                                                className="btn btn-ghost btn-sm gap-2 group-hover:btn-primary w-full"
-                                            >
-                                                View Content
-                                                <ChevronRight className="w-4 h-4" />
-                                            </button>
+                                            <div className="flex flex-col gap-2 w-full">
+                                                <button
+                                                    onClick={() => {
+                                                        setChatCourseId(
+                                                            course._id,
+                                                        );
+                                                        setChatPeerId(
+                                                            course.teacher
+                                                                ?._id ||
+                                                                course.teacher,
+                                                        );
+                                                        setChatPeerName(
+                                                            course.teacher
+                                                                ?.name ||
+                                                                "Teacher",
+                                                        );
+                                                        setIsChatOpen(true);
+                                                    }}
+                                                    className="btn btn-outline btn-sm gap-2 w-full"
+                                                >
+                                                    <MessageSquare className="w-4 h-4" />
+                                                    Chat with Teacher
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setViewContentCourse(
+                                                            course,
+                                                        );
+                                                        loadCourseContentNotes(
+                                                            course._id,
+                                                        );
+                                                    }}
+                                                    className="btn btn-ghost btn-sm gap-2 group-hover:btn-primary w-full"
+                                                >
+                                                    View Content
+                                                    <ChevronRight className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -748,6 +777,19 @@ function StudentPage() {
                         </div>
                     </div>
                 </div>
+            )}
+            {isChatOpen && chatCourseId && chatPeerId && (
+                <ChatWindow
+                    courseId={chatCourseId}
+                    peerId={chatPeerId}
+                    peerName={chatPeerName}
+                    onClose={() => {
+                        setIsChatOpen(false);
+                        setChatCourseId(null);
+                        setChatPeerId(null);
+                        setChatPeerName("");
+                    }}
+                />
             )}
         </div>
     );
