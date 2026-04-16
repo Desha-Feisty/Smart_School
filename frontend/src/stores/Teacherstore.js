@@ -8,6 +8,8 @@ const useTeacherStore = create((set) => ({
     clearErrMsg: () => set({ errMsg: null }),
     allCourses: [],
     setAllCourses: (allCourses) => set({ allCourses: allCourses }),
+    recentChats: [],
+    recentChatsLoading: false,
     createCourse: async (title, description) => {
         const token = useAuthStore.getState().token;
         console.log("Token in createCourse:", token);
@@ -422,6 +424,32 @@ const useTeacherStore = create((set) => ({
             return response.data.comment;
         } catch (error) {
             throw new Error(error.response?.data?.errMsg || error.message);
+        }
+    },
+
+    listRecentChats: async () => {
+        set({ recentChatsLoading: true });
+        try {
+            const token = useAuthStore.getState().token;
+            if (!token) {
+                throw new Error("Not authenticated");
+            }
+            const response = await axios.get("/api/chat/recent", {
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            if (response.status !== 200) {
+                throw new Error("Failed to list recent chats");
+            }
+            set({ recentChats: response.data.results, recentChatsLoading: false });
+        } catch (error) {
+            console.error("List recent chats error:", error);
+            set({
+                errMsg: error.response?.data?.errMsg || error.message,
+                recentChatsLoading: false,
+            });
         }
     },
 }));

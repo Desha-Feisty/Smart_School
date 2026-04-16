@@ -87,8 +87,8 @@ function ChatWindow({ courseId, peerId, peerName, onClose }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-            <div className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl overflow-hidden border border-slate-200">
+        <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end pointer-events-none">
+            <div className="w-[350px] max-h-[70vh] rounded-2xl bg-white shadow-2xl overflow-hidden border border-slate-200 pointer-events-auto flex flex-col shadow-blue-500/20">
                 <div className="flex items-center justify-between gap-4 bg-slate-100 px-5 py-4 border-b border-slate-200">
                     <div>
                         <h2 className="text-lg font-semibold text-slate-900">
@@ -108,7 +108,7 @@ function ChatWindow({ courseId, peerId, peerName, onClose }) {
                     </button>
                 </div>
 
-                <div className="max-h-[70vh] overflow-y-auto px-5 py-4 space-y-4 bg-slate-50">
+                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-slate-50">
                     {messages.length === 0 ? (
                         <div className="text-center text-sm text-slate-500 py-20">
                             No messages yet. Start the conversation.

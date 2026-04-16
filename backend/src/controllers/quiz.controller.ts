@@ -92,7 +92,7 @@ const createQuiz = async (req: AuthRequest, res: Response) => {
         const quiz = new Quiz({
             course: course._id,
             ...value,
-            published: true,
+            published: false,
         });
         await quiz.save();
 
@@ -425,11 +425,11 @@ const getQuizDetails = async (req: AuthRequest, res: Response) => {
 };
 
 const updateQuizSchema = Joi.object({
-    title: Joi.string().min(2).required(),
+    title: Joi.string().min(2).optional(),
     description: Joi.string().allow("").optional(),
     openAt: Joi.date().optional(),
     closeAt: Joi.date().optional(),
-    attemptsAllowed: Joi.number().min(1).default(1),
+    attemptsAllowed: Joi.number().min(1).optional(),
     durationMinutes: Joi.number().min(1).optional(),
     published: Joi.boolean().optional(),
 }).custom((value, helpers) => {
@@ -442,6 +442,7 @@ const updateQuizSchema = Joi.object({
             message: "openAt must be before closeAt",
         });
     }
+    return value;
 });
 
 const listAvailableQuizzes = async (req: AuthRequest, res: Response) => {
@@ -592,7 +593,7 @@ const createQuizFromBody = async (req: AuthRequest, res: Response) => {
         const quiz = await Quiz.create({
             course: course._id,
             ...value,
-            published: true,
+            published: false,
         });
         res.status(201).json({ quiz });
     } catch (error) {

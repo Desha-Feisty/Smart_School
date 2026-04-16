@@ -10,10 +10,12 @@ import {
     BookOpen,
     Users,
     ArrowRight,
+    MessageSquare,
 } from "lucide-react";
+import ChatWindow from "../components/ChatWindow";
 
 function TeacherPage() {
-    const { allCourses, listMyCourses, createCourse, deleteCourse } =
+    const { allCourses, listMyCourses, createCourse, deleteCourse, recentChats, recentChatsLoading, listRecentChats } =
         useTeacherStore();
 
     const { user, logout } = useAuthStore();
@@ -22,9 +24,15 @@ function TeacherPage() {
     const [newCourse, setNewCourse] = useState({ title: "", description: "" });
     const [isLoading, setIsLoading] = useState(false);
     const [showForm, setShowForm] = useState(false);
+    
+    const [chatOpen, setChatOpen] = useState(false);
+    const [chatCourseId, setChatCourseId] = useState(null);
+    const [chatPeerId, setChatPeerId] = useState(null);
+    const [chatPeerName, setChatPeerName] = useState("");
 
     useEffect(() => {
         listMyCourses();
+        listRecentChats();
     }, []);
 
     const handleLogout = () => {
@@ -257,6 +265,50 @@ function TeacherPage() {
                     </div>
                 )}
 
+                {/* Recent Chats Section */}
+                <div className="mb-12">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                        <MessageSquare className="w-6 h-6 text-blue-600" />
+                        Recent Chats
+                    </h3>
+
+                    {recentChatsLoading ? (
+                        <div className="flex justify-center p-6"><span className="loading loading-spinner text-blue-600"></span></div>
+                    ) : recentChats?.length === 0 ? (
+                        <div className="text-gray-500 italic p-4 bg-white rounded-xl shadow-sm border border-slate-200 text-center">No recent chats yet.</div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {recentChats.map((chat) => (
+                                <div
+                                    key={chat._id || Math.random()}
+                                    className="card bg-white shadow-sm hover:shadow-md border border-slate-200 transition-all cursor-pointer"
+                                    onClick={() => {
+                                        setChatCourseId(chat.course?._id || chat.course);
+                                        setChatPeerId(chat.peer?._id || chat.peer);
+                                        setChatPeerName(chat.peer?.name || "Student");
+                                        setChatOpen(true);
+                                    }}
+                                >
+                                    <div className="card-body p-4">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <h4 className="font-semibold text-gray-900">{chat.peer?.name || "Unknown"}</h4>
+                                            <span className="text-xs text-gray-400">
+                                                {new Date(chat.createdAt).toLocaleDateString()}
+                                            </span>
+                                        </div>
+                                        <div className="text-xs text-blue-600 font-medium mb-2">
+                                            {chat.course?.title || "Course"}
+                                        </div>
+                                        <p className="text-sm text-gray-600 line-clamp-1">
+                                            {chat.sender && (chat.sender._id || chat.sender) === (user?._id || user?.id) ? "You: " : ""} {chat.text}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
                 {/* Courses Grid */}
                 <div>
                     <h3 className="text-2xl font-bold text-gray-900 mb-6">
@@ -339,6 +391,21 @@ function TeacherPage() {
                     )}
                 </div>
             </main>
+
+            {/* Chat Window */}
+            {chatOpen && chatCourseId && chatPeerId && (
+                <ChatWindow
+                    courseId={chatCourseId}
+                    peerId={chatPeerId}
+                    peerName={chatPeerName}
+                    onClose={() => {
+                        setChatOpen(false);
+                        setChatCourseId(null);
+                        setChatPeerId(null);
+                        setChatPeerName("");
+                    }}
+                />
+            )}
         </div>
     );
 }

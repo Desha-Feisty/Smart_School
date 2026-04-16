@@ -12,6 +12,7 @@ import quizRoutes from "../routes/quiz.routes.js";
 import attemptRoutes from "../routes/attempt.routes.js";
 import noteRoutes from "../routes/note.routes.js";
 import commentRoutes from "../routes/comment.routes.js";
+import chatRoutes from "../routes/chat.routes.js";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { authMiddleware, requireRole } from "../middleware/auth.js";
@@ -35,6 +36,7 @@ app.use("/api/quizzes", quizRoutes);
 app.use("/api/attempts", attemptRoutes);
 app.use("/api/notes", noteRoutes);
 app.use("/api/comments", commentRoutes);
+app.use("/api/chat", chatRoutes);
 
 // Question management root-level endpoints
 app.post(
