@@ -12,6 +12,7 @@ import {
     Save,
     AlertCircle,
 } from "lucide-react";
+import PageWrapper from "./layout/PageWrapper";
 
 function StudentQuizPage() {
     const { attemptId } = useParams();
@@ -140,38 +141,35 @@ function StudentQuizPage() {
     }
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100">
+        <PageWrapper>
             {/* Header with Timer */}
-            <div className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-                <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900">
-                            Quiz
+            <div className="sticky top-0 z-50 py-4 bg-white/70 dark:bg-base-300/70 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-700/50 shadow-sm">
+                <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row gap-4 justify-between items-center relative z-10">
+                    <div className="text-center sm:text-left">
+                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                            Quiz Attempt
                         </h1>
-                        <p className="text-sm text-gray-600">
-                            Question {currentQuestionIndex} of{" "}
-                            {attemptQuestions.length}
+                        <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mt-1">
+                            Question {currentQuestionIndex} of {attemptQuestions.length}
                         </p>
                     </div>
 
                     {/* Timer Display */}
                     <div
-                        className={`card bg-white shadow-lg border-2 ${
+                        className={`glass-card p-3 px-6 border-2 transition-colors ${
                             timeRemaining <= 60
-                                ? "border-error"
+                                ? "border-red-400/50 dark:border-red-500/50 shadow-red-500/20 bg-red-50/50 dark:bg-red-900/20"
                                 : timeRemaining <= 300
-                                  ? "border-warning"
-                                  : "border-success"
+                                  ? "border-orange-400/50 dark:border-orange-500/50 shadow-orange-500/20 bg-orange-50/50 dark:bg-orange-900/20"
+                                  : "border-blue-200/50 dark:border-blue-500/30 shadow-blue-500/10"
                         }`}
                     >
-                        <div className="card-body p-4 text-center">
-                            <div
-                                className={`text-4xl font-black font-mono ${timeColor}`}
-                            >
+                        <div className="flex flex-col items-center">
+                            <div className={`text-3xl font-black font-mono tracking-widest ${timeColor === "text-error" ? "text-red-600 dark:text-red-400" : timeColor === "text-warning" ? "text-orange-600 dark:text-orange-400" : "text-blue-600 dark:text-blue-400"}`}>
                                 {formatTime(timeRemaining)}
                             </div>
-                            <p className="text-xs text-gray-600 mt-1">
-                                Remaining
+                            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-0.5">
+                                Time Remaining
                             </p>
                         </div>
                     </div>
@@ -179,11 +177,10 @@ function StudentQuizPage() {
 
                 {/* Warning Banner */}
                 {showWarning && (
-                    <div className="bg-warning/10 border-t border-warning/50 px-6 py-3 flex items-center gap-3">
-                        <AlertTriangle className="w-5 h-5 text-warning shrink-0" />
-                        <p className="text-sm font-semibold text-warning-700">
-                            ⏰ Only {Math.ceil(timeRemaining / 60)} minutes
-                            remaining. Quiz will auto-submit when time runs out.
+                    <div className="absolute top-full left-0 w-full bg-orange-100/90 dark:bg-orange-900/80 backdrop-blur-md border-b border-orange-200 dark:border-orange-800 px-6 py-2.5 flex items-center justify-center gap-3 animate-in slide-in-from-top-2">
+                        <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400 shrink-0" />
+                        <p className="text-sm font-semibold text-orange-800 dark:text-orange-200">
+                            ⏰ Only {Math.ceil(timeRemaining / 60)} minutes remaining. Quiz will auto-submit when time runs out.
                         </p>
                     </div>
                 )}
@@ -194,14 +191,13 @@ function StudentQuizPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* Sidebar - Question Checklist */}
                     <div className="lg:col-span-1">
-                        <div className="card bg-white shadow-lg border border-slate-200 sticky top-24">
-                            <div className="card-body">
-                                <h2 className="card-title text-lg mb-1">
-                                    Questions
+                        <div className="glass-panel overflow-hidden border border-white/40 dark:border-slate-700/50 shadow-xl sticky top-32 rounded-3xl">
+                            <div className="p-6">
+                                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+                                    Progress Overview
                                 </h2>
-                                <p className="text-sm text-gray-600 mb-4">
-                                    {answeredCount} / {attemptQuestions.length}{" "}
-                                    answered
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-5 pb-4 border-b border-slate-200 dark:border-slate-700/50">
+                                    <span className="text-blue-600 dark:text-blue-400 font-bold">{answeredCount}</span> / {attemptQuestions.length} answered
                                 </p>
 
                                 {/* Progress Bar */}
@@ -272,10 +268,11 @@ function StudentQuizPage() {
 
                     {/* Main Question Area */}
                     <div className="lg:col-span-3">
-                        <div className="card bg-white shadow-lg border border-slate-200">
-                            <div className="card-body p-8">
+                        <div className="glass-panel overflow-hidden border border-white/40 dark:border-slate-700/50 shadow-xl rounded-3xl min-h-[60vh]">
+                            <div className="p-8 md:p-10 relative">
+                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
                                 {selectedQuestion && (
-                                    <>
+                                    <div className="flex flex-col h-full relative z-10 animate-in fade-in duration-300">
                                         {/* Question Header */}
                                         <div className="mb-8">
                                             <div className="flex items-start justify-between mb-4">
@@ -491,7 +488,7 @@ function StudentQuizPage() {
                                                 </span>
                                             </div>
                                         )}
-                                    </>
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -507,7 +504,7 @@ function StudentQuizPage() {
                     </div>
                 </div>
             )}
-        </div>
+        </PageWrapper>
     );
 }
 

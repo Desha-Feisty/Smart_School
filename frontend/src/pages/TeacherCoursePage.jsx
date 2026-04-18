@@ -9,7 +9,6 @@ import ChatWindow from "../components/ChatWindow";
 import toast from "react-hot-toast";
 import {
     ArrowLeft,
-    LogOut,
     Edit,
     Trash2,
     CheckCircle,
@@ -23,6 +22,8 @@ import {
     Users,
     UserX,
 } from "lucide-react";
+import PageWrapper from "../components/layout/PageWrapper";
+import Navbar from "../components/layout/Navbar";
 
 function TeacherCoursePage() {
     const { id } = useParams();
@@ -301,81 +302,65 @@ function TeacherCoursePage() {
 
     if (!course)
         return (
-            <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+            <div className="min-h-screen flex items-center justify-center dark:bg-base-300">
                 <span className="loading loading-spinner loading-lg text-blue-600"></span>
             </div>
         );
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100">
-            {/* Navigation Header */}
-            <nav className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
-                <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => navigate("/teacher")}
-                            className="btn btn-ghost btn-circle gap-0"
-                        >
-                            <ArrowLeft className="w-5 h-5" />
-                        </button>
-                        <div>
-                            <p className="text-sm text-gray-600">
-                                Managing Course
-                            </p>
-                            <h1 className="text-xl font-bold text-gray-900 line-clamp-1">
-                                {course.title}
-                            </h1>
-                        </div>
-                    </div>
-                    <button
-                        onClick={handleLogout}
-                        className="btn btn-ghost gap-2"
-                    >
-                        <LogOut className="w-5 h-5" />
-                        Logout
-                    </button>
-                </div>
-            </nav>
+        <PageWrapper>
+            <Navbar />
 
-            <main className="max-w-7xl mx-auto px-6 py-8">
+            <main className="max-w-7xl mx-auto px-6 py-8 animate-in fade-in duration-500 w-full relative z-10">
                 {/* Course Header Card */}
-                <div className="card bg-white shadow-lg border border-slate-200 mb-8">
-                    <div className="card-body">
-                        <div className="flex items-start justify-between mb-4">
+                <div className="glass-panel overflow-hidden mb-8 border border-white/40 dark:border-slate-700/50 shadow-xl shadow-blue-900/5 rounded-3xl">
+                    <div className="p-8 md:p-10 relative">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+                        <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 relative z-10">
                             <div className="flex-1">
-                                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <button
+                                        onClick={() => navigate("/teacher")}
+                                        className="btn btn-ghost btn-sm btn-circle dark:text-slate-300"
+                                    >
+                                        <ArrowLeft className="w-5 h-5" />
+                                    </button>
+                                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Managing Course</p>
+                                </div>
+                                <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-4 bg-clip-text">
                                     {course.title}
                                 </h1>
-                                <p className="text-gray-600 mb-4">
+                                <p className="text-slate-600 dark:text-slate-300 mb-6 max-w-2xl text-lg leading-relaxed">
                                     {course.description}
                                 </p>
-                                <div className="flex items-center gap-3">
-                                    <div className="badge badge-primary gap-2">
-                                        <Copy className="w-4 h-4" />
-                                        {course.joinCode}
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-xl border border-blue-100 dark:border-blue-800/50 font-mono font-medium shadow-sm">
+                                        <Copy className="w-4 h-4 opacity-70" />
+                                        <span>Join Code: </span>
+                                        <span className="font-bold tracking-wider">{course.joinCode}</span>
                                     </div>
                                     <button
                                         onClick={handleCopyJoinCode}
-                                        className="btn btn-ghost btn-sm gap-2"
+                                        className="btn btn-ghost text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white dark:hover:bg-slate-800 rounded-xl px-4"
                                     >
-                                        <Copy className="w-4 h-4" />
-                                        Copy Code
+                                        <Copy className="w-4 h-4 mr-2" />
+                                        Copy
                                     </button>
                                 </div>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-3 md:flex-col lg:flex-row">
                                 <button
                                     onClick={() => setIsEditing(!isEditing)}
-                                    className="btn btn-ghost gap-2"
+                                    className={`btn btn-outline border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl px-6 ${isEditing ? 'bg-slate-100 dark:bg-slate-800' : 'bg-white/50 dark:bg-slate-800/30'}`}
                                 >
-                                    <Edit className="w-5 h-5" />
-                                    {isEditing ? "Cancel" : "Edit"}
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    {isEditing ? "Cancel Edit" : "Edit Course"}
                                 </button>
                                 <button
                                     onClick={handleDeleteCourse}
-                                    className="btn btn-ghost gap-2 text-error"
+                                    className="btn btn-ghost text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300 rounded-xl px-6"
                                 >
-                                    <Trash2 className="w-5 h-5" />
+                                    <Trash2 className="w-4 h-4 mr-2" />
                                     Delete
                                 </button>
                             </div>
@@ -383,17 +368,18 @@ function TeacherCoursePage() {
 
                         {/* Edit Form */}
                         {isEditing && (
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
-                                <h3 className="font-bold text-lg mb-4">
+                            <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-700/50 animate-in slide-in-from-top-4 duration-300">
+                                <h3 className="font-bold text-xl mb-6 text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                    <Edit className="w-5 h-5 text-blue-500" />
                                     Edit Course Details
                                 </h3>
                                 <form
                                     onSubmit={handleUpdateCourse}
-                                    className="space-y-4"
+                                    className="space-y-5 max-w-3xl"
                                 >
                                     <div className="form-control">
                                         <label className="label">
-                                            <span className="label-text font-semibold">
+                                            <span className="label-text font-semibold text-slate-700 dark:text-slate-300">
                                                 Course Title
                                             </span>
                                         </label>
@@ -406,12 +392,12 @@ function TeacherCoursePage() {
                                                     title: e.target.value,
                                                 })
                                             }
-                                            className="input input-bordered focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="input input-bordered bg-white/50 dark:bg-base-300/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 rounded-xl transition-all"
                                         />
                                     </div>
                                     <div className="form-control">
                                         <label className="label">
-                                            <span className="label-text font-semibold">
+                                            <span className="label-text font-semibold text-slate-700 dark:text-slate-300">
                                                 Description
                                             </span>
                                         </label>
@@ -423,23 +409,20 @@ function TeacherCoursePage() {
                                                     description: e.target.value,
                                                 })
                                             }
-                                            className="textarea textarea-bordered h-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="textarea textarea-bordered h-28 bg-white/50 dark:bg-base-300/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 rounded-xl transition-all"
                                         />
                                     </div>
-                                    <div className="flex gap-3">
+                                    <div className="flex gap-3 pt-2">
                                         <button
                                             type="submit"
                                             disabled={isUpdatingCourse}
-                                            className="btn btn-primary gap-2"
+                                            className="btn btn-primary rounded-xl px-8 shadow-md shadow-blue-500/20"
                                         >
                                             {isUpdatingCourse ? (
-                                                <>
-                                                    <span className="loading loading-spinner loading-xs"></span>
-                                                    Saving...
-                                                </>
+                                                <span className="loading loading-spinner loading-sm"></span>
                                             ) : (
                                                 <>
-                                                    <CheckCircle className="w-5 h-5" />
+                                                    <CheckCircle className="w-5 h-5 mr-2" />
                                                     Save Changes
                                                 </>
                                             )}
@@ -447,7 +430,7 @@ function TeacherCoursePage() {
                                         <button
                                             type="button"
                                             onClick={() => setIsEditing(false)}
-                                            className="btn btn-ghost"
+                                            className="btn btn-ghost rounded-xl px-6 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"
                                         >
                                             Cancel
                                         </button>
@@ -471,8 +454,8 @@ function TeacherCoursePage() {
                     </div>
                 )}
 
-                {/* Tabs */}
-                <div className="tabs tabs-lifted border-b border-slate-200 mb-8">
+                {/* Modern Pill Tabs */}
+                <div className="flex overflow-x-auto hide-scrollbar gap-2 mb-8 bg-slate-200/50 dark:bg-base-300/50 p-1.5 rounded-2xl w-max border border-slate-200 dark:border-slate-700/50">
                     {[
                         { id: "quizzes", label: "Quizzes", icon: BookOpen },
                         { id: "students", label: "Students", icon: Users },
@@ -486,13 +469,13 @@ function TeacherCoursePage() {
                         <button
                             key={tabId}
                             onClick={() => setActiveTab(tabId)}
-                            className={`tab tab-lg gap-2 font-semibold ${
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-300 ${
                                 activeTab === tabId
-                                    ? "tab-active border-b-2 border-blue-600 text-blue-600"
-                                    : "text-gray-600"
+                                    ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-md"
+                                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50"
                             }`}
                         >
-                            <Icon className="w-5 h-5" />
+                            <Icon className={`w-4 h-4 ${activeTab === tabId ? "opacity-100" : "opacity-70"}`} />
                             {label}
                         </button>
                     ))}
@@ -517,90 +500,69 @@ function TeacherCoursePage() {
                                 quizzes.map((quiz) => (
                                     <div
                                         key={quiz._id}
-                                        className="card bg-white shadow-lg border border-slate-200 hover:shadow-xl transition-shadow"
+                                        className="glass-card hover:-translate-y-1 transition-all overflow-hidden flex flex-col relative group"
                                     >
-                                        <div className="card-body">
-                                            <div className="flex items-start justify-between">
+                                        <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/50 dark:bg-blue-400/50 group-hover:bg-blue-500 dark:group-hover:bg-blue-400 transition-colors"></div>
+                                        <div className="card-body p-6 ml-1">
+                                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-3 mb-2">
-                                                        <h3 className="card-title text-lg text-gray-900">
+                                                        <h3 className="card-title text-xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                                                             {quiz.title}
                                                         </h3>
                                                         {quiz.published ? (
-                                                            <span className="badge badge-success gap-1">
-                                                                <CheckCircle className="w-4 h-4" />
+                                                            <span className="badge badge-success badge-sm py-2.5 shadow-sm shadow-success/20 gap-1 text-white px-3 font-medium">
+                                                                <CheckCircle className="w-3.5 h-3.5" />
                                                                 Published
                                                             </span>
                                                         ) : (
-                                                            <span className="badge badge-warning">
+                                                            <span className="badge badge-warning badge-sm py-2.5 shadow-sm shadow-warning/20 gap-1 text-warning-content px-3 font-medium">
                                                                 Draft
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <p className="text-gray-600 text-sm mb-3">
+                                                    <p className="text-slate-600 dark:text-slate-400 text-sm mb-4 line-clamp-2">
                                                         {quiz.description}
                                                     </p>
-                                                    <div className="flex flex-wrap gap-4 text-xs text-gray-500">
-                                                        <div className="flex items-center gap-1">
-                                                            <Clock className="w-4 h-4" />
-                                                            Open:{" "}
-                                                            {new Date(
-                                                                quiz.openAt,
-                                                            ).toLocaleString()}
+                                                    <div className="flex flex-wrap gap-3 text-xs font-medium text-slate-500 dark:text-slate-400">
+                                                        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                                                            <Clock className="w-3.5 h-3.5 text-blue-500" />
+                                                            <span>Open: <span className="text-slate-700 dark:text-slate-300">{new Date(quiz.openAt).toLocaleString()}</span></span>
                                                         </div>
-                                                        <div className="flex items-center gap-1">
-                                                            <Clock className="w-4 h-4" />
-                                                            Close:{" "}
-                                                            {new Date(
-                                                                quiz.closeAt,
-                                                            ).toLocaleString()}
+                                                        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                                                            <Clock className="w-3.5 h-3.5 text-orange-500" />
+                                                            <span>Close: <span className="text-slate-700 dark:text-slate-300">{new Date(quiz.closeAt).toLocaleString()}</span></span>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="flex gap-2">
+                                                <div className="flex flex-row sm:flex-col gap-2 shrink-0">
                                                     {!quiz.published ? (
                                                         <button
-                                                            onClick={() =>
-                                                                handlePublishQuiz(
-                                                                    quiz._id,
-                                                                )
-                                                            }
-                                                            className="btn btn-success btn-sm gap-2"
+                                                            onClick={(e) => { e.stopPropagation(); handlePublishQuiz(quiz._id); }}
+                                                            className="btn btn-success btn-sm text-white shadow-md shadow-success/20 gap-2 w-full sm:w-auto hover:-translate-y-0.5 transition-transform"
                                                         >
                                                             <CheckCircle className="w-4 h-4" />
                                                             Publish
                                                         </button>
                                                     ) : (
                                                         <button
-                                                            onClick={() =>
-                                                                handleUnpublishQuiz(
-                                                                    quiz._id,
-                                                                )
-                                                            }
-                                                            className="btn btn-warning btn-sm gap-2"
+                                                            onClick={(e) => { e.stopPropagation(); handleUnpublishQuiz(quiz._id); }}
+                                                            className="btn btn-warning btn-sm text-warning-content shadow-md shadow-warning/20 gap-2 w-full sm:w-auto hover:-translate-y-0.5 transition-transform"
                                                         >
                                                             <Clock className="w-4 h-4" />
                                                             Unpublish
                                                         </button>
                                                     )}
                                                     <button
-                                                        onClick={() =>
-                                                            navigate(
-                                                                `/teacher/quiz/${quiz._id}/questions`,
-                                                            )
-                                                        }
-                                                        className="btn btn-ghost btn-sm gap-2"
+                                                        onClick={(e) => { e.stopPropagation(); navigate(`/teacher/quiz/${quiz._id}/questions`); }}
+                                                        className="btn btn-outline border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-800 btn-sm gap-2 w-full sm:w-auto dark:text-slate-300 hover:-translate-y-0.5 transition-transform"
                                                     >
                                                         <Eye className="w-4 h-4" />
                                                         Questions
                                                     </button>
                                                     <button
-                                                        onClick={() =>
-                                                            handleDeleteQuiz(
-                                                                quiz._id,
-                                                            )
-                                                        }
-                                                        className="btn btn-ghost btn-sm gap-2 text-error"
+                                                        onClick={(e) => { e.stopPropagation(); handleDeleteQuiz(quiz._id); }}
+                                                        className="btn btn-ghost text-red-500 dark:text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 btn-sm gap-2 w-full sm:w-auto"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
                                                         Delete
@@ -615,19 +577,24 @@ function TeacherCoursePage() {
 
                         {/* Create Quiz Form */}
                         <div className="lg:col-span-1">
-                            <div className="card bg-white shadow-lg border border-slate-200 sticky top-20">
-                                <div className="card-body">
-                                    <h2 className="card-title text-lg flex items-center gap-2">
-                                        <Plus className="w-5 h-5" />
-                                        New Quiz
-                                    </h2>
+                            <div className="glass-panel overflow-hidden sticky top-24 rounded-3xl shadow-xl shadow-emerald-500/5 border border-white/40 dark:border-slate-700/50">
+                                <div className="absolute top-0 w-full h-1 bg-emerald-500"></div>
+                                <div className="p-6">
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <div className="p-2 bg-emerald-100 dark:bg-emerald-900/40 rounded-lg">
+                                            <Plus className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                                        </div>
+                                        <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                                            New Quiz
+                                        </h2>
+                                    </div>
                                     <form
                                         onSubmit={handleCreateQuiz}
                                         className="space-y-4"
                                     >
                                         <div className="form-control">
                                             <label className="label">
-                                                <span className="label-text font-semibold text-sm">
+                                                <span className="label-text font-medium text-slate-700 dark:text-slate-300">
                                                     Title
                                                 </span>
                                             </label>
@@ -641,13 +608,13 @@ function TeacherCoursePage() {
                                                         title: e.target.value,
                                                     })
                                                 }
-                                                className="input input-bordered input-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className="input input-sm h-10 w-full bg-white/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 rounded-xl"
                                                 placeholder="Quiz title"
                                             />
                                         </div>
                                         <div className="form-control">
                                             <label className="label">
-                                                <span className="label-text font-semibold text-sm">
+                                                <span className="label-text font-medium text-slate-700 dark:text-slate-300">
                                                     Description
                                                 </span>
                                             </label>
@@ -660,52 +627,56 @@ function TeacherCoursePage() {
                                                             e.target.value,
                                                     })
                                                 }
-                                                className="textarea textarea-bordered textarea-sm h-20 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                placeholder="Description"
+                                                className="textarea h-24 w-full bg-white/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 rounded-xl py-2"
+                                                placeholder="Description..."
                                             />
                                         </div>
-                                        <div className="form-control">
-                                            <label className="label">
-                                                <span className="label-text font-semibold text-sm">
-                                                    Open Date
-                                                </span>
-                                            </label>
-                                            <input
-                                                type="datetime-local"
-                                                required
-                                                value={newQuiz.openAt}
-                                                onChange={(e) =>
-                                                    setNewQuiz({
-                                                        ...newQuiz,
-                                                        openAt: e.target.value,
-                                                    })
-                                                }
-                                                className="input input-bordered input-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            />
+                                        
+                                        <div className="grid grid-cols-1 gap-4 bg-slate-50 dark:bg-slate-800/30 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50">
+                                            <div className="form-control">
+                                                <label className="label py-1">
+                                                    <span className="label-text font-semibold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                                        Open Date
+                                                    </span>
+                                                </label>
+                                                <input
+                                                    type="datetime-local"
+                                                    required
+                                                    value={newQuiz.openAt}
+                                                    onChange={(e) =>
+                                                        setNewQuiz({
+                                                            ...newQuiz,
+                                                            openAt: e.target.value,
+                                                        })
+                                                    }
+                                                    className="input input-sm h-10 w-full bg-white dark:bg-base-300 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 rounded-xl text-slate-700 dark:text-slate-300"
+                                                />
+                                            </div>
+                                            <div className="form-control">
+                                                <label className="label py-1">
+                                                    <span className="label-text font-semibold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                                        Close Date
+                                                    </span>
+                                                </label>
+                                                <input
+                                                    type="datetime-local"
+                                                    required
+                                                    value={newQuiz.closeAt}
+                                                    onChange={(e) =>
+                                                        setNewQuiz({
+                                                            ...newQuiz,
+                                                            closeAt: e.target.value,
+                                                        })
+                                                    }
+                                                    className="input input-sm h-10 w-full bg-white dark:bg-base-300 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 rounded-xl text-slate-700 dark:text-slate-300"
+                                                />
+                                            </div>
                                         </div>
-                                        <div className="form-control">
-                                            <label className="label">
-                                                <span className="label-text font-semibold text-sm">
-                                                    Close Date
-                                                </span>
-                                            </label>
-                                            <input
-                                                type="datetime-local"
-                                                required
-                                                value={newQuiz.closeAt}
-                                                onChange={(e) =>
-                                                    setNewQuiz({
-                                                        ...newQuiz,
-                                                        closeAt: e.target.value,
-                                                    })
-                                                }
-                                                className="input input-bordered input-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
+                                        
+                                        <div className="grid grid-cols-2 gap-3">
                                             <div className="form-control">
                                                 <label className="label">
-                                                    <span className="label-text font-semibold text-xs">
+                                                    <span className="label-text font-medium text-slate-700 dark:text-slate-300 text-xs">
                                                         Duration (min)
                                                     </span>
                                                 </label>
@@ -726,12 +697,12 @@ function TeacherCoursePage() {
                                                                 ),
                                                         })
                                                     }
-                                                    className="input input-bordered input-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className="input input-sm h-10 w-full bg-white/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 rounded-xl text-center"
                                                 />
                                             </div>
                                             <div className="form-control">
                                                 <label className="label">
-                                                    <span className="label-text font-semibold text-xs">
+                                                    <span className="label-text font-medium text-slate-700 dark:text-slate-300 text-xs">
                                                         Attempts
                                                     </span>
                                                 </label>
@@ -752,25 +723,25 @@ function TeacherCoursePage() {
                                                                 ),
                                                         })
                                                     }
-                                                    className="input input-bordered input-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className="input input-sm h-10 w-full bg-white/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 rounded-xl text-center"
                                                 />
                                             </div>
                                         </div>
                                         <button
                                             type="submit"
                                             disabled={isCreatingQuiz}
-                                            className="btn btn-primary btn-sm w-full gap-2"
+                                            className="btn btn-success text-white w-full shadow-lg shadow-success/20 rounded-xl h-11 mt-2 hover:-translate-y-0.5 transition-transform"
                                         >
                                             {isCreatingQuiz ? (
                                                 <>
-                                                    <span className="loading loading-spinner loading-xs"></span>
+                                                    <span className="loading loading-spinner loading-sm"></span>
                                                     Creating...
                                                 </>
                                             ) : (
-                                                <>
-                                                    <Plus className="w-4 h-4" />
+                                                <span className="font-semibold tracking-wide flex items-center justify-center gap-2">
+                                                    <Plus className="w-5 h-5" />
                                                     Create Quiz
-                                                </>
+                                                </span>
                                             )}
                                         </button>
                                     </form>
@@ -782,8 +753,8 @@ function TeacherCoursePage() {
 
                 {/* Students Tab */}
                 {activeTab === "students" && (
-                    <div className="card bg-white shadow-lg border border-slate-200">
-                        <div className="card-body">
+                    <div className="glass-panel overflow-hidden rounded-3xl border border-white/40 dark:border-slate-700/50 shadow-xl">
+                        <div className="p-8">
                             <h2 className="card-title text-2xl mb-6 flex items-center gap-2">
                                 <Users className="w-6 h-6 text-blue-600" />
                                 Enrolled Students
@@ -820,7 +791,7 @@ function TeacherCoursePage() {
                                         return (
                                             <div
                                                 key={enrollment._id}
-                                                className="card bg-slate-50 border border-slate-200"
+                                                className="glass-card hover:-translate-y-1 transition-all"
                                             >
                                                 <div className="card-body p-4">
                                                     <div className="flex items-start justify-between">
@@ -988,8 +959,8 @@ function TeacherCoursePage() {
 
                 {/* Grades Tab */}
                 {activeTab === "grades" && (
-                    <div className="card bg-white shadow-lg border border-slate-200">
-                        <div className="card-body">
+                    <div className="glass-panel overflow-hidden rounded-3xl border border-white/40 dark:border-slate-700/50 shadow-xl">
+                        <div className="p-8">
                             <h2 className="card-title text-2xl mb-6 flex items-center gap-2">
                                 <Award className="w-6 h-6 text-blue-600" />
                                 Student Grades by Quiz
@@ -1016,10 +987,10 @@ function TeacherCoursePage() {
                                                         quiz.title,
                                                     );
                                                 }}
-                                                className={`card transition-all cursor-pointer ${
+                                                className={`card transition-all cursor-pointer border ${
                                                     selectedQuiz === quiz._id
-                                                        ? "border-blue-600 shadow-lg bg-blue-50"
-                                                        : "border-slate-200 bg-white hover:shadow-md"
+                                                        ? "border-blue-500 shadow-md bg-blue-50 dark:bg-blue-900/20"
+                                                        : "border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 hover:shadow-md"
                                                 }`}
                                             >
                                                 <div className="card-body p-4">
@@ -1204,7 +1175,7 @@ function TeacherCoursePage() {
                     }}
                 />
             )}
-        </div>
+        </PageWrapper>
     );
 }
 

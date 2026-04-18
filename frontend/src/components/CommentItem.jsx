@@ -38,50 +38,48 @@ export default function CommentItem({ comment, isTeacher, onCommentDeleted }) {
     );
 
     return (
-        <div className="card bg-white border border-slate-200 shadow-sm">
-            <div className="card-body">
-                <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                        <div className="avatar placeholder">
-                            <div className="bg-blue-500 text-white rounded-full w-8">
-                                <span className="text-xs font-bold">
-                                    {comment.user?.name
-                                        ?.charAt(0)
-                                        .toUpperCase()}
-                                </span>
-                            </div>
-                        </div>
-                        <div>
-                            <p className="font-semibold text-gray-900">
+        <div className="p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-3">
+                {/* Avatar + Meta */}
+                <div className="flex items-start gap-3 min-w-0">
+                    <div className="shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-md shadow-blue-500/20">
+                        {comment.user?.name?.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <p className="font-bold text-sm text-slate-900 dark:text-white">
                                 {comment.user?.name || "Unknown"}
                             </p>
-                            <div className="flex items-center gap-1 text-xs text-gray-500">
-                                <Calendar className="w-3 h-3" />
-                                {commentDate}
-                            </div>
+                            {isCommentAuthor && (
+                                <span className="badge badge-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-0 font-semibold">
+                                    You
+                                </span>
+                            )}
                         </div>
-                        {isCommentAuthor && (
-                            <div className="badge badge-sm badge-ghost ml-auto">
-                                You
-                            </div>
-                        )}
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mb-3">
+                            <Calendar className="w-3 h-3" />
+                            {commentDate}
+                        </div>
+                        <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">
+                            {comment.content}
+                        </p>
                     </div>
-
-                    {canDelete && (
-                        <button
-                            onClick={handleDelete}
-                            disabled={isDeleting}
-                            className="btn btn-ghost btn-sm btn-circle"
-                            title="Delete comment"
-                        >
-                            <Trash2 className="w-4 h-4 text-red-600" />
-                        </button>
-                    )}
                 </div>
 
-                <p className="text-gray-700 text-sm leading-relaxed">
-                    {comment.content}
-                </p>
+                {/* Delete Button */}
+                {canDelete && (
+                    <button
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                        className="shrink-0 btn btn-ghost btn-xs btn-circle text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 dark:text-slate-500 dark:hover:text-red-400 transition-colors mt-0.5"
+                        title="Delete comment"
+                    >
+                        {isDeleting
+                            ? <span className="loading loading-spinner loading-xs" />
+                            : <Trash2 className="w-3.5 h-3.5" />
+                        }
+                    </button>
+                )}
             </div>
         </div>
     );

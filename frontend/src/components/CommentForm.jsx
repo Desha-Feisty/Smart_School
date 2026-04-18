@@ -31,45 +31,46 @@ export default function CommentForm({ noteId, onCommentAdded }) {
     };
 
     return (
-        <div className="card bg-blue-50 border border-blue-200 mt-8">
-            <div className="card-body">
-                <h4 className="card-title text-base mb-4">Add Your Comment</h4>
+        <div className="glass-card bg-blue-50/50 dark:bg-blue-900/10 border border-blue-200/60 dark:border-blue-800/30 rounded-2xl p-6 mt-6">
+            <h4 className="text-base font-bold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
+                <Send className="w-4 h-4 text-blue-500" />
+                Add Your Comment
+            </h4>
 
-                <form onSubmit={handleSubmit} className="space-y-3">
-                    <textarea
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        className="textarea textarea-bordered w-full focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                        placeholder="Share your thoughts..."
-                        rows="3"
-                        disabled={isSubmitting}
-                        maxLength={1000}
-                    />
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <textarea
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    className="textarea w-full bg-white/70 dark:bg-base-300/60 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-none rounded-xl text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    placeholder="Share your thoughts..."
+                    rows="3"
+                    disabled={isSubmitting}
+                    maxLength={1000}
+                />
 
-                    <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-500">
-                            {content.length}/1000
-                        </span>
-                        <button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="btn btn-sm btn-primary gap-2"
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <span className="loading loading-spinner loading-xs"></span>
-                                    Posting...
-                                </>
-                            ) : (
-                                <>
-                                    <Send className="w-4 h-4" />
-                                    Comment
-                                </>
-                            )}
-                        </button>
-                    </div>
-                </form>
-            </div>
+                <div className="flex justify-between items-center">
+                    <span className={`text-xs font-medium tabular-nums ${content.length > 900 ? 'text-orange-500 dark:text-orange-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                        {content.length}/1000
+                    </span>
+                    <button
+                        type="submit"
+                        disabled={isSubmitting || !content.trim()}
+                        className="btn btn-sm btn-primary gap-2 shadow-md shadow-blue-500/20 rounded-xl hover:-translate-y-0.5 transition-transform disabled:opacity-50 disabled:translate-y-0"
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <span className="loading loading-spinner loading-xs"></span>
+                                Posting...
+                            </>
+                        ) : (
+                            <>
+                                <Send className="w-4 h-4" />
+                                Post Comment
+                            </>
+                        )}
+                    </button>
+                </div>
+            </form>
         </div>
     );
 }

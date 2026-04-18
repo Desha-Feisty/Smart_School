@@ -13,6 +13,8 @@ import {
     TrendingUp,
     ArrowLeft,
 } from "lucide-react";
+import PageWrapper from "./layout/PageWrapper";
+import Navbar from "./layout/Navbar";
 
 function QuizResultsPage() {
     const { attemptId } = useParams();
@@ -55,18 +57,21 @@ function QuizResultsPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-                <span className="loading loading-spinner loading-lg text-blue-600"></span>
-            </div>
+            <PageWrapper>
+                <div className="min-h-[80vh] flex items-center justify-center">
+                    <span className="loading loading-spinner loading-lg text-blue-600"></span>
+                </div>
+            </PageWrapper>
         );
     }
 
     if (error) {
         return (
-            <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center px-6">
-                <div className="card bg-white shadow-lg border border-slate-200 max-w-md">
-                    <div className="card-body text-center">
-                        <p className="text-error text-lg mb-4">{error}</p>
+            <PageWrapper>
+                <Navbar />
+                <div className="min-h-[80vh] flex items-center justify-center px-6 relative z-10">
+                    <div className="glass-panel max-w-md w-full border border-white/40 dark:border-slate-700/50 shadow-xl rounded-3xl p-8 text-center text-red-600 dark:text-red-400">
+                        <p className="text-xl font-bold mb-6">{error}</p>
                         <button
                             onClick={() => navigate("/student")}
                             className="btn btn-primary gap-2"
@@ -76,16 +81,17 @@ function QuizResultsPage() {
                         </button>
                     </div>
                 </div>
-            </div>
+            </PageWrapper>
         );
     }
 
     if (!attempt) {
         return (
-            <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center px-6">
-                <div className="card bg-white shadow-lg border border-slate-200">
-                    <div className="card-body text-center">
-                        <p className="text-gray-600 text-lg mb-4">
+            <PageWrapper>
+                <Navbar />
+                <div className="min-h-[80vh] flex items-center justify-center px-6 relative z-10">
+                    <div className="glass-panel max-w-md w-full border border-white/40 dark:border-slate-700/50 shadow-xl rounded-3xl p-8 text-center">
+                        <p className="text-slate-600 dark:text-slate-400 text-lg font-bold mb-6">
                             Results not found
                         </p>
                         <button
@@ -97,7 +103,7 @@ function QuizResultsPage() {
                         </button>
                     </div>
                 </div>
-            </div>
+            </PageWrapper>
         );
     }
 
@@ -191,28 +197,31 @@ function QuizResultsPage() {
     })();
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 py-8 px-6">
-            <div className="max-w-3xl mx-auto space-y-8">
-                {/* Main Results Card */}
-                <div
-                    className={`card shadow-2xl border-2 ${performance.borderColor} ${performance.bgColor}`}
-                >
-                    <div className="card-body text-center py-12">
-                        {/* Performance Icon and Label */}
-                        <div className="flex justify-center mb-6">
-                            <div
-                                className={`p-6 rounded-full ${performance.bgColor} border-2 ${performance.borderColor}`}
-                            >
-                                <PerformanceIcon
-                                    className={`w-16 h-16 ${performance.color}`}
-                                />
+        <PageWrapper>
+            <Navbar />
+            <main className="min-h-screen py-12 px-6 animate-in fade-in duration-500 relative z-10">
+                <div className="max-w-4xl mx-auto space-y-8">
+                    {/* Main Results Card */}
+                    <div
+                        className={`glass-panel overflow-hidden border shadow-2xl relative rounded-3xl ${performance.borderColor} dark:border-slate-700/50`}
+                    >
+                        <div className={`absolute top-0 left-0 w-full h-2 ${performance.bgColor} dark:bg-opacity-20`}></div>
+                        <div className="p-12 text-center relative z-10">
+                            {/* Performance Icon and Label */}
+                            <div className="flex justify-center mb-6">
+                                <div
+                                    className={`p-6 rounded-full ${performance.bgColor} dark:bg-opacity-10 border-2 ${performance.borderColor} dark:border-opacity-30 shadow-inner`}
+                                >
+                                    <PerformanceIcon
+                                        className={`w-16 h-16 ${performance.color} dark:text-opacity-90`}
+                                    />
+                                </div>
                             </div>
-                        </div>
 
-                        {/* Quiz Title */}
-                        <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                            {attempt.quiz?.title || "Quiz Completed"}
-                        </h1>
+                            {/* Quiz Title */}
+                            <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white mb-2 tracking-tight">
+                                {attempt.quiz?.title || "Quiz Completed"}
+                            </h1>
                         <p
                             className={`text-lg font-semibold ${performance.color}`}
                         >
@@ -233,78 +242,76 @@ function QuizResultsPage() {
                             </div>
                         </div>
 
-                        {/* Performance Message */}
-                        <div className="bg-white bg-opacity-60 rounded-lg p-4 mb-6">
-                            <p
-                                className={`text-lg font-semibold ${performance.color}`}
-                            >
-                                {performance.message}
-                            </p>
-                        </div>
+                            {/* Performance Message */}
+                            <div className="glass-card bg-white/60 dark:bg-base-300/60 rounded-2xl p-6 mb-8 border border-white/40 dark:border-slate-700 max-w-lg mx-auto">
+                                <p
+                                    className={`text-lg font-bold ${performance.color} dark:text-opacity-90`}
+                                >
+                                    {performance.message}
+                                </p>
+                            </div>
 
-                        {/* Stats Grid */}
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="bg-white bg-opacity-60 rounded-lg p-4">
-                                <div className="flex items-center justify-center gap-2 mb-1">
-                                    <CheckCircle className="w-5 h-5 text-green-600" />
+                            {/* Stats Grid */}
+                            <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
+                                <div className="glass-card bg-white/60 dark:bg-base-300/60 rounded-2xl p-6 border border-white/40 dark:border-slate-700 hover:-translate-y-1 transition-transform">
+                                    <div className="flex items-center justify-center gap-2 mb-2">
+                                        <CheckCircle className="w-6 h-6 text-emerald-500" />
+                                    </div>
+                                    <p className="text-4xl font-black text-emerald-600 dark:text-emerald-400">
+                                        {correctAnswers}
+                                    </p>
+                                    <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mt-1">Correct</p>
                                 </div>
-                                <p className="text-3xl font-bold text-green-600">
-                                    {correctAnswers}
-                                </p>
-                                <p className="text-sm text-gray-600">Correct</p>
-                            </div>
-                            <div className="bg-white bg-opacity-60 rounded-lg p-4">
-                                <div className="flex items-center justify-center gap-2 mb-1">
-                                    <XCircle className="w-5 h-5 text-red-600" />
+                                <div className="glass-card bg-white/60 dark:bg-base-300/60 rounded-2xl p-6 border border-white/40 dark:border-slate-700 hover:-translate-y-1 transition-transform">
+                                    <div className="flex items-center justify-center gap-2 mb-2">
+                                        <XCircle className="w-6 h-6 text-red-500" />
+                                    </div>
+                                    <p className="text-4xl font-black text-red-600 dark:text-red-400">
+                                        {incorrectAnswers}
+                                    </p>
+                                    <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mt-1">
+                                        Incorrect
+                                    </p>
                                 </div>
-                                <p className="text-3xl font-bold text-red-600">
-                                    {incorrectAnswers}
-                                </p>
-                                <p className="text-sm text-gray-600">
-                                    Incorrect
-                                </p>
-                            </div>
-                            <div className="bg-white bg-opacity-60 rounded-lg p-4">
-                                <div className="flex items-center justify-center gap-2 mb-1">
-                                    <Clock className="w-5 h-5 text-blue-600" />
+                                <div className="glass-card bg-white/60 dark:bg-base-300/60 rounded-2xl p-6 border border-white/40 dark:border-slate-700 hover:-translate-y-1 transition-transform">
+                                    <div className="flex items-center justify-center gap-2 mb-2">
+                                        <Clock className="w-6 h-6 text-blue-500" />
+                                    </div>
+                                    <p className="text-4xl font-black text-blue-600 dark:text-blue-400">
+                                        {timeTaken !== null ? timeTaken : "--"}
+                                    </p>
+                                    <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mt-1">Minutes</p>
                                 </div>
-                                <p className="text-3xl font-bold text-blue-600">
-                                    {timeTaken !== null ? timeTaken : "--"}
-                                </p>
-                                <p className="text-sm text-gray-600">Minutes</p>
                             </div>
                         </div>
                     </div>
-                </div>
 
                 {/* Submission Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="card bg-white shadow-lg border border-slate-200">
-                        <div className="card-body">
-                            <div className="flex items-center gap-3 mb-2">
-                                <Calendar className="w-5 h-5 text-blue-600" />
-                                <span className="font-semibold text-gray-600">
-                                    Submitted
-                                </span>
-                            </div>
-                            <p className="text-gray-900 font-medium">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="glass-panel p-6 border border-white/40 dark:border-slate-700/50 shadow-lg rounded-2xl flex items-center gap-4">
+                        <div className="p-4 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 shrink-0">
+                            <Calendar className="w-8 h-8" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold tracking-wider uppercase text-slate-500 dark:text-slate-400 mb-1">
+                                Submitted On
+                            </p>
+                            <p className="text-lg font-bold text-slate-900 dark:text-white">
                                 {attempt.submittedAt
-                                    ? new Date(
-                                          attempt.submittedAt,
-                                      ).toLocaleString()
+                                    ? new Date(attempt.submittedAt).toLocaleString()
                                     : "N/A"}
                             </p>
                         </div>
                     </div>
-                    <div className="card bg-white shadow-lg border border-slate-200">
-                        <div className="card-body">
-                            <div className="flex items-center gap-3 mb-2">
-                                <Clock className="w-5 h-5 text-purple-600" />
-                                <span className="font-semibold text-gray-600">
-                                    Time Taken
-                                </span>
-                            </div>
-                            <p className="text-gray-900 font-medium">
+                    <div className="glass-panel p-6 border border-white/40 dark:border-slate-700/50 shadow-lg rounded-2xl flex items-center gap-4">
+                        <div className="p-4 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 shrink-0">
+                            <Clock className="w-8 h-8" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold tracking-wider uppercase text-slate-500 dark:text-slate-400 mb-1">
+                                Duration
+                            </p>
+                            <p className="text-lg font-bold text-slate-900 dark:text-white">
                                 {timeTaken !== null
                                     ? `${timeTaken} minute${timeTaken !== 1 ? "s" : ""}`
                                     : "Duration not available"}
@@ -315,64 +322,61 @@ function QuizResultsPage() {
 
                 {/* Answer Breakdown */}
                 {attempt.responses && attempt.responses.length > 0 && (
-                    <div className="card bg-white shadow-lg border border-slate-200">
-                        <div className="card-body">
-                            <h2 className="card-title text-2xl mb-6 flex items-center gap-2">
-                                <TrendingUp className="w-6 h-6 text-blue-600" />
-                                Answer Breakdown
+                    <div className="glass-panel overflow-hidden border border-white/40 dark:border-slate-700/50 shadow-xl rounded-3xl mt-8">
+                        <div className="p-8">
+                            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-8 flex items-center gap-3">
+                                <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg text-blue-600 dark:text-blue-400">
+                                    <TrendingUp className="w-6 h-6" />
+                                </div>
+                                Detailed Breakdown
                             </h2>
                             <div className="space-y-4">
                                 {attempt.responses.map((response, index) => {
-                                    const isCorrect =
-                                        response.pointsAwarded > 0;
+                                    const isCorrect = response.pointsAwarded > 0;
                                     return (
                                         <div
                                             key={index}
-                                            className={`p-4 rounded-lg border-l-4 transition-all ${
+                                            className={`p-6 rounded-2xl border-l-4 transition-all hover:-translate-y-0.5 ${
                                                 isCorrect
-                                                    ? "bg-green-50 border-l-green-500"
-                                                    : "bg-red-50 border-l-red-500"
+                                                    ? "bg-emerald-50/50 dark:bg-emerald-900/10 border-l-emerald-500 border-t border-r border-b border-slate-200 dark:border-slate-700"
+                                                    : "bg-red-50/50 dark:bg-red-900/10 border-l-red-500 border-t border-r border-b border-slate-200 dark:border-slate-700"
                                             }`}
                                         >
-                                            <div className="flex justify-between items-start mb-3">
+                                            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                                                 <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <h3 className="font-semibold text-gray-900">
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <h3 className="font-bold text-lg text-slate-900 dark:text-white">
                                                             Question {index + 1}
                                                         </h3>
                                                         {isCorrect ? (
-                                                            <CheckCircle className="w-5 h-5 text-green-600" />
+                                                            <CheckCircle className="w-5 h-5 text-emerald-500" />
                                                         ) : (
-                                                            <XCircle className="w-5 h-5 text-red-600" />
+                                                            <XCircle className="w-5 h-5 text-red-500" />
                                                         )}
                                                     </div>
-                                                    <p className="text-gray-700 leading-relaxed">
-                                                        {response.prompt ||
-                                                            "Question not available"}
+                                                    <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-lg">
+                                                        {response.prompt || "Question not available"}
                                                     </p>
                                                 </div>
-                                                <div className="text-right ml-4 shrink-0">
+                                                <div className="text-left sm:text-right shrink-0 bg-white dark:bg-base-300 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 shadow-sm self-start w-full sm:w-auto">
                                                     <div
-                                                        className={`text-2xl font-bold ${
+                                                        className={`text-3xl font-black mb-1 ${
                                                             isCorrect
-                                                                ? "text-green-600"
-                                                                : "text-red-600"
+                                                                ? "text-emerald-600 dark:text-emerald-400"
+                                                                : "text-red-600 dark:text-red-400"
                                                         }`}
                                                     >
-                                                        {response.pointsAwarded}{" "}
-                                                        / 1
+                                                        {response.pointsAwarded} <span className="text-lg text-slate-400 font-medium">/ 1</span>
                                                     </div>
-                                                    <p
-                                                        className={`text-xs font-semibold uppercase tracking-wider ${
+                                                    <div
+                                                        className={`text-xs font-bold uppercase tracking-wider ${
                                                             isCorrect
-                                                                ? "text-green-600"
-                                                                : "text-red-600"
+                                                                ? "text-emerald-600 dark:text-emerald-500"
+                                                                : "text-red-600 dark:text-red-500"
                                                         }`}
                                                     >
-                                                        {isCorrect
-                                                            ? "✓ Correct"
-                                                            : "✗ Incorrect"}
-                                                    </p>
+                                                        {isCorrect ? "✓ Correct" : "✗ Incorrect"}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -384,24 +388,25 @@ function QuizResultsPage() {
                 )}
 
                 {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <div className="flex flex-col sm:flex-row gap-4 justify-center mt-12 pb-12">
                     <button
                         onClick={() => navigate("/student")}
-                        className="btn btn-primary btn-lg gap-2"
+                        className="btn btn-primary btn-lg gap-2 shadow-lg shadow-blue-500/20 hover:-translate-y-0.5 rounded-2xl"
                     >
                         <Home className="w-5 h-5" />
                         Back to Dashboard
                     </button>
                     <button
                         onClick={() => navigate("/student")}
-                        className="btn btn-ghost btn-lg gap-2"
+                        className="btn btn-outline btn-lg gap-2 bg-white/50 dark:bg-base-300/50 hover:-translate-y-0.5 rounded-2xl border-slate-200 dark:border-slate-700"
                     >
                         <TrendingUp className="w-5 h-5" />
                         View Other Quizzes
                     </button>
                 </div>
             </div>
-        </div>
+            </main>
+        </PageWrapper>
     );
 }
 

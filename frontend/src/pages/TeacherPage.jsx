@@ -4,7 +4,6 @@ import useAuthStore from "../stores/Authstore";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
-    LogOut,
     Plus,
     Trash2,
     BookOpen,
@@ -12,6 +11,8 @@ import {
     ArrowRight,
     MessageSquare,
 } from "lucide-react";
+import PageWrapper from "../components/layout/PageWrapper";
+import Navbar from "../components/layout/Navbar";
 import ChatWindow from "../components/ChatWindow";
 
 function TeacherPage() {
@@ -77,77 +78,55 @@ function TeacherPage() {
     };
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100">
-            {/* Navigation Bar */}
-            <nav className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-linear-to-br from-blue-600 to-purple-600 rounded-lg">
-                            <BookOpen className="w-6 h-6 text-white" />
-                        </div>
-                        <h1 className="text-2xl font-bold bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                            LearnHub
-                        </h1>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        <div className="text-right">
-                            <p className="text-sm text-gray-600">
-                                Welcome back,
-                            </p>
-                            <p className="font-semibold text-gray-900">
-                                {user?.name}
-                            </p>
-                        </div>
-                        <button
-                            onClick={handleLogout}
-                            className="btn btn-ghost gap-2"
-                        >
-                            <LogOut className="w-5 h-5" />
-                            Logout
-                        </button>
-                    </div>
-                </div>
-            </nav>
+        <PageWrapper>
+            <Navbar />
 
             {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-6 py-12">
+            <main className="max-w-7xl mx-auto px-6 py-12 animate-in fade-in duration-500 w-full relative z-10">
                 {/* Header Section */}
                 <div className="mb-12">
-                    <h2 className="text-4xl font-bold text-gray-900 mb-2">
+                    <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">
                         Teacher Dashboard
                     </h2>
-                    <p className="text-gray-600">
+                    <p className="text-slate-600 dark:text-slate-400">
                         Manage your courses and track student progress
                     </p>
                 </div>
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                    <div className="card bg-white shadow-md border border-slate-200">
-                        <div className="card-body">
+                    <div
+                        className="glass-card bg-gradient-to-br from-blue-500/10 to-blue-600/5 dark:from-blue-500/20 dark:to-blue-600/10 cursor-pointer group"
+                        onClick={() => document.getElementById('courses-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                    >
+                        <div className="card-body p-6">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-gray-600 text-sm">
+                                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
                                         Total Courses
                                     </p>
-                                    <p className="text-3xl font-bold text-gray-900">
+                                    <p className="text-4xl font-bold text-slate-900 dark:text-white">
                                         {allCourses.length}
                                     </p>
+                                    <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        Click to view ↓
+                                    </p>
                                 </div>
-                                <BookOpen className="w-12 h-12 text-blue-100" />
+                                <div className="p-3 bg-blue-500/10 dark:bg-blue-500/20 rounded-2xl group-hover:scale-110 transition-transform">
+                                    <BookOpen className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="card bg-white shadow-md border border-slate-200">
-                        <div className="card-body">
+                    <div className="glass-card bg-gradient-to-br from-purple-500/10 to-pink-500/5 dark:from-purple-500/20 dark:to-pink-500/10">
+                        <div className="card-body p-6">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-gray-600 text-sm">
+                                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
                                         Active Students
                                     </p>
-                                    <p className="text-3xl font-bold text-gray-900">
+                                    <p className="text-4xl font-bold text-slate-900 dark:text-white">
                                         {allCourses.reduce(
                                             (sum, course) =>
                                                 sum +
@@ -156,26 +135,27 @@ function TeacherPage() {
                                         )}
                                     </p>
                                 </div>
-                                <Users className="w-12 h-12 text-purple-100" />
+                                <div className="p-3 bg-purple-500/10 dark:bg-purple-500/20 rounded-2xl">
+                                    <Users className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="card bg-white shadow-md border border-slate-200">
-                        <div className="card-body">
-                            <div
-                                onClick={() => setShowForm(!showForm)}
-                                className="cursor-pointer flex items-center justify-between hover:scale-105 transition"
-                            >
+                    <div className="glass-card bg-gradient-to-br from-emerald-500/10 to-teal-500/5 dark:from-emerald-500/20 dark:to-teal-500/10 group cursor-pointer hover:shadow-lg transition-all" onClick={() => setShowForm(!showForm)}>
+                        <div className="card-body p-6">
+                            <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-gray-600 text-sm">
+                                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
                                         Quick Action
                                     </p>
-                                    <p className="font-semibold text-gray-900">
+                                    <p className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">
                                         Create Course
                                     </p>
                                 </div>
-                                <Plus className="w-8 h-8 text-green-500" />
+                                <div className="p-3 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-2xl group-hover:scale-110 transition-transform">
+                                    <Plus className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -183,26 +163,31 @@ function TeacherPage() {
 
                 {/* Create Course Form */}
                 {showForm && (
-                    <div className="card bg-white shadow-lg border border-slate-200 mb-12">
-                        <div className="card-body">
-                            <h3 className="card-title text-xl mb-4">
-                                Create New Course
-                            </h3>
+                    <div className="glass-panel rounded-2xl mb-12 overflow-hidden shadow-emerald-500/5 animate-in slide-in-from-top-4 duration-300">
+                        <div className="p-6 md:p-8">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="p-2 bg-emerald-100 dark:bg-emerald-900/40 rounded-lg">
+                                    <Plus className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                                    Create New Course
+                                </h3>
+                            </div>
 
                             <form
                                 onSubmit={handleCreateCourse}
-                                className="space-y-4"
+                                className="space-y-5"
                             >
                                 <div className="form-control">
                                     <label className="label">
-                                        <span className="label-text font-semibold">
+                                        <span className="label-text font-semibold text-slate-700 dark:text-slate-300">
                                             Course Title
                                         </span>
                                     </label>
                                     <input
                                         type="text"
                                         placeholder="e.g., Advanced React Patterns"
-                                        className="input input-bordered focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="input input-bordered bg-white/50 dark:bg-base-300/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                                         value={newCourse.title}
                                         onChange={(e) =>
                                             setNewCourse({
@@ -216,13 +201,13 @@ function TeacherPage() {
 
                                 <div className="form-control">
                                     <label className="label">
-                                        <span className="label-text font-semibold">
+                                        <span className="label-text font-semibold text-slate-700 dark:text-slate-300">
                                             Description
                                         </span>
                                     </label>
                                     <textarea
                                         placeholder="Describe what students will learn..."
-                                        className="textarea textarea-bordered h-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="textarea textarea-bordered h-24 bg-white/50 dark:bg-base-300/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                                         value={newCourse.description}
                                         onChange={(e) =>
                                             setNewCourse({
@@ -234,11 +219,11 @@ function TeacherPage() {
                                     />
                                 </div>
 
-                                <div className="flex gap-3">
+                                <div className="flex gap-3 pt-2">
                                     <button
                                         type="submit"
                                         disabled={isLoading}
-                                        className="btn btn-primary gap-2"
+                                        className="btn btn-success text-white shadow-lg shadow-success/20 gap-2"
                                     >
                                         {isLoading ? (
                                             <>
@@ -255,7 +240,7 @@ function TeacherPage() {
                                     <button
                                         type="button"
                                         onClick={() => setShowForm(false)}
-                                        className="btn btn-ghost"
+                                        className="btn btn-ghost text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
                                     >
                                         Cancel
                                     </button>
@@ -267,21 +252,27 @@ function TeacherPage() {
 
                 {/* Recent Chats Section */}
                 <div className="mb-12">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                        <MessageSquare className="w-6 h-6 text-blue-600" />
-                        Recent Chats
-                    </h3>
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
+                            <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                            Recent Chats
+                        </h3>
+                    </div>
 
                     {recentChatsLoading ? (
-                        <div className="flex justify-center p-6"><span className="loading loading-spinner text-blue-600"></span></div>
+                        <div className="flex justify-center p-6"><span className="loading loading-spinner text-blue-500"></span></div>
                     ) : recentChats?.length === 0 ? (
-                        <div className="text-gray-500 italic p-4 bg-white rounded-xl shadow-sm border border-slate-200 text-center">No recent chats yet.</div>
+                        <div className="text-slate-500 dark:text-slate-400 italic p-6 rounded-2xl bg-slate-50/50 dark:bg-base-200/50 border border-slate-200 border-dashed dark:border-slate-700 text-center">
+                            No recent chats yet.
+                        </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {recentChats.map((chat) => (
                                 <div
                                     key={chat._id || Math.random()}
-                                    className="card bg-white shadow-sm hover:shadow-md border border-slate-200 transition-all cursor-pointer"
+                                    className="glass-card hover:-translate-y-1 cursor-pointer"
                                     onClick={() => {
                                         setChatCourseId(chat.course?._id || chat.course);
                                         setChatPeerId(chat.peer?._id || chat.peer);
@@ -289,18 +280,21 @@ function TeacherPage() {
                                         setChatOpen(true);
                                     }}
                                 >
-                                    <div className="card-body p-4">
+                                    <div className="card-body p-5">
                                         <div className="flex justify-between items-start mb-2">
-                                            <h4 className="font-semibold text-gray-900">{chat.peer?.name || "Unknown"}</h4>
-                                            <span className="text-xs text-gray-400">
+                                            <h4 className="font-semibold text-slate-900 dark:text-white">{chat.peer?.name || "Unknown"}</h4>
+                                            <span className="text-xs text-slate-400 dark:text-slate-500 font-medium bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">
                                                 {new Date(chat.createdAt).toLocaleDateString()}
                                             </span>
                                         </div>
-                                        <div className="text-xs text-blue-600 font-medium mb-2">
+                                        <div className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-3">
                                             {chat.course?.title || "Course"}
                                         </div>
-                                        <p className="text-sm text-gray-600 line-clamp-1">
-                                            {chat.sender && (chat.sender._id || chat.sender) === (user?._id || user?.id) ? "You: " : ""} {chat.text}
+                                        <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700/50">
+                                            {chat.sender && (chat.sender._id || chat.sender) === (user?._id || user?.id) ? (
+                                                <span className="font-medium text-slate-700 dark:text-slate-300">You: </span>
+                                            ) : null}
+                                            {chat.text}
                                         </p>
                                     </div>
                                 </div>
@@ -310,37 +304,40 @@ function TeacherPage() {
                 </div>
 
                 {/* Courses Grid */}
-                <div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-6">
-                        Your Courses
-                    </h3>
+                <div id="courses-section">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-purple-100 dark:bg-purple-900/40 rounded-lg">
+                            <BookOpen className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                            Your Courses
+                        </h3>
+                    </div>
 
                     {allCourses.length === 0 ? (
-                        <div className="card bg-white shadow-md border border-dashed border-slate-300">
-                            <div className="card-body text-center py-12">
-                                <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                                <p className="text-gray-600 mb-4">
-                                    No courses yet. Start teaching by creating
-                                    your first course!
-                                </p>
-                                <button
-                                    onClick={() => setShowForm(true)}
-                                    className="btn btn-primary gap-2 mx-auto"
-                                >
-                                    <Plus className="w-5 h-5" />
-                                    Create First Course
-                                </button>
-                            </div>
+                        <div className="glass-panel border-dashed p-12 text-center rounded-3xl">
+                            <BookOpen className="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+                            <p className="text-slate-600 dark:text-slate-400 mb-6">
+                                No courses yet. Start teaching by creating
+                                your first course!
+                            </p>
+                            <button
+                                onClick={() => setShowForm(true)}
+                                className="btn btn-primary shadow-lg shadow-blue-500/20 gap-2 mx-auto"
+                            >
+                                <Plus className="w-5 h-5" />
+                                Create First Course
+                            </button>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {allCourses.map((course) => (
                                 <div
                                     key={course._id || course.id}
-                                    className="card bg-white shadow-md hover:shadow-lg border border-slate-200 transition-all hover:border-blue-300 group cursor-pointer overflow-hidden"
+                                    className="glass-card group cursor-pointer overflow-hidden flex flex-col"
                                 >
                                     <div
-                                        className="card-body flex flex-col h-full"
+                                        className="card-body p-6 flex flex-col grow"
                                         onClick={() =>
                                             navigate(
                                                 `/teacher/course/${course._id || course.id}`,
@@ -348,30 +345,29 @@ function TeacherPage() {
                                         }
                                     >
                                         <div className="flex items-start justify-between mb-3">
-                                            <h4 className="card-title text-lg text-gray-900 group-hover:text-blue-600 transition">
+                                            <h4 className="card-title text-lg text-slate-900 dark:text-white group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
                                                 {course.title}
                                             </h4>
-                                            <div className="badge badge-primary">
+                                            <div className="badge badge-primary badge-sm shadow-sm ml-2 shrink-0">
                                                 {course.joinCode}
                                             </div>
                                         </div>
 
-                                        <p className="text-gray-600 text-sm grow line-clamp-2 mb-4">
+                                        <p className="text-slate-600 dark:text-slate-400 text-sm grow line-clamp-2 mb-4">
                                             {course.description}
                                         </p>
 
-                                        <div className="flex items-center justify-between pt-4 border-t border-slate-200">
-                                            <div className="text-sm text-gray-500">
-                                                <Users className="w-4 h-4 inline mr-1" />
-                                                {course.enrollmentCount || 0}{" "}
-                                                students
+                                        <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-700/50 mt-auto">
+                                            <div className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
+                                                <Users className="w-3.5 h-3.5 mr-1.5" />
+                                                {course.enrollmentCount || 0}
                                             </div>
-                                            <ArrowRight className="w-5 h-5 text-blue-600 group-hover:translate-x-1 transition" />
+                                            <ArrowRight className="w-5 h-5 text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform" />
                                         </div>
                                     </div>
 
                                     {/* Delete Button on Hover */}
-                                    <div className="card-actions p-4 bg-red-50 border-t border-red-200 opacity-0 group-hover:opacity-100 transition">
+                                    <div className="px-6 pb-6 pt-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -379,10 +375,10 @@ function TeacherPage() {
                                                     course._id || course.id,
                                                 );
                                             }}
-                                            className="btn btn-sm btn-outline btn-error gap-1 w-full"
+                                            className="btn btn-sm btn-outline btn-error w-full gap-2 dark:border-red-500/50 hover:bg-red-500 dark:hover:bg-red-600 text-red-500 dark:text-red-400 hover:text-white dark:hover:text-white"
                                         >
                                             <Trash2 className="w-4 h-4" />
-                                            Delete
+                                            Delete Course
                                         </button>
                                     </div>
                                 </div>
@@ -406,7 +402,7 @@ function TeacherPage() {
                     }}
                 />
             )}
-        </div>
+        </PageWrapper>
     );
 }
 

@@ -5,7 +5,6 @@ import useAuthStore from "../stores/Authstore";
 import toast from "react-hot-toast";
 import {
     ArrowLeft,
-    LogOut,
     Plus,
     Edit,
     Trash2,
@@ -14,6 +13,8 @@ import {
     Circle,
     Copy,
 } from "lucide-react";
+import PageWrapper from "../components/layout/PageWrapper";
+import Navbar from "../components/layout/Navbar";
 
 function QuizQuestionsPage() {
     const { id: quizId } = useParams();
@@ -164,43 +165,16 @@ function QuizQuestionsPage() {
 
     if (isLoading)
         return (
-            <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+            <div className="min-h-screen flex items-center justify-center dark:bg-base-300">
                 <span className="loading loading-spinner loading-lg text-blue-600"></span>
             </div>
         );
 
     return (
-        <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100">
-            {/* Navigation Header */}
-            <nav className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
-                <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => navigate(-1)}
-                            className="btn btn-ghost btn-circle gap-0"
-                        >
-                            <ArrowLeft className="w-5 h-5" />
-                        </button>
-                        <div>
-                            <p className="text-sm text-gray-600">
-                                Manage Questions
-                            </p>
-                            <h1 className="text-xl font-bold text-gray-900">
-                                Quiz Questions
-                            </h1>
-                        </div>
-                    </div>
-                    <button
-                        onClick={handleLogout}
-                        className="btn btn-ghost gap-2"
-                    >
-                        <LogOut className="w-5 h-5" />
-                        Logout
-                    </button>
-                </div>
-            </nav>
+        <PageWrapper>
+            <Navbar />
 
-            <main className="max-w-5xl mx-auto px-6 py-8">
+            <main className="max-w-5xl mx-auto px-6 py-8 animate-in fade-in duration-500 relative z-10">
                 {/* Error Alert */}
                 {errMsg && (
                     <div className="alert alert-error mb-8">
@@ -214,20 +188,53 @@ function QuizQuestionsPage() {
                     </div>
                 )}
 
+                {/* Questions Header Card */}
+                <div className="glass-panel overflow-hidden mb-8 border border-white/40 dark:border-slate-700/50 shadow-xl shadow-blue-900/5 rounded-3xl">
+                    <div className="p-8 relative">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div>
+                                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-1">
+                                    <button
+                                        onClick={() => navigate(-1)}
+                                        className="btn btn-ghost btn-xs btn-circle dark:text-slate-300"
+                                    >
+                                        <ArrowLeft className="w-4 h-4" />
+                                    </button>
+                                    <p className="text-sm font-medium uppercase tracking-wider">Manage Questions</p>
+                                </div>
+                                <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white flex items-center gap-3">
+                                    Quiz Content
+                                    <span className="badge badge-primary bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-0">{questions.length}</span>
+                                </h1>
+                            </div>
+                            {!isAdding && (
+                                <button
+                                    onClick={() => setIsAdding(true)}
+                                    className="btn btn-primary shadow-lg shadow-blue-500/20 rounded-xl hover:-translate-y-0.5 transition-transform"
+                                >
+                                    <Plus className="w-5 h-5 mr-2" />
+                                    Add Question
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
                 {/* Add/Edit Form */}
                 {isAdding && (
-                    <div className="card bg-white shadow-lg border border-slate-200 mb-8">
-                        <div className="card-body">
-                            <h2 className="card-title text-2xl mb-6">
-                                {editingId
-                                    ? "Edit Question"
-                                    : "Add New Question"}
+                    <div className="glass-panel overflow-hidden border border-white/40 dark:border-slate-700/50 shadow-xl mb-8 animate-in slide-in-from-top-4 rounded-3xl">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500"></div>
+                        <div className="p-8">
+                            <h2 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white flex items-center gap-2">
+                                <Edit className="w-6 h-6 text-emerald-500" />
+                                {editingId ? "Edit Question" : "Add New Question"}
                             </h2>
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 {/* Question Prompt */}
                                 <div className="form-control">
                                     <label className="label">
-                                        <span className="label-text font-semibold">
+                                        <span className="label-text font-semibold text-slate-700 dark:text-slate-300">
                                             Question Prompt
                                         </span>
                                     </label>
@@ -240,7 +247,7 @@ function QuizQuestionsPage() {
                                                 prompt: e.target.value,
                                             })
                                         }
-                                        className="textarea textarea-bordered h-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="textarea h-32 bg-white/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 rounded-xl text-lg resize-y"
                                         placeholder="Enter your question here..."
                                     />
                                 </div>
@@ -248,8 +255,8 @@ function QuizQuestionsPage() {
                                 {/* Points */}
                                 <div className="form-control max-w-xs">
                                     <label className="label">
-                                        <span className="label-text font-semibold">
-                                            Points
+                                        <span className="label-text font-semibold text-slate-700 dark:text-slate-300">
+                                            Point Value
                                         </span>
                                     </label>
                                     <input
@@ -264,119 +271,91 @@ function QuizQuestionsPage() {
                                                 ),
                                             })
                                         }
-                                        className="input input-bordered w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="input bg-white/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 rounded-xl text-lg w-32 font-mono"
                                     />
                                 </div>
 
                                 {/* Choices */}
-                                <div className="space-y-4">
-                                    <label className="label">
-                                        <span className="label-text font-semibold text-base">
-                                            Answer Choices (Select the correct
-                                            answer)
+                                <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700/50">
+                                    <label className="label px-0">
+                                        <span className="label-text font-semibold text-lg text-slate-800 dark:text-slate-200">
+                                            Answer Choices
                                         </span>
                                     </label>
                                     <div className="space-y-3">
-                                        {formData.choices.map(
-                                            (choice, index) => (
-                                                <div
-                                                    key={index}
-                                                    className="flex gap-3 items-end p-4 bg-slate-50 rounded-lg border border-slate-200 hover:border-blue-300 transition-colors"
-                                                >
-                                                    <div className="form-control flex-1">
-                                                        <input
-                                                            type="text"
-                                                            required
-                                                            value={choice.text}
-                                                            onChange={(e) =>
-                                                                handleChoiceChange(
-                                                                    index,
-                                                                    "text",
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            className="input input-bordered input-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                            placeholder={`Choice ${index + 1}`}
-                                                        />
-                                                    </div>
+                                        {formData.choices.map((choice, index) => (
+                                            <div
+                                                key={index}
+                                                className={`flex flex-col sm:flex-row gap-3 items-start sm:items-center p-5 rounded-2xl border-2 transition-all ${choice.isCorrect ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-400 dark:border-emerald-500/50 shadow-sm shadow-emerald-500/10' : 'bg-slate-50/50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}
+                                            >
+                                                <div className="form-control flex-1 w-full">
+                                                    <input
+                                                        type="text"
+                                                        required
+                                                        value={choice.text}
+                                                        onChange={(e) => handleChoiceChange(index, "text", e.target.value)}
+                                                        className="input input-lg w-full bg-white dark:bg-base-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 rounded-xl border-slate-200 dark:border-slate-700"
+                                                        placeholder={`Option ${index + 1}`}
+                                                    />
+                                                </div>
 
+                                                <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
                                                     <div className="form-control">
-                                                        <label className="label cursor-pointer gap-2">
+                                                        <label className="label cursor-pointer gap-3 p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
                                                             <input
                                                                 type="radio"
                                                                 name="correct"
-                                                                checked={
-                                                                    choice.isCorrect
-                                                                }
-                                                                onChange={() =>
-                                                                    handleChoiceChange(
-                                                                        index,
-                                                                        "isCorrect",
-                                                                        true,
-                                                                    )
-                                                                }
-                                                                className="radio radio-primary radio-sm"
+                                                                checked={choice.isCorrect}
+                                                                onChange={() => handleChoiceChange(index, "isCorrect", true)}
+                                                                className="radio radio-success"
                                                             />
-                                                            <span
-                                                                className={`label-text font-semibold text-sm ${
-                                                                    choice.isCorrect
-                                                                        ? "text-green-600"
-                                                                        : "text-gray-600"
-                                                                }`}
-                                                            >
-                                                                Correct
+                                                            <span className={`label-text font-bold ${choice.isCorrect ? "text-emerald-600 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400"}`}>
+                                                                Correct Answer
                                                             </span>
                                                         </label>
                                                     </div>
 
-                                                    {formData.choices.length >
-                                                        2 && (
+                                                    {formData.choices.length > 2 && (
                                                         <button
                                                             type="button"
-                                                            onClick={() =>
-                                                                removeChoice(
-                                                                    index,
-                                                                )
-                                                            }
-                                                            className="btn btn-ghost btn-sm gap-0 text-error"
+                                                            onClick={() => removeChoice(index)}
+                                                            className="btn btn-ghost btn-circle text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:text-red-400 transition-colors"
+                                                            title="Remove choice"
                                                         >
                                                             <X className="w-5 h-5" />
                                                         </button>
                                                     )}
                                                 </div>
-                                            ),
-                                        )}
+                                            </div>
+                                        ))}
                                     </div>
 
                                     <button
                                         type="button"
                                         onClick={addChoice}
-                                        className="btn btn-ghost gap-2 text-blue-600"
+                                        className="btn btn-outline border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 w-full rounded-2xl py-6 gap-2 border-dashed mt-4 group"
                                     >
-                                        <Plus className="w-5 h-5" />
-                                        Add Choice
+                                        <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                        Add Another Option
                                     </button>
                                 </div>
 
                                 {/* Form Actions */}
-                                <div className="flex gap-3 pt-4">
+                                <div className="flex gap-4 pt-6 border-t border-slate-200 dark:border-slate-700/50 mt-8">
                                     <button
                                         type="submit"
                                         disabled={isSubmitting}
-                                        className="btn btn-success gap-2"
+                                        className="btn btn-success text-white px-8 rounded-xl shadow-lg shadow-success/20 hover:-translate-y-0.5 transition-transform gap-2"
                                     >
                                         {isSubmitting ? (
                                             <>
-                                                <span className="loading loading-spinner loading-xs"></span>
+                                                <span className="loading loading-spinner loading-sm"></span>
                                                 Saving...
                                             </>
                                         ) : (
                                             <>
                                                 <CheckCircle className="w-5 h-5" />
-                                                {editingId
-                                                    ? "Update Question"
-                                                    : "Create Question"}
+                                                {editingId ? "Save Changes" : "Create Question"}
                                             </>
                                         )}
                                     </button>
@@ -389,18 +368,12 @@ function QuizQuestionsPage() {
                                                 prompt: "",
                                                 points: 1,
                                                 choices: [
-                                                    {
-                                                        text: "",
-                                                        isCorrect: true,
-                                                    },
-                                                    {
-                                                        text: "",
-                                                        isCorrect: false,
-                                                    },
+                                                    { text: "", isCorrect: true },
+                                                    { text: "", isCorrect: false },
                                                 ],
                                             });
                                         }}
-                                        className="btn btn-ghost"
+                                        className="btn btn-ghost px-6 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"
                                     >
                                         Cancel
                                     </button>
@@ -411,111 +384,86 @@ function QuizQuestionsPage() {
                 )}
 
                 {/* Questions List */}
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900">
-                            Questions ({questions.length})
-                        </h2>
-                        {!isAdding && (
-                            <button
-                                onClick={() => setIsAdding(true)}
-                                className="btn btn-primary gap-2"
-                            >
-                                <Plus className="w-5 h-5" />
-                                Add Question
-                            </button>
-                        )}
-                    </div>
-
-                    {questions.length === 0 ? (
-                        <div className="card bg-blue-50 border border-blue-200 border-dashed">
-                            <div className="card-body text-center py-12">
-                                <p className="text-gray-600">
-                                    No questions added yet. Create your first
-                                    question!
+                <div className="space-y-6">
+                    {questions.length === 0 && !isAdding ? (
+                        <div className="glass-panel border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-900/10">
+                            <div className="p-12 text-center">
+                                <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-500">
+                                    <Plus className="w-10 h-10" />
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">No questions yet</h3>
+                                <p className="text-slate-600 dark:text-slate-400 max-w-sm mx-auto">
+                                    Get started by adding your first question to this quiz.
                                 </p>
+                                <button
+                                    onClick={() => setIsAdding(true)}
+                                    className="btn btn-primary mt-6 px-8 rounded-xl shadow-lg shadow-blue-500/20"
+                                >
+                                    Add Question
+                                </button>
                             </div>
                         </div>
                     ) : (
                         questions.map((q, idx) => (
                             <div
                                 key={q._id}
-                                className="card bg-white shadow-lg border border-slate-200 hover:shadow-xl transition-shadow"
+                                className="glass-card overflow-hidden hover:-translate-y-1 transition-all group"
                             >
-                                <div className="card-body">
+                                <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-400 dark:bg-blue-500 group-hover:bg-blue-500 dark:group-hover:bg-blue-400 transition-colors"></div>
+                                <div className="p-8 ml-1.5 border-b border-slate-100 dark:border-slate-800/50">
                                     {/* Question Header */}
-                                    <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-start justify-between mb-6">
                                         <div className="flex items-center gap-4">
-                                            <div className="badge badge-primary badge-lg">
-                                                Q{idx + 1}
+                                            <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold text-xl shadow-inner border border-blue-200 dark:border-blue-800">
+                                                {idx + 1}
                                             </div>
                                             <div>
-                                                <p className="text-gray-600 text-sm">
-                                                    {q.points}{" "}
-                                                    {q.points === 1
-                                                        ? "point"
-                                                        : "points"}
-                                                </p>
+                                                <div className="badge badge-ghost font-medium text-slate-600 dark:text-slate-400 mb-1 border-slate-200 dark:border-slate-700">
+                                                    {q.points} {q.points === 1 ? "Point" : "Points"}
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
                                                 onClick={() => handleEdit(q)}
-                                                className="btn btn-ghost btn-sm gap-2"
+                                                className="btn btn-square btn-sm btn-ghost hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"
+                                                title="Edit Question"
                                             >
                                                 <Edit className="w-4 h-4" />
-                                                Edit
                                             </button>
                                             <button
-                                                onClick={() =>
-                                                    handleDelete(q._id)
-                                                }
-                                                className="btn btn-ghost btn-sm gap-2 text-error"
+                                                onClick={() => handleDelete(q._id)}
+                                                className="btn btn-square btn-sm btn-ghost hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500 dark:text-red-400"
+                                                title="Delete Question"
                                             >
                                                 <Trash2 className="w-4 h-4" />
-                                                Delete
                                             </button>
                                         </div>
                                     </div>
 
                                     {/* Question Prompt */}
-                                    <p className="text-lg font-medium text-gray-900 mb-4 whitespace-pre-wrap leading-relaxed">
+                                    <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-6 leading-relaxed">
                                         {q.prompt}
-                                    </p>
+                                    </h3>
 
                                     {/* Answer Choices */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {q.choices.map((c, i) => (
                                             <div
                                                 key={i}
-                                                className={`p-4 rounded-lg border transition-all ${
+                                                className={`p-4 sm:p-5 rounded-2xl border-2 transition-all flex items-center gap-4 ${
                                                     c.isCorrect
-                                                        ? "bg-green-50 border-green-200"
-                                                        : "bg-slate-50 border-slate-200"
+                                                        ? "bg-emerald-50/80 dark:bg-emerald-900/20 border-emerald-400 dark:border-emerald-500/50 shadow-sm shadow-emerald-500/10"
+                                                        : "bg-slate-50/50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700"
                                                 }`}
                                             >
-                                                <div className="flex items-start gap-3">
-                                                    {c.isCorrect ? (
-                                                        <CheckCircle className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
-                                                    ) : (
-                                                        <Circle className="w-5 h-5 text-gray-300 shrink-0 mt-0.5" />
-                                                    )}
-                                                    <div className="flex-1">
-                                                        <p
-                                                            className={`${
-                                                                c.isCorrect
-                                                                    ? "font-bold text-green-800"
-                                                                    : "text-gray-700"
-                                                            }`}
-                                                        >
-                                                            {c.text}
-                                                        </p>
-                                                        {c.isCorrect && (
-                                                            <span className="text-xs font-bold text-green-600 uppercase mt-1 inline-block">
-                                                                ✓ Correct Answer
-                                                            </span>
-                                                        )}
-                                                    </div>
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 ${c.isCorrect ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 dark:border-slate-600 text-slate-400'}`}>
+                                                    {c.isCorrect ? <CheckCircle className="w-5 h-5" /> : <span className="text-sm font-semibold">{String.fromCharCode(65 + i)}</span>}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className={`text-lg ${c.isCorrect ? "font-bold text-emerald-900 dark:text-emerald-100" : "font-medium text-slate-700 dark:text-slate-300"}`}>
+                                                        {c.text}
+                                                    </p>
                                                 </div>
                                             </div>
                                         ))}
@@ -526,7 +474,7 @@ function QuizQuestionsPage() {
                     )}
                 </div>
             </main>
-        </div>
+        </PageWrapper>
     );
 }
 
