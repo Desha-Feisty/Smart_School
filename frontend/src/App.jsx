@@ -1,8 +1,7 @@
-import { Route, Routes } from "react-router-dom";
-import { Navigate } from "react-router-dom";
-import { Toaster } from "react-hot-toast";
+import { Route, Routes, Navigate } from "react-router-dom";
+import { Toaster, toast } from "react-hot-toast";
+import { useEffect } from "react";
 import LoginPage from "./pages/LoginPage";
-
 import StudentPage from "./pages/StudentPage";
 import TeacherPage from "./pages/TeacherPage";
 import TeacherCoursePage from "./pages/TeacherCoursePage";
@@ -10,11 +9,80 @@ import QuizQuestionsPage from "./pages/QuizQuestionsPage";
 import StudentQuizPage from "./components/StudentQuizPage";
 import QuizResultsPage from "./components/QuizResultsPage";
 import NoteDetail from "./components/NoteDetail";
+import useAuthStore from "./stores/Authstore";
+import useSocketStore from "./stores/SocketStore";
+import useNotificationStore from "./stores/NotificationStore";
+import useTeacherStore from "./stores/Teacherstore";
+
+function SocketListener() {
+    const user = useAuthStore((state) => state.user);
+    const token = useAuthStore((state) => state.token);
+    const connect = useSocketStore((state) => state.connect);
+    const socket = useSocketStore((state) => state.socket);
+    const fetchNotifications = useNotificationStore((state) => state.fetchNotifications);
+    const listRecentChats = useTeacherStore((state) => state.listRecentChats);
+
+    useEffect(() => {
+        if (token) {
+            connect(token);
+        }
+    }, [token, connect]);
+
+    useEffect(() => {
+        if (!socket) return;
+
+        socket.on("new-quiz", (data) => {
+            fetchNotifications();
+            toast.success(`🚀 New Quiz: ${data.title} in ${data.courseTitle}`, {
+                duration: 5000,
+                icon: "📝"
+            });
+        });
+
+        socket.on("new-note", (data) => {
+            fetchNotifications();
+            toast.success(`📚 New Note: ${data.title} was posted`, {
+                duration: 4000,
+                icon: "📖"
+            });
+        });
+
+        socket.on("chat-message", (message) => {
+            fetchNotifications();
+            
+            const currentUser = useAuthStore.getState().user;
+            if (currentUser?.role === "teacher") {
+                listRecentChats();
+            }
+
+            // Only show toast if window is NOT active/visible or something
+            // For now, just show a simple toast
+            const myId = currentUser?.id || currentUser?._id;
+            const senderId = message.sender?._id || message.sender;
+            
+            if (senderId !== myId) {
+                const senderName = typeof message.sender === 'object' ? message.sender.name : "Teammate";
+                toast(`💬 Message from ${senderName}: ${message.text?.substring(0, 30)}...`, {
+                    duration: 3000,
+                });
+            }
+        });
+
+        return () => {
+            socket.off("new-quiz");
+            socket.off("new-note");
+            socket.off("chat-message");
+        };
+    }, [socket]);
+
+    return null;
+}
 
 function App() {
     return (
         <>
-            <Toaster position="top-center" />
+            <Toaster position="top-right" />
+            <SocketListener />
             <Routes>
                 <Route path="/" element={<Navigate to="/login" />} />
                 <Route path="/login" element={<LoginPage />} />

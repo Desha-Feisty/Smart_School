@@ -330,6 +330,28 @@ const publishQuiz = async (req: AuthRequest, res: Response) => {
         }
         quiz.published = true;
         await quiz.save();
+
+        // Real-time Notification
+        try {
+            const courseId = (quiz.course as any)._id || quiz.course;
+            const enrollments = await Enrollment.find({ 
+                course: courseId, 
+                status: "active" 
+            }).select("user");
+            
+            const studentIds = enrollments.map(e => e.user.toString());
+            if (studentIds.length > 0) {
+                const { notifyUsers } = await import("../server/socket.js");
+                notifyUsers(studentIds, "new-quiz", {
+                    quizId: quiz._id,
+                    title: quiz.title,
+                    courseTitle: (quiz.course as any).title,
+                });
+            }
+        } catch (error) {
+            console.error("Failed to send socket notification for new quiz:", error);
+        }
+
         res.status(200).json({ quiz });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
@@ -459,8 +481,6 @@ const listAvailableQuizzes = async (req: AuthRequest, res: Response) => {
         const quizzes = await Quiz.find({
             course: { $in: courseIds },
             published: true,
-            openAt: { $lte: now },
-            closeAt: { $gte: now },
         })
             .populate("course")
             .select("-published")
@@ -476,11 +496,24 @@ const listAvailableQuizzes = async (req: AuthRequest, res: Response) => {
             userAttempts.map((a) => a.quiz.toString()),
         );
 
-        // Add isAttempted flag to each quiz
-        const quizzesWithStatus = quizzes.map((quiz) => ({
-            ...quiz.toObject(),
-            isAttempted: attemptedQuizIds.has(quiz._id.toString()),
-        }));
+        // Add isAttempted flag and status to each quiz
+        const quizzesWithStatus = quizzes.map((quiz) => {
+            const openAt = new Date(quiz.openAt);
+            const closeAt = new Date(quiz.closeAt);
+            let status = "open";
+
+            if (now < openAt) {
+                status = "upcoming";
+            } else if (now > closeAt) {
+                status = "closed";
+            }
+
+            return {
+                ...quiz.toObject(),
+                isAttempted: attemptedQuizIds.has(quiz._id.toString()),
+                timingStatus: status, // upcoming, open, closed
+            };
+        });
 
         res.status(200).json({ quizzes: quizzesWithStatus });
     } catch (error) {

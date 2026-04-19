@@ -8,6 +8,8 @@ import NoteCard from "../components/NoteCard";
 import ChatWindow from "../components/ChatWindow";
 import PageWrapper from "../components/layout/PageWrapper";
 import Navbar from "../components/layout/Navbar";
+import AnalyticsDashboard from "../components/AnalyticsDashboard";
+import Leaderboard from "../components/Leaderboard";
 import toast from "react-hot-toast";
 import {
     BookOpen,
@@ -20,6 +22,8 @@ import {
     Award,
     Clock,
     X,
+    CheckCircle,
+    Trophy,
 } from "lucide-react";
 
 function StudentPage() {
@@ -284,6 +288,7 @@ function StudentPage() {
                             label: "Available Quizzes",
                             icon: Zap,
                         },
+                        { id: "leaderboard", label: "Leaderboard", icon: Trophy },
                         { id: "grades", label: "My Grades", icon: TrendingUp },
                         {
                             id: "community",
@@ -405,79 +410,133 @@ function StudentPage() {
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {availableQuizzes.map((quiz) => (
-                                    <div
-                                        key={quiz._id}
-                                        className="glass-card"
-                                    >
-                                        <div className="card-body p-5">
-                                            <div className="flex items-start justify-between">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <h3 className="card-title text-lg text-slate-900 dark:text-white">
-                                                            {quiz.title}
-                                                        </h3>
-                                                        {quiz.isAttempted && (
-                                                            <span className="badge badge-success badge-sm shadow-sm gap-1 pl-1">
-                                                                <span className="text-[10px]">
-                                                                    ✓
+                                {availableQuizzes.map((quiz) => {
+                                    const isLocked = quiz.timingStatus === "upcoming";
+                                    const isClosed = quiz.timingStatus === "closed";
+                                    const isActive = quiz.timingStatus === "open";
+
+                                    return (
+                                        <div
+                                            key={quiz._id}
+                                            className={`glass-card transition-all ${isLocked ? "opacity-75" : ""}`}
+                                        >
+                                            <div className="card-body p-5">
+                                                <div className="flex items-start justify-between gap-4">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <h3 className={`card-title text-lg ${isLocked ? "text-slate-500" : "text-slate-900 dark:text-white"}`}>
+                                                                {quiz.title}
+                                                            </h3>
+                                                            {quiz.isAttempted && (
+                                                                <span className="badge badge-success badge-sm shadow-sm gap-1 pl-1">
+                                                                    <CheckCircle className="w-3 h-3" />
+                                                                    Attempted
                                                                 </span>
-                                                                Attempted
-                                                            </span>
+                                                            )}
+                                                            {isLocked && (
+                                                                <span className="badge badge-neutral badge-sm shadow-sm gap-1 pl-1">
+                                                                    <Clock className="w-3 h-3" />
+                                                                    Upcoming
+                                                                </span>
+                                                            )}
+                                                            {isClosed && (
+                                                                <span className="badge badge-ghost badge-sm shadow-sm gap-1 pl-1 border-slate-300">
+                                                                    Closed
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-slate-600 dark:text-slate-400 text-sm mb-3">
+                                                            {quiz.description}
+                                                        </p>
+                                                        <div className="flex flex-wrap gap-4 text-xs font-medium">
+                                                            <div className="flex items-center gap-1 text-slate-500">
+                                                                <BookMarked className="w-4 h-4 text-blue-500" />
+                                                                {quiz.course?.title}
+                                                            </div>
+                                                            <div className={`flex items-center gap-1 ${isLocked ? "text-blue-600 dark:text-blue-400 font-bold" : isClosed ? "text-red-500" : "text-slate-500"}`}>
+                                                                <Clock className="w-4 h-4" />
+                                                                {isLocked 
+                                                                    ? `Opens: ${new Date(quiz.openAt).toLocaleString()}` 
+                                                                    : isClosed 
+                                                                        ? `Closed: ${new Date(quiz.closeAt).toLocaleString()}`
+                                                                        : `Closes: ${new Date(quiz.closeAt).toLocaleString()}`
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <button
+                                                            onClick={() => handleStartQuiz(quiz._id)}
+                                                            disabled={startingQuizId === quiz._id || isLocked || isClosed}
+                                                            className={`btn gap-2 ml-4 shadow-lg min-w-[140px] ${
+                                                                isLocked || isClosed
+                                                                    ? "btn-ghost bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed border-none"
+                                                                    : quiz.isAttempted
+                                                                        ? "btn-outline dark:border-slate-600 dark:text-slate-300 shadow-none hover:bg-slate-50"
+                                                                        : "btn-success shadow-success/30 text-white"
+                                                            }`}
+                                                        >
+                                                            {startingQuizId === quiz._id ? (
+                                                                <>
+                                                                    <span className="loading loading-spinner loading-xs"></span>
+                                                                    Starting...
+                                                                </>
+                                                            ) : isLocked ? (
+                                                                "Locked"
+                                                            ) : isClosed ? (
+                                                                "Expired"
+                                                            ) : (
+                                                                <>
+                                                                    <Zap className="w-5 h-5" />
+                                                                    {quiz.isAttempted ? "Retake" : "Start Quiz"}
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                        {isLocked && (
+                                                            <span className="text-[10px] text-slate-500 mt-1">Not yet open</span>
                                                         )}
                                                     </div>
-                                                    <p className="text-slate-600 dark:text-slate-400 text-sm mb-3">
-                                                        {quiz.description}
-                                                    </p>
-                                                    <div className="flex flex-wrap gap-4 text-xs text-slate-500">
-                                                        <div className="flex items-center gap-1">
-                                                            <BookOpen className="w-4 h-4" />
-                                                            {quiz.course?.title}
-                                                        </div>
-                                                        <div className="flex items-center gap-1">
-                                                            <Clock className="w-4 h-4" />
-                                                            Ends{" "}
-                                                            {new Date(
-                                                                quiz.closeAt,
-                                                            ).toLocaleString()}
-                                                        </div>
-                                                    </div>
                                                 </div>
-                                                <button
-                                                    onClick={() =>
-                                                        handleStartQuiz(
-                                                            quiz._id,
-                                                        )
-                                                    }
-                                                    disabled={
-                                                        startingQuizId ===
-                                                        quiz._id
-                                                    }
-                                                    className={`btn gap-2 ml-4 shadow-lg ${
-                                                        quiz.isAttempted
-                                                            ? "btn-outline dark:border-slate-600 dark:text-slate-300 shadow-none"
-                                                            : "btn-success shadow-success/30 text-white"
-                                                    }`}
-                                                >
-                                                    {startingQuizId ===
-                                                    quiz._id ? (
-                                                        <>
-                                                            <span className="loading loading-spinner loading-xs"></span>
-                                                            Starting...
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Zap className="w-5 h-5" />
-                                                            {quiz.isAttempted
-                                                                ? "Retake"
-                                                                : "Start Quiz"}
-                                                        </>
-                                                    )}
-                                                </button>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === "leaderboard" && (
+                    <div className="space-y-6 animate-in fade-in duration-500">
+                        <div className="glass-panel overflow-hidden rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                    <Trophy className="w-6 h-6 text-yellow-500" />
+                                    Course Leaderboards
+                                </h2>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">See how you rank against your peers</p>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm font-medium text-slate-500">Select Course:</span>
+                                <select 
+                                    className="select select-bordered select-sm bg-white dark:bg-base-300 rounded-xl focus:ring-2 focus:ring-yellow-500/50"
+                                    value={chatCourseId || (allCourses[0]?._id || "")}
+                                    onChange={(e) => setChatCourseId(e.target.value)}
+                                >
+                                    {allCourses.map(c => (
+                                        <option key={c._id} value={c._id}>{c.title}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        {allCourses.length > 0 ? (
+                            <Leaderboard courseId={chatCourseId || allCourses[0]._id} isTeacher={false} />
+                        ) : (
+                            <div className="text-center py-20 glass-panel border-dashed">
+                                <Trophy className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                                <p className="text-slate-500">Join a course to see the leaderboard!</p>
                             </div>
                         )}
                     </div>
@@ -492,6 +551,12 @@ function StudentPage() {
                                 </div>
                                 My Grade History
                             </h2>
+
+                            {activeTab === "grades" && viewContentCourse && (
+                                <div className="mb-10">
+                                    <AnalyticsDashboard courseId={viewContentCourse._id} mode="student" />
+                                </div>
+                            )}
 
                             {gradesLoading ? (
                                 <div className="flex items-center justify-center py-12">

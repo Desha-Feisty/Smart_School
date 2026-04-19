@@ -60,6 +60,26 @@ const createNote = async (req: AuthRequest, res: Response) => {
 
         await note.populate("teacher", "name email");
 
+        // Real-time Notification
+        try {
+            const enrollments = await Enrollment.find({ 
+                course: note.course, 
+                status: "active" 
+            }).select("user");
+            
+            const studentIds = enrollments.map(e => e.user.toString());
+            if (studentIds.length > 0) {
+                const { notifyUsers } = await import("../server/socket.js");
+                notifyUsers(studentIds, "new-note", {
+                    noteId: note._id,
+                    title: note.title,
+                    courseTitle: (course as any).title,
+                });
+            }
+        } catch (error) {
+            console.error("Failed to send socket notification for new note:", error);
+        }
+
         res.status(201).json({ note });
     } catch (error) {
         console.error("Create note error:", error);

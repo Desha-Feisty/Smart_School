@@ -21,9 +21,13 @@ import {
     Copy,
     Users,
     UserX,
+    Trophy,
+    TrendingUp,
 } from "lucide-react";
 import PageWrapper from "../components/layout/PageWrapper";
 import Navbar from "../components/layout/Navbar";
+import AnalyticsDashboard from "../components/AnalyticsDashboard";
+import Leaderboard from "../components/Leaderboard";
 
 function TeacherCoursePage() {
     const { id } = useParams();
@@ -122,13 +126,15 @@ function TeacherCoursePage() {
             console.log("Loading enrolled students for course:", id);
             const roster = await getRoster(id);
             console.log("Roster response:", roster);
-            setEnrolledStudents(roster.enrollment || []);
-            console.log("Enrolled students:", roster.enrollment || []);
+            const enrollment = roster?.enrollment || [];
+            setEnrolledStudents(enrollment);
+            console.log("Enrolled students:", enrollment);
 
             // Load grades for each student
             const gradesMap = {};
-            for (const student of roster.enrollment || []) {
+            for (const student of enrollment) {
                 try {
+                    if (!student?.user?._id) continue;
                     console.log(
                         "Loading grades for student:",
                         student.user._id,
@@ -443,10 +449,23 @@ function TeacherCoursePage() {
 
                 {/* Quiz Error Alert */}
                 {quizErrMsg && (
-                    <div className="alert alert-error mb-8">
+                    <div className="alert alert-error mb-4">
                         <span>{quizErrMsg}</span>
                         <button
                             onClick={clearQuizErrMsg}
+                            className="btn btn-ghost btn-sm"
+                        >
+                            Dismiss
+                        </button>
+                    </div>
+                )}
+
+                {/* Teacher Store Error Alert */}
+                {useTeacherStore.getState().errMsg && (
+                    <div className="alert alert-error mb-8">
+                        <span>{useTeacherStore.getState().errMsg}</span>
+                        <button
+                            onClick={() => useTeacherStore.getState().clearErrMsg()}
                             className="btn btn-ghost btn-sm"
                         >
                             Dismiss
@@ -458,6 +477,8 @@ function TeacherCoursePage() {
                 <div className="flex overflow-x-auto hide-scrollbar gap-2 mb-8 bg-slate-200/50 dark:bg-base-300/50 p-1.5 rounded-2xl w-max border border-slate-200 dark:border-slate-700/50">
                     {[
                         { id: "quizzes", label: "Quizzes", icon: BookOpen },
+                        { id: "analytics", label: "Analytics", icon: TrendingUp },
+                        { id: "leaderboard", label: "Leaderboard", icon: Trophy },
                         { id: "students", label: "Students", icon: Users },
                         { id: "grades", label: "Student Grades", icon: Award },
                         {
@@ -748,6 +769,20 @@ function TeacherCoursePage() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {/* Analytics Tab */}
+                {activeTab === "analytics" && (
+                    <div className="animate-in fade-in duration-500">
+                        <AnalyticsDashboard courseId={id} mode="teacher" />
+                    </div>
+                )}
+
+                {/* Leaderboard Tab */}
+                {activeTab === "leaderboard" && (
+                    <div className="animate-in fade-in duration-500">
+                        <Leaderboard courseId={id} isTeacher={true} />
                     </div>
                 )}
 

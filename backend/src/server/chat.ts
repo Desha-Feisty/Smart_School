@@ -102,6 +102,9 @@ export function initializeChat(io: SocketIOServer) {
         try {
             user = verifyToken(rawToken);
             socket.data.user = user;
+            // Join a private room for personal notifications
+            socket.join(`user:${user.id}`);
+            console.log(`User ${user.id} joined personal notification room`);
         } catch (error) {
             socket.emit("socket-error", {
                 message:
@@ -199,11 +202,17 @@ export function initializeChat(io: SocketIOServer) {
                     ? (message.recipient as any)._id.toString()
                     : message.recipient;
 
-                io.to(room).emit("chat-message", {
+                const outMessage = {
                     ...messageObj,
-                    sender,
+                    sender: messageObj.sender, // Full object with name/role
                     recipient,
-                });
+                };
+
+                io.to(room).emit("chat-message", outMessage);
+
+                // Send individual notification for persistence and global alerts
+                const { notifyUser } = await import("./socket.js");
+                notifyUser(recipientId, "chat-message", outMessage);
             } catch (error) {
                 socket.emit("socket-error", {
                     message:

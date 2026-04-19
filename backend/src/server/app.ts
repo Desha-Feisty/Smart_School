@@ -13,6 +13,9 @@ import attemptRoutes from "../routes/attempt.routes.js";
 import noteRoutes from "../routes/note.routes.js";
 import commentRoutes from "../routes/comment.routes.js";
 import chatRoutes from "../routes/chat.routes.js";
+import analyticsRoutes from "../routes/analytics.routes.js";
+import leaderboardRoutes from "../routes/leaderboard.routes.js";
+import notificationRoutes from "../routes/notification.routes.js";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { authMiddleware, requireRole } from "../middleware/auth.js";
@@ -37,6 +40,9 @@ app.use("/api/attempts", attemptRoutes);
 app.use("/api/notes", noteRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/leaderboard", leaderboardRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Question management root-level endpoints
 app.post(

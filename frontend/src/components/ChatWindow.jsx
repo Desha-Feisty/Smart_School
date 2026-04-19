@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { Send, X } from "lucide-react";
 import useAuthStore from "../stores/Authstore";
+import useSocketStore from "../stores/SocketStore";
 import toast from "react-hot-toast";
 
 function ChatWindow({ courseId, peerId, peerName, onClose }) {
@@ -10,55 +11,40 @@ function ChatWindow({ courseId, peerId, peerName, onClose }) {
     const userId = user?.id || user?._id;
     const [messages, setMessages] = useState([]);
     const [text, setText] = useState("");
-    const [status, setStatus] = useState("connecting");
-    const socketRef = useRef(null);
     const messagesEndRef = useRef(null);
-
-    const backendUrl =
-        import.meta.env.VITE_BACKEND_URL ||
-        (window.location.hostname === "localhost"
-            ? "http://localhost:3000"
-            : window.location.origin);
+    const socket = useSocketStore((state) => state.socket);
+    const setSocket = useSocketStore((state) => state.connect);
+    const isConnected = useSocketStore((state) => state.isConnected);
+    const status = isConnected ? "connected" : "connecting";
 
     useEffect(() => {
-        if (!token || !courseId || !peerId) return;
+        if (!token) return;
+        if (!socket) {
+            setSocket(token);
+        }
+    }, [token, socket, setSocket]);
 
-        const socket = io(backendUrl, {
-            auth: { token },
-            transports: ["websocket"],
-        });
+    useEffect(() => {
+        if (!socket || !courseId || !peerId) return;
 
-        socketRef.current = socket;
+        socket.emit("join-chat", { courseId, peerId });
 
-        socket.on("connect", () => {
-            setStatus("connected");
-            socket.emit("join-chat", { courseId, peerId });
-        });
-
-        socket.on("disconnect", () => {
-            setStatus("disconnected");
-        });
-
-        socket.on("chat-history", ({ messages: history }) => {
+        const onHistory = ({ messages: history }) => {
             setMessages(history || []);
-        });
+        };
 
-        socket.on("chat-message", (message) => {
+        const onMessage = (message) => {
             setMessages((prev) => [...prev, message]);
-        });
+        };
 
-        socket.on("socket-error", ({ message }) => {
-            toast.error(message || "Chat error");
-        });
-
-        socket.on("connect_error", (error) => {
-            toast.error(error.message || "Socket connection failed");
-        });
+        socket.on("chat-history", onHistory);
+        socket.on("chat-message", onMessage);
 
         return () => {
-            socket.disconnect();
+            socket.off("chat-history", onHistory);
+            socket.off("chat-message", onMessage);
         };
-    }, [backendUrl, courseId, peerId, token]);
+    }, [socket, courseId, peerId]);
 
     useEffect(() => {
         if (messagesEndRef.current) {
@@ -68,7 +54,6 @@ function ChatWindow({ courseId, peerId, peerName, onClose }) {
 
     const handleSend = () => {
         if (!text.trim()) return;
-        const socket = socketRef.current;
         if (!socket) return;
 
         socket.emit("send-chat-message", {

@@ -169,7 +169,7 @@ const useTeacherStore = create((set) => ({
             const data = response.data;
             set((state) => ({
                 allCourses: state.allCourses.map((course) =>
-                    course.id === id ? data : course,
+                    (course._id || course.id) === id ? data : course,
                 ),
             }));
             return data; // Return the roster data
