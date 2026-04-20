@@ -481,6 +481,7 @@ const listAvailableQuizzes = async (req: AuthRequest, res: Response) => {
         const quizzes = await Quiz.find({
             course: { $in: courseIds },
             published: true,
+            closeAt: { $gt: now }, // Only show quizzes that haven't closed yet
         })
             .populate("course")
             .select("-published")

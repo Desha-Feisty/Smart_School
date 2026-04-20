@@ -14,6 +14,7 @@ import noteRoutes from "../routes/note.routes.js";
 import commentRoutes from "../routes/comment.routes.js";
 import chatRoutes from "../routes/chat.routes.js";
 import analyticsRoutes from "../routes/analytics.routes.js";
+import adminRoutes from "../routes/admin.routes.js";
 import leaderboardRoutes from "../routes/leaderboard.routes.js";
 import notificationRoutes from "../routes/notification.routes.js";
 import { fileURLToPath } from "url";
@@ -43,6 +44,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Question management root-level endpoints
 app.post(

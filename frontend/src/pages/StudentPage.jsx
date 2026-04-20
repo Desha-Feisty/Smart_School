@@ -36,11 +36,12 @@ function StudentPage() {
         gradesLoading,
         gradesError,
         listMyGrades,
+        availableQuizzes,
+        fetchAvailableQuizzes,
     } = useQuizStore();
     const navigate = useNavigate();
 
     const [joinCode, setJoinCode] = useState("");
-    const [availableQuizzes, setAvailableQuizzes] = useState([]);
     const [activeTab, setActiveTab] = useState("courses");
     const [isLoading, setIsLoading] = useState(false);
     const [startingQuizId, setStartingQuizId] = useState(null);
@@ -54,16 +55,6 @@ function StudentPage() {
     const [chatPeerId, setChatPeerId] = useState(null);
     const [chatPeerName, setChatPeerName] = useState("");
 
-    const fetchAvailableQuizzes = useCallback(async () => {
-        try {
-            const response = await axios.get("/api/quizzes/available", {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            setAvailableQuizzes(response.data.quizzes || []);
-        } catch (err) {
-            console.error("Failed to fetch quizzes", err);
-        }
-    }, [token]);
 
     const loadAllCourseNotes = useCallback(async () => {
         setAllNotesLoading(true);
@@ -91,6 +82,14 @@ function StudentPage() {
         fetchAvailableQuizzes();
         listMyGrades();
     }, [token, navigate, fetchAvailableQuizzes, listMyCourses, listMyGrades]);
+
+    useEffect(() => {
+        if (activeTab === "quizzes") {
+            fetchAvailableQuizzes();
+            const interval = setInterval(fetchAvailableQuizzes, 30000); // 30s poll for status changes
+            return () => clearInterval(interval);
+        }
+    }, [activeTab, fetchAvailableQuizzes]);
 
     useEffect(() => {
         if (activeTab === "grades") {
@@ -445,11 +444,11 @@ function StudentPage() {
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <p className="text-slate-600 dark:text-slate-400 text-sm mb-3">
+                                                        <p className="text-slate-600 dark:text-slate-300 text-sm mb-3">
                                                             {quiz.description}
                                                         </p>
                                                         <div className="flex flex-wrap gap-4 text-xs font-medium">
-                                                            <div className="flex items-center gap-1 text-slate-500">
+                                                            <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
                                                                 <BookMarked className="w-4 h-4 text-blue-500" />
                                                                 {quiz.course?.title}
                                                             </div>
@@ -470,9 +469,9 @@ function StudentPage() {
                                                             disabled={startingQuizId === quiz._id || isLocked || isClosed}
                                                             className={`btn gap-2 ml-4 shadow-lg min-w-[140px] ${
                                                                 isLocked || isClosed
-                                                                    ? "btn-ghost bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed border-none"
+                                                                    ? "btn-ghost bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed border-none"
                                                                     : quiz.isAttempted
-                                                                        ? "btn-outline dark:border-slate-600 dark:text-slate-300 shadow-none hover:bg-slate-50"
+                                                                        ? "btn-outline dark:border-slate-600 dark:text-slate-300 shadow-none hover:bg-slate-50 dark:hover:bg-slate-800"
                                                                         : "btn-success shadow-success/30 text-white"
                                                             }`}
                                                         >
@@ -493,7 +492,7 @@ function StudentPage() {
                                                             )}
                                                         </button>
                                                         {isLocked && (
-                                                            <span className="text-[10px] text-slate-500 mt-1">Not yet open</span>
+                                                            <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 uppercase font-bold tracking-wider">Not yet open</span>
                                                         )}
                                                     </div>
                                                 </div>

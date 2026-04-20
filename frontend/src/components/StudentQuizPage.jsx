@@ -226,10 +226,10 @@ function StudentQuizPage() {
                                                 }
                                                 className={`w-full text-left px-3 py-2 rounded-lg transition-all flex items-center gap-2 ${
                                                     isSelected
-                                                        ? "bg-blue-100 border border-blue-300"
+                                                        ? "bg-blue-100 dark:bg-blue-900/40 border border-blue-300 dark:border-blue-700"
                                                         : isAnswered
-                                                          ? "bg-green-50 hover:bg-green-100 border border-green-200"
-                                                          : "hover:bg-slate-100 border border-slate-200"
+                                                          ? "bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 border border-green-200 dark:border-green-800"
+                                                          : "hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700"
                                                 }`}
                                             >
                                                 <div
@@ -246,7 +246,7 @@ function StudentQuizPage() {
                                                         : index + 1}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-gray-900">
+                                                    <p className="text-sm font-medium text-slate-900 dark:text-slate-200">
                                                         Q{index + 1}
                                                     </p>
                                                     {savingIndices.has(
@@ -276,7 +276,7 @@ function StudentQuizPage() {
                                         {/* Question Header */}
                                         <div className="mb-8">
                                             <div className="flex items-start justify-between mb-4">
-                                                <h2 className="text-2xl font-bold text-gray-900 flex-1 leading-relaxed">
+                                                <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex-1 leading-relaxed">
                                                     {selectedQuestion.prompt}
                                                 </h2>
                                                 <div className="badge badge-primary ml-4 shrink-0">
@@ -333,8 +333,8 @@ function StudentQuizPage() {
                                                                 key={choice._id}
                                                                 className={`flex items-start p-4 rounded-lg border-2 cursor-pointer transition-all ${
                                                                     isSelected
-                                                                        ? "border-blue-500 bg-blue-50"
-                                                                        : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/50"
+                                                                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                                                                        : "border-slate-200 dark:border-slate-700/50 hover:border-blue-300 dark:hover:border-blue-400/50 hover:bg-blue-50/50 dark:hover:bg-blue-900/10"
                                                                 }`}
                                                             >
                                                                 <input
@@ -360,8 +360,8 @@ function StudentQuizPage() {
                                                                 <span
                                                                     className={`ml-4 text-base ${
                                                                         isSelected
-                                                                            ? "font-semibold text-gray-900"
-                                                                            : "text-gray-700"
+                                                                            ? "font-semibold text-slate-900 dark:text-white"
+                                                                            : "text-slate-700 dark:text-slate-300"
                                                                     }`}
                                                                 >
                                                                     {

@@ -20,6 +20,8 @@ function LoginPage() {
         if (token) {
             if (role === "teacher") {
                 navigate("/teacher");
+            } else if (role === "admin") {
+                navigate("/admin");
             } else {
                 navigate("/student");
             }
@@ -43,6 +45,8 @@ function LoginPage() {
                 setTimeout(() => {
                     if (state.role === "teacher") {
                         navigate("/teacher");
+                    } else if (state.role === "admin") {
+                        navigate("/admin");
                     } else {
                         navigate("/student");
                     }

@@ -9,6 +9,7 @@ import QuizQuestionsPage from "./pages/QuizQuestionsPage";
 import StudentQuizPage from "./components/StudentQuizPage";
 import QuizResultsPage from "./components/QuizResultsPage";
 import NoteDetail from "./components/NoteDetail";
+import AdminDashboard from "./pages/AdminDashboard";
 import useAuthStore from "./stores/Authstore";
 import useSocketStore from "./stores/SocketStore";
 import useNotificationStore from "./stores/NotificationStore";
@@ -33,6 +34,7 @@ function SocketListener() {
 
         socket.on("new-quiz", (data) => {
             fetchNotifications();
+            useQuizStore.getState().fetchAvailableQuizzes();
             toast.success(`🚀 New Quiz: ${data.title} in ${data.courseTitle}`, {
                 duration: 5000,
                 icon: "📝"
@@ -105,6 +107,7 @@ function App() {
                     element={<QuizQuestionsPage />}
                 />
                 <Route path="/note/:noteId" element={<NoteDetail />} />
+                <Route path="/admin" element={<AdminDashboard />} />
             </Routes>
         </>
     );

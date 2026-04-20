@@ -1,4 +1,4 @@
-import { LogOut, BookMarked, Sun, Moon, Bell, Check, ExternalLink, Inbox } from "lucide-react";
+import { LogOut, BookMarked, Sun, Moon, Bell, Check, ExternalLink, Inbox, Shield } from "lucide-react";
 import useThemeStore from "../../stores/ThemeStore";
 import useAuthStore from "../../stores/Authstore";
 import useSocketStore from "../../stores/SocketStore";
@@ -124,6 +124,16 @@ export default function Navbar() {
                             )}
                         </div>
                     </div>
+
+                    {user?.role === "admin" && (
+                        <button
+                            onClick={() => navigate("/admin")}
+                            className="btn btn-primary btn-sm rounded-xl px-4 hidden md:flex"
+                        >
+                            <Shield className="w-4 h-4 mr-2" />
+                            Admin Dashboard
+                        </button>
+                    )}
 
                     <label className="swap swap-rotate btn btn-ghost btn-circle">
                         {/* this hidden checkbox controls the state */}

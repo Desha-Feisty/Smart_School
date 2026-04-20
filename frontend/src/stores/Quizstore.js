@@ -4,8 +4,10 @@ import useAuthStore from "./Authstore";
 
 const useQuizStore = create((set) => ({
     quizzes: [],
+    availableQuizzes: [],
     errMsg: null,
     setQuizzes: (quizzes) => set({ quizzes }),
+    setAvailableQuizzes: (availableQuizzes) => set({ availableQuizzes }),
     setErrMsg: (errMsg) => set({ errMsg }),
     clearErrMsg: () => set({ errMsg: null }),
 
@@ -64,6 +66,28 @@ const useQuizStore = create((set) => ({
                 set({ quizzes: response.data.filteredQuizzes });
             }
         } catch (error) {
+            set({
+                errMsg:
+                    error.response?.data?.errMsg ||
+                    error.response?.data?.error ||
+                    error.message,
+            });
+        }
+    },
+
+    fetchAvailableQuizzes: async () => {
+        try {
+            set({ errMsg: null });
+            const token = useAuthStore.getState().token;
+            if (!token) return;
+            const response = await axios.get("/api/quizzes/available", {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (response.status === 200) {
+                set({ availableQuizzes: response.data.quizzes || [] });
+            }
+        } catch (error) {
+            console.error("Failed to fetch available quizzes:", error);
             set({
                 errMsg:
                     error.response?.data?.errMsg ||

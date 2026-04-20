@@ -36,7 +36,7 @@ const userSchema = new Schema<IUser, UserModel, UserMethods>(
         },
         role: {
             type: String,
-            enum: ["teacher", "student"],
+            enum: ["teacher", "student", "admin"],
             required: true,
         },
     },
