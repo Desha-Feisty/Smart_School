@@ -101,9 +101,11 @@ const getCourse = async (req: AuthRequest, res: Response) => {
         const { id: courseId } = req.params;
         if (!courseId)
             return res.status(404).json({ errMsg: "invalid courseId" });
-        const course = await Course.findById(courseId)
-            .select("-joinCode")
-            .lean();
+        let courseQuery = Course.findById(courseId);
+        if (req.user.role !== "teacher") {
+            courseQuery = courseQuery.select("-joinCode");
+        }
+        const course = await courseQuery.lean();
         if (!course)
             return res.status(404).json({ errMsg: "error finding course" });
         if (req.user.role === "teacher") {

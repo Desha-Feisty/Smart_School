@@ -351,12 +351,26 @@ const getAttemptDetails = async (req: AuthRequest, res: Response) => {
             return res.status(404).json({ error: "Attempt not found" });
         if (attempt.user.toString() !== req.user?.id)
             return res.status(403).json({ error: "Forbidden" });
-        const resp = attempt.responses.map((r) => ({
-            questionId: r.question?._id,
-            prompt: (r.question as unknown as IQuestion)?.prompt,
-            selectedChoiceIds: r.selectedChoiceIds,
-            pointsAwarded: r.pointsAwarded,
-        }));
+        const resp = attempt.responses.map((r) => {
+            const question = r.question as unknown as IQuestion;
+            const choices = question?.choices || [];
+            
+            const selectedText = r.selectedChoiceIds.map(id => {
+                const choice = choices.find(c => c._id?.toString() === id.toString() || (c as any).id === id.toString());
+                return choice ? choice.text : "Unknown choice";
+            });
+            
+            const correctText = choices.filter(c => c.isCorrect).map(c => c.text);
+            
+            return {
+                questionId: (question as any)?._id,
+                prompt: question?.prompt,
+                selectedChoiceIds: r.selectedChoiceIds,
+                pointsAwarded: r.pointsAwarded,
+                selectedText,
+                correctText,
+            };
+        });
         if (attempt.quiz instanceof Types.ObjectId) {
             return res.status(500).json({ errMsg: "server error" });
         }

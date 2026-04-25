@@ -194,6 +194,26 @@ const useQuizStore = create((set) => ({
         }
     },
 
+    generateAiQuestions: async (quizId, topic, count) => {
+        try {
+            const token = useAuthStore.getState().token;
+            const response = await axios.post(
+                `/api/quizzes/${quizId}/questions/generate-ai`,
+                { topic, count },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+            return response.data.questions;
+        } catch (error) {
+            set({ errMsg: error.response?.data?.errMsg || error.message });
+            throw error;
+        }
+    },
+
     updateQuestion: async (questionId, questionData) => {
         try {
             const token = useAuthStore.getState().token;

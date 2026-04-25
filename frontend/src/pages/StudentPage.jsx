@@ -165,6 +165,8 @@ function StudentPage() {
               ).toFixed(1)
             : 0;
 
+    const unattemptedQuizzes = availableQuizzes.filter((q) => !q.isAttempted);
+
     return (
         <PageWrapper>
             <Navbar />
@@ -172,7 +174,7 @@ function StudentPage() {
             <main className="max-w-7xl mx-auto px-6 py-8 animate-in fade-in duration-500 w-full relative z-10">
                 <StudentStatsCards
                     allCourses={allCourses}
-                    availableQuizzes={availableQuizzes}
+                    availableQuizzes={unattemptedQuizzes}
                     avgScore={avgScore}
                 />
 
@@ -266,7 +268,7 @@ function StudentPage() {
 
                 {activeTab === "quizzes" && (
                     <StudentQuizzesTab
-                        availableQuizzes={availableQuizzes}
+                        availableQuizzes={unattemptedQuizzes}
                         startingQuizId={startingQuizId}
                         handleStartQuiz={handleStartQuiz}
                     />
@@ -329,7 +331,7 @@ function StudentPage() {
                 viewContentCourse={viewContentCourse}
                 setViewContentCourse={setViewContentCourse}
                 setCourseContentNotes={setCourseContentNotes}
-                availableQuizzes={availableQuizzes}
+                availableQuizzes={unattemptedQuizzes}
                 startingQuizId={startingQuizId}
                 handleStartQuiz={handleStartQuiz}
                 contentNotesLoading={contentNotesLoading}

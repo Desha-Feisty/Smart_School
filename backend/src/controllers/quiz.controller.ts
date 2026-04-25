@@ -7,6 +7,7 @@ import Question from "../models/question.js";
 import Attempt from "../models/attempt.js";
 import { startSession, Types } from "mongoose";
 import Enrollment from "../models/enrollment.js";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const createQuizSchema = Joi.object({
     title: Joi.string().min(2).required(),
@@ -636,6 +637,92 @@ const createQuizFromBody = async (req: AuthRequest, res: Response) => {
     }
 };
 
+const generateQuestionsWithAI = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id: quizId } = req.params;
+        const { topic, count = 5 } = req.body;
+        
+        if (!quizId) return res.status(400).json({ errMsg: "invalid quiz id" });
+        if (!topic) return res.status(400).json({ errMsg: "topic is required" });
+        if (count > 20) return res.status(400).json({ errMsg: "max 20 questions allowed" });
+
+        const quiz = await Quiz.findById(quizId).populate({
+            path: "course",
+            populate: { path: "teacher", select: "_id" },
+        });
+        
+        if (!quiz) return res.status(404).json({ errMsg: "quiz not found" });
+        if (quiz.course instanceof Types.ObjectId) {
+            return res.status(500).json({ errMsg: "course was not populated" });
+        }
+        
+        const teacherId =
+            quiz.course.teacher instanceof Types.ObjectId
+                ? quiz.course.teacher.toString()
+                : quiz.course.teacher._id.toString();
+                
+        if (teacherId !== req.user?.id) {
+            return res.status(403).json({ errMsg: "forbidden" });
+        }
+
+        if (!process.env.GEMINI_API_KEY) {
+            return res.status(500).json({ errMsg: "AI features are not configured on the server" });
+        }
+
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+        const prompt = `You are an expert educator. Create ${count} multiple-choice questions about the following topic: "${topic}".
+        Return ONLY a JSON array of objects with this exact structure:
+        [
+            {
+                "prompt": "The question text",
+                "points": 1,
+                "choices": [
+                    { "text": "Correct Answer", "isCorrect": true },
+                    { "text": "Wrong Answer 1", "isCorrect": false },
+                    { "text": "Wrong Answer 2", "isCorrect": false },
+                    { "text": "Wrong Answer 3", "isCorrect": false }
+                ]
+            }
+        ]
+        Do not wrap in markdown code blocks. Just output the raw JSON array. Make sure there is exactly ONE correct answer per question, and the questions are high quality.`;
+
+        const result = await model.generateContent(prompt);
+        const text = result.response.text().trim();
+        
+        const jsonMatch = text.match(/\[[\s\S]*\]/);
+        if (!jsonMatch) {
+            console.error("Failed to extract JSON array. Raw response:", text);
+            return res.status(500).json({ errMsg: "AI returned invalid format" });
+        }
+
+        let generatedQuestions;
+        try {
+            generatedQuestions = JSON.parse(jsonMatch[0]);
+        } catch (parseErr) {
+            console.error("JSON Parse Error:", parseErr, "Raw text:", text);
+            return res.status(500).json({ errMsg: "AI returned invalid JSON data" });
+        }
+
+        const questionsToInsert = generatedQuestions.map((q: any) => ({
+             quiz: quiz._id,
+             questionType: "mcq_single",
+             prompt: q.prompt,
+             points: q.points || 1,
+             orderIndex: 0,
+             choices: q.choices,
+        }));
+
+        const inserted = await Question.insertMany(questionsToInsert);
+        res.status(201).json({ questions: inserted });
+    } catch (error) {
+        console.error("AI Generation Error:", error);
+        const errMsg = error instanceof Error ? error.message : "failed to generate questions";
+        res.status(500).json({ errMsg });
+    }
+};
+
 export {
     createQuiz,
     createQuizFromBody,
@@ -649,4 +736,5 @@ export {
     getQuizDetails,
     updateQuiz,
     deleteQuiz,
+    generateQuestionsWithAI,
 };

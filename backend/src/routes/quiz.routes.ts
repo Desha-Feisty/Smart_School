@@ -42,6 +42,12 @@ router.post(
     requireRole("teacher"),
     quizController.publishQuiz,
 );
+router.post(
+    "/:id/questions/generate-ai",
+    authMiddleware,
+    requireRole("teacher"),
+    quizController.generateQuestionsWithAI,
+);
 router.get(
     "/:id/grades",
     authMiddleware,

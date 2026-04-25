@@ -354,9 +354,26 @@ function QuizResultsPage() {
                                                             <XCircle className="w-5 h-5 text-red-500" />
                                                         )}
                                                     </div>
-                                                    <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-lg">
+                                                    <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-lg mb-4">
                                                         {response.prompt || "Question not available"}
                                                     </p>
+                                                    
+                                                    <div className="space-y-2 bg-white/50 dark:bg-base-300/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50">
+                                                        <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                                                            <span className="text-slate-500 dark:text-slate-400 mr-2">Your Answer:</span>
+                                                            <span className={`font-semibold ${isCorrect ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                                                                {response.selectedText?.length > 0 ? response.selectedText.join(", ") : "No answer provided"}
+                                                            </span>
+                                                        </p>
+                                                        {!isCorrect && response.correctText && response.correctText.length > 0 && (
+                                                            <p className="text-sm font-medium text-slate-800 dark:text-slate-200 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700/50">
+                                                                <span className="text-slate-500 dark:text-slate-400 mr-2">Correct Answer:</span>
+                                                                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                                                    {response.correctText.join(", ")}
+                                                                </span>
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <div className="text-left sm:text-right shrink-0 bg-white dark:bg-base-300 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 shadow-sm self-start w-full sm:w-auto">
                                                     <div

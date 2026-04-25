@@ -12,6 +12,7 @@ import {
     CheckCircle,
     Circle,
     Copy,
+    Sparkles,
 } from "lucide-react";
 import PageWrapper from "../components/layout/PageWrapper";
 import Navbar from "../components/layout/Navbar";
@@ -25,6 +26,7 @@ function QuizQuestionsPage() {
         addQuestion,
         updateQuestion,
         deleteQuestion,
+        generateAiQuestions,
         errMsg,
         clearErrMsg,
     } = useQuizStore();
@@ -34,6 +36,10 @@ function QuizQuestionsPage() {
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+    const [aiTopic, setAiTopic] = useState("");
+    const [aiCount, setAiCount] = useState(5);
+    const [isGenerating, setIsGenerating] = useState(false);
 
     const [formData, setFormData] = useState({
         prompt: "",
@@ -137,6 +143,27 @@ function QuizQuestionsPage() {
         }
     };
 
+    const handleAiGenerate = async (e) => {
+        e.preventDefault();
+        if (!aiTopic.trim()) {
+            toast.error("Please enter a topic");
+            return;
+        }
+        setIsGenerating(true);
+        try {
+            await generateAiQuestions(quizId, aiTopic, aiCount);
+            toast.success(`Successfully generated ${aiCount} questions!`);
+            setIsAiModalOpen(false);
+            setAiTopic("");
+            fetchQuestions();
+        } catch (err) {
+            const errorMsg = err.response?.data?.errMsg || err.message || "Failed to generate AI questions";
+            toast.error(errorMsg);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     const handleEdit = (q) => {
         setFormData({
             prompt: q.prompt,
@@ -208,18 +235,96 @@ function QuizQuestionsPage() {
                                     <span className="badge badge-primary bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-0">{questions.length}</span>
                                 </h1>
                             </div>
-                            {!isAdding && (
-                                <button
-                                    onClick={() => setIsAdding(true)}
-                                    className="btn btn-primary shadow-lg shadow-blue-500/20 rounded-xl hover:-translate-y-0.5 transition-transform"
-                                >
-                                    <Plus className="w-5 h-5 mr-2" />
-                                    Add Question
-                                </button>
+                            {!isAdding && !isAiModalOpen && (
+                                <div className="flex flex-col sm:flex-row gap-3">
+                                    <button
+                                        onClick={() => setIsAiModalOpen(true)}
+                                        className="btn bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white shadow-lg shadow-purple-500/20 border-0 rounded-xl hover:-translate-y-0.5 transition-transform"
+                                    >
+                                        <Sparkles className="w-5 h-5 mr-1" />
+                                        Generate with AI
+                                    </button>
+                                    <button
+                                        onClick={() => setIsAdding(true)}
+                                        className="btn btn-primary shadow-lg shadow-blue-500/20 rounded-xl hover:-translate-y-0.5 transition-transform"
+                                    >
+                                        <Plus className="w-5 h-5 mr-1" />
+                                        Add Question
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </div>
                 </div>
+
+                {/* AI Generator Modal */}
+                {isAiModalOpen && (
+                    <div className="glass-panel overflow-hidden border border-purple-500/30 shadow-2xl shadow-purple-900/10 mb-8 animate-in slide-in-from-top-4 rounded-3xl relative">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-fuchsia-500 to-purple-500"></div>
+                        <div className="p-8">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                    <Sparkles className="w-6 h-6 text-fuchsia-500" />
+                                    Magic Quiz Generator
+                                </h2>
+                                <button onClick={() => setIsAiModalOpen(false)} className="btn btn-ghost btn-circle btn-sm">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            
+                            <form onSubmit={handleAiGenerate} className="space-y-6">
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text font-semibold text-slate-700 dark:text-slate-300">
+                                            What should the questions be about?
+                                        </span>
+                                    </label>
+                                    <textarea
+                                        required
+                                        value={aiTopic}
+                                        onChange={(e) => setAiTopic(e.target.value)}
+                                        className="textarea h-32 bg-white/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/50 rounded-xl text-lg resize-y"
+                                        placeholder="E.g., The history of the Roman Empire, Newton's Laws of Motion, or paste a block of text..."
+                                    />
+                                </div>
+                                <div className="form-control max-w-xs">
+                                    <label className="label">
+                                        <span className="label-text font-semibold text-slate-700 dark:text-slate-300">
+                                            Number of Questions
+                                        </span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="20"
+                                        value={aiCount}
+                                        onChange={(e) => setAiCount(parseInt(e.target.value))}
+                                        className="input bg-white/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/50 rounded-xl text-lg w-32 font-mono"
+                                    />
+                                </div>
+                                <div className="flex gap-4 pt-4">
+                                    <button
+                                        type="submit"
+                                        disabled={isGenerating}
+                                        className="btn bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white px-8 rounded-xl shadow-lg shadow-purple-500/20 border-0 hover:-translate-y-0.5 transition-transform gap-2"
+                                    >
+                                        {isGenerating ? (
+                                            <>
+                                                <span className="loading loading-spinner loading-sm"></span>
+                                                Generating...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Sparkles className="w-5 h-5" />
+                                                Generate
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
 
                 {/* Add/Edit Form */}
                 {isAdding && (
@@ -395,12 +500,22 @@ function QuizQuestionsPage() {
                                 <p className="text-slate-600 dark:text-slate-400 max-w-sm mx-auto">
                                     Get started by adding your first question to this quiz.
                                 </p>
-                                <button
-                                    onClick={() => setIsAdding(true)}
-                                    className="btn btn-primary mt-6 px-8 rounded-xl shadow-lg shadow-blue-500/20"
-                                >
-                                    Add Question
-                                </button>
+                                <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
+                                    <button
+                                        onClick={() => setIsAiModalOpen(true)}
+                                        className="btn bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white shadow-lg shadow-purple-500/20 border-0 rounded-xl"
+                                    >
+                                        <Sparkles className="w-5 h-5 mr-1" />
+                                        Generate with AI
+                                    </button>
+                                    <button
+                                        onClick={() => setIsAdding(true)}
+                                        className="btn btn-primary px-8 rounded-xl shadow-lg shadow-blue-500/20"
+                                    >
+                                        <Plus className="w-5 h-5 mr-1" />
+                                        Add Manually
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ) : (
