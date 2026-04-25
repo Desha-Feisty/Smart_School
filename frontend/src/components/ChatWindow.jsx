@@ -34,7 +34,29 @@ function ChatWindow({ courseId, peerId, peerName, onClose }) {
         };
 
         const onMessage = (message) => {
-            setMessages((prev) => [...prev, message]);
+            console.log("Received chat message:", message);
+            setMessages((prev) => {
+                // Deduplicate by ID
+                const msgId = message._id || message.id;
+                if (msgId && prev.some((m) => (m._id || m.id) === msgId)) {
+                    return prev;
+                }
+                
+                // Fallback deduplication: same text and sender within 2 seconds
+                const now = new Date(message.createdAt || Date.now()).getTime();
+                const isDuplicate = prev.some((m) => {
+                    if (m.text !== message.text) return false;
+                    const mSender = typeof m.sender === 'object' ? m.sender._id || m.sender.id : m.sender;
+                    const msgSender = typeof message.sender === 'object' ? message.sender._id || message.sender.id : message.sender;
+                    if (mSender !== msgSender) return false;
+                    const mTime = new Date(m.createdAt || Date.now()).getTime();
+                    return Math.abs(now - mTime) < 2000;
+                });
+                
+                if (isDuplicate) return prev;
+
+                return [...prev, message];
+            });
         };
 
         socket.on("chat-history", onHistory);

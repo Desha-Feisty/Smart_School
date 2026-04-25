@@ -15,6 +15,8 @@ import useSocketStore from "./stores/SocketStore";
 import useNotificationStore from "./stores/NotificationStore";
 import useTeacherStore from "./stores/Teacherstore";
 
+const processedMessages = new Set();
+
 function SocketListener() {
     const user = useAuthStore((state) => state.user);
     const token = useAuthStore((state) => state.token);
@@ -50,6 +52,18 @@ function SocketListener() {
         });
 
         socket.on("chat-message", (message) => {
+            // Deduplicate incoming messages using a global Set
+            const msgId = message._id || message.id;
+            const fallbackId = msgId || `${message.text}-${typeof message.sender === 'object' ? message.sender._id || message.sender.id : message.sender}`;
+            
+            if (processedMessages.has(fallbackId)) return;
+            processedMessages.add(fallbackId);
+            // Keep set size manageable
+            if (processedMessages.size > 100) {
+                const first = processedMessages.values().next().value;
+                processedMessages.delete(first);
+            }
+
             fetchNotifications();
             
             const currentUser = useAuthStore.getState().user;
@@ -65,6 +79,7 @@ function SocketListener() {
             if (senderId !== myId) {
                 const senderName = typeof message.sender === 'object' ? message.sender.name : "Teammate";
                 toast(`💬 Message from ${senderName}: ${message.text?.substring(0, 30)}...`, {
+                    id: message._id, // Add id to toast for extra deduplication safety
                     duration: 3000,
                 });
             }
