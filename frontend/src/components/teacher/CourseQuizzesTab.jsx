@@ -62,6 +62,11 @@ export default function CourseQuizzesTab({
                                                 <Clock className="w-3.5 h-3.5 text-orange-500" />
                                                 <span>Close: <span className="text-slate-700 dark:text-slate-300">{new Date(quiz.closeAt).toLocaleString()}</span></span>
                                             </div>
+                                            {quiz.questionsPerAttempt && (
+                                                <div className="flex items-center gap-1.5 bg-purple-50 dark:bg-purple-900/20 px-2.5 py-1.5 rounded-lg border border-purple-200 dark:border-purple-800/50">
+                                                    <span className="text-purple-600 dark:text-purple-400">🎲 {quiz.questionsPerAttempt} random Qs per student</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="flex flex-row sm:flex-col gap-2 shrink-0">
@@ -255,6 +260,54 @@ export default function CourseQuizzesTab({
                                         className="input input-sm h-10 w-full bg-white/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 rounded-xl text-center"
                                     />
                                 </div>
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text font-medium text-slate-700 dark:text-slate-300 text-xs">
+                                        Questions per attempt
+                                        <span className="text-slate-400 dark:text-slate-500 font-normal ml-1">(leave empty for all)</span>
+                                    </span>
+                                </label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    placeholder="All questions"
+                                    value={newQuiz.questionsPerAttempt}
+                                    onChange={(e) =>
+                                        setNewQuiz({
+                                            ...newQuiz,
+                                            questionsPerAttempt:
+                                                e.target.value === ""
+                                                    ? ""
+                                                    : parseInt(e.target.value),
+                                        })
+                                    }
+                                    className="input input-sm h-10 w-full bg-white/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 rounded-xl text-center"
+                                />
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text font-medium text-slate-700 dark:text-slate-300 text-xs">
+                                        Grading
+                                    </span>
+                                </label>
+                                <select
+                                    value={newQuiz.gradingMode}
+                                    onChange={(e) =>
+                                        setNewQuiz({
+                                            ...newQuiz,
+                                            gradingMode: e.target.value,
+                                        })
+                                    }
+                                    className="select select-sm h-10 w-full bg-white/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 rounded-xl"
+                                >
+                                    <option value="onSubmit">
+                                        Grade immediately
+                                    </option>
+                                    <option value="onClose">
+                                        Grade when quiz closes
+                                    </option>
+                                </select>
                             </div>
                             <button
                                 type="submit"

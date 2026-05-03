@@ -5,9 +5,15 @@ import useAuthStore from "./Authstore";
 const useQuizStore = create((set) => ({
     quizzes: [],
     availableQuizzes: [],
+    myGrades: [],
+    quizGrades: [],
+    currentAttempt: null,
+    attemptQuestions: [],
+    gradesLoading: false,
+    gradesError: null,
+    attemptError: null,
     errMsg: null,
     setQuizzes: (quizzes) => set({ quizzes }),
-    setAvailableQuizzes: (availableQuizzes) => set({ availableQuizzes }),
     setErrMsg: (errMsg) => set({ errMsg }),
     clearErrMsg: () => set({ errMsg: null }),
 
@@ -16,8 +22,9 @@ const useQuizStore = create((set) => ({
             set({ errMsg: null });
             const token = useAuthStore.getState().token;
             if (!token) {
-                set({ errMsg: "Not authenticated. Please log in again." });
-                return;
+                const errMsg = "Not authenticated. Please log in again.";
+                set({ errMsg });
+                throw new Error(errMsg);
             }
             console.log("Creating quiz for course:", courseId);
             console.log("Quiz data:", JSON.stringify(quizData, null, 2));
@@ -38,6 +45,12 @@ const useQuizStore = create((set) => ({
                 }));
                 return response.data;
             }
+            const errMsg =
+                response.data?.errMsg ||
+                response.data?.error ||
+                "Failed to create quiz";
+            set({ errMsg });
+            throw new Error(errMsg);
         } catch (error) {
             const errMsg =
                 error.response?.data?.errMsg ||
@@ -46,6 +59,7 @@ const useQuizStore = create((set) => ({
                 "Failed to create quiz";
             console.error("Quiz creation error:", errMsg);
             set({ errMsg });
+            throw new Error(errMsg);
         }
     },
 
@@ -75,28 +89,6 @@ const useQuizStore = create((set) => ({
         }
     },
 
-    fetchAvailableQuizzes: async () => {
-        try {
-            set({ errMsg: null });
-            const token = useAuthStore.getState().token;
-            if (!token) return;
-            const response = await axios.get("/api/quizzes/available", {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (response.status === 200) {
-                set({ availableQuizzes: response.data.quizzes || [] });
-            }
-        } catch (error) {
-            console.error("Failed to fetch available quizzes:", error);
-            set({
-                errMsg:
-                    error.response?.data?.errMsg ||
-                    error.response?.data?.error ||
-                    error.message,
-            });
-        }
-    },
-
     deleteQuiz: async (quizId) => {
         try {
             const token = useAuthStore.getState().token;
@@ -113,50 +105,6 @@ const useQuizStore = create((set) => ({
             }
         } catch (error) {
             set({ errMsg: error.message });
-        }
-    },
-
-    publishQuiz: async (quizId) => {
-        try {
-            const token = useAuthStore.getState().token;
-            const response = await axios.post(
-                `/api/quizzes/${quizId}/publish`,
-                {},
-                {
-                    headers: { Authorization: `Bearer ${token}` },
-                },
-            );
-            if (response.status === 200) {
-                set((state) => ({
-                    quizzes: state.quizzes.map((q) =>
-                        q._id === quizId ? { ...q, published: true } : q,
-                    ),
-                }));
-            }
-        } catch (error) {
-            set({ errMsg: error.response?.data?.errMsg || error.message });
-        }
-    },
-
-    unpublishQuiz: async (quizId) => {
-        try {
-            const token = useAuthStore.getState().token;
-            const response = await axios.put(
-                `/api/quizzes/${quizId}`,
-                { published: false },
-                {
-                    headers: { Authorization: `Bearer ${token}` },
-                },
-            );
-            if (response.status === 200) {
-                set((state) => ({
-                    quizzes: state.quizzes.map((q) =>
-                        q._id === quizId ? { ...q, published: false } : q,
-                    ),
-                }));
-            }
-        } catch (error) {
-            set({ errMsg: error.response?.data?.errMsg || error.message });
         }
     },
 
@@ -188,26 +136,6 @@ const useQuizStore = create((set) => ({
                 },
             );
             return response.data.question;
-        } catch (error) {
-            set({ errMsg: error.response?.data?.errMsg || error.message });
-            throw error;
-        }
-    },
-
-    generateAiQuestions: async (quizId, topic, count) => {
-        try {
-            const token = useAuthStore.getState().token;
-            const response = await axios.post(
-                `/api/quizzes/${quizId}/questions/generate-ai`,
-                { topic, count },
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                },
-            );
-            return response.data.questions;
         } catch (error) {
             set({ errMsg: error.response?.data?.errMsg || error.message });
             throw error;
@@ -246,200 +174,260 @@ const useQuizStore = create((set) => ({
         }
     },
 
-    // Grade history state
-    myGrades: [],
-    quizGrades: [],
-    gradesLoading: false,
-    gradesError: null,
+    fetchAvailableQuizzes: async () => {
+        try {
+            const token = useAuthStore.getState().token;
+            const response = await axios.get("/api/quizzes/available", {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            set({ availableQuizzes: response.data.quizzes || [] });
+        } catch (error) {
+            set({ availableQuizzes: [] });
+        }
+    },
 
     listMyGrades: async () => {
         try {
             set({ gradesLoading: true, gradesError: null });
             const token = useAuthStore.getState().token;
-            if (!token) {
-                set({ gradesError: "Not authenticated. Please log in again." });
-                return [];
-            }
-            const response = await axios.get("/api/attempts/my", {
+            const response = await axios.get("/api/attempts/my-grades", {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            if (response.status === 200) {
-                set({ myGrades: response.data.results || [] });
-                return response.data.results || [];
-            }
-            return [];
+            set({ myGrades: response.data.results || [] });
         } catch (error) {
-            const errMsg =
-                error.response?.data?.errMsg ||
-                error.response?.data?.error ||
-                error.message ||
-                "Failed to load grades";
             if (error.response?.status === 404) {
-                set({ myGrades: [] });
-                return [];
+                set({ myGrades: [], gradesError: null });
+            } else {
+                set({
+                    myGrades: [],
+                    gradesError:
+                        error.response?.data?.errMsg ||
+                        error.response?.data?.error ||
+                        error.message,
+                });
             }
-            console.error("List my grades error:", errMsg);
-            set({ gradesError: errMsg });
-            return [];
         } finally {
             set({ gradesLoading: false });
         }
     },
-
-    listQuizGrades: async (quizId) => {
-        try {
-            set({ gradesLoading: true, gradesError: null });
-            const token = useAuthStore.getState().token;
-            if (!token) {
-                set({ gradesError: "Not authenticated. Please log in again." });
-                return [];
-            }
-            const response = await axios.get(`/api/quizzes/${quizId}/grades`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (response.status === 200) {
-                set({ quizGrades: response.data.results || [] });
-                return response.data;
-            }
-            return null;
-        } catch (error) {
-            const errMsg =
-                error.response?.data?.errMsg ||
-                error.response?.data?.error ||
-                error.message ||
-                "Failed to load quiz grades";
-            console.error("List quiz grades error:", errMsg);
-            set({ gradesError: errMsg });
-            set({ quizGrades: [] });
-            return null;
-        } finally {
-            set({ gradesLoading: false });
-        }
-    },
-
-    // Student Attempt Actions
-    currentAttempt: null,
-    attemptQuestions: [],
-    attemptError: null,
 
     startAttempt: async (quizId) => {
         try {
             set({ attemptError: null });
             const token = useAuthStore.getState().token;
-            if (!token) {
-                set({
-                    attemptError: "Not authenticated. Please log in again.",
-                });
-                return null;
-            }
             const response = await axios.post(
-                `/api/attempts/${quizId}/attempts/start`,
-                {},
-                {
-                    headers: { Authorization: `Bearer ${token}` },
-                },
+                "/api/attempts/start",
+                { quizId },
+                { headers: { Authorization: `Bearer ${token}` } },
             );
-            if (response.status === 201 || response.status === 200) {
-                // Backend returns: { attemptId, endAt, questions }
-                const attemptData = {
-                    _id: response.data.attemptId,
-                    endAt: response.data.endAt,
-                };
-                // Transform questions to use _id instead of id
-                const transformedQuestions = (
-                    response.data.questions || []
-                ).map((q) => ({
-                    _id: q.id,
-                    prompt: q.prompt,
-                    choices: q.choices.map((c) => ({
-                        _id: c.id,
-                        text: c.text,
-                    })),
-                }));
-                set({
-                    currentAttempt: attemptData,
-                    attemptQuestions: transformedQuestions,
-                });
-                return {
-                    attempt: attemptData,
-                    questions: transformedQuestions,
-                };
-            }
+
+            const attemptData = {
+                _id: response.data.attemptId,
+                endAt: response.data.endAt,
+            };
+
+            set({
+                currentAttempt: attemptData,
+                attemptQuestions: response.data.questions || [],
+            });
+
+            return { attempt: attemptData, questions: response.data.questions };
         } catch (error) {
-            const errMsg =
-                error.response?.data?.errMsg ||
-                error.response?.data?.error ||
-                error.message ||
-                "Failed to start quiz attempt";
-            console.error("Start attempt error:", errMsg);
-            set({ attemptError: errMsg });
+            set({
+                attemptError: error.response?.data?.errMsg || error.message,
+            });
+            return null;
+        }
+    },
+
+    fetchAttempt: async (attemptId) => {
+        try {
+            set({ attemptError: null });
+            const token = useAuthStore.getState().token;
+            const response = await axios.get(`/api/attempts/${attemptId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const attempt = response.data.attempt;
+            let questions;
+
+            if (attempt?.status === "inProgress") {
+                const quizResponse = await axios.get(
+                    `/api/quizzes/${response.data.quiz._id}`,
+                    { headers: { Authorization: `Bearer ${token}` } },
+                );
+                const quizQuestions = quizResponse.data.questions || [];
+                const answeredMap = new Map(
+                    (response.data.responses || []).map((r) => [r.questionId, r]),
+                );
+                questions = quizQuestions.map((q) => {
+                    const answered = answeredMap.get(q._id?.toString() || q._id);
+                    return answered
+                        ? { ...q, selectedChoiceIds: answered.selectedChoiceIds }
+                        : q;
+                });
+            } else {
+                questions = (response.data.responses || []).map((r) => ({
+                    _id: r.questionId,
+                    prompt: r.prompt,
+                    points: r.points,
+                    choices: r.choices || [],
+                    selectedChoiceIds: r.selectedChoiceIds,
+                }));
+            }
+
+            set({
+                currentAttempt: attempt,
+                attemptQuestions: questions,
+            });
+
+            return response.data;
+        } catch (error) {
+            set({
+                attemptError: error.response?.data?.errMsg || error.message,
+            });
             return null;
         }
     },
 
     submitAnswer: async (attemptId, questionId, selectedChoiceIds) => {
         try {
-            set({ attemptError: null });
             const token = useAuthStore.getState().token;
-            if (!token) {
-                set({ attemptError: "Not authenticated." });
-                return false;
-            }
-            const response = await axios.patch(
+            await axios.patch(
                 `/api/attempts/${attemptId}/answers`,
-                {
-                    questionId,
-                    selectedChoiceIds,
-                },
-                {
-                    headers: { Authorization: `Bearer ${token}` },
-                },
+                { questionId, selectedChoiceIds },
+                { headers: { Authorization: `Bearer ${token}` } },
             );
-            if (response.status === 200) {
-                return true;
-            }
+            return true;
         } catch (error) {
-            const errMsg =
-                error.response?.data?.errMsg ||
-                error.response?.data?.error ||
-                error.message ||
-                "Failed to save answer";
-            console.error("Submit answer error:", errMsg);
-            set({ attemptError: errMsg });
+            console.error("Failed to save answer:", error);
             return false;
         }
     },
 
     submitAttempt: async (attemptId) => {
         try {
-            set({ attemptError: null });
             const token = useAuthStore.getState().token;
-            if (!token) {
-                set({ attemptError: "Not authenticated." });
-                return null;
-            }
-            const response = await axios.post(
+            await axios.post(
                 `/api/attempts/${attemptId}/submit`,
                 {},
+                { headers: { Authorization: `Bearer ${token}` } },
+            );
+            set({ currentAttempt: null, attemptQuestions: [] });
+            return true;
+        } catch (error) {
+            console.error("Failed to submit attempt:", error);
+            return false;
+        }
+    },
+
+    generateAiQuestions: async (quizId, topic, count) => {
+        try {
+            set({ errMsg: null });
+            const token = useAuthStore.getState().token;
+            const response = await axios.post(
+                `/api/quizzes/${quizId}/questions/generate-ai`,
+                { topic, count },
                 {
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
                 },
             );
-            if (response.status === 200) {
-                set({
-                    currentAttempt: response.data.attempt,
-                });
-                return response.data.attempt;
-            }
+            return response.data;
         } catch (error) {
             const errMsg =
                 error.response?.data?.errMsg ||
                 error.response?.data?.error ||
                 error.message ||
-                "Failed to submit quiz";
-            console.error("Submit attempt error:", errMsg);
-            set({ attemptError: errMsg });
-            return null;
+                "Failed to generate AI questions";
+            set({ errMsg });
+            throw error;
+        }
+    },
+
+    publishQuiz: async (quizId) => {
+        try {
+            set({ errMsg: null });
+            const token = useAuthStore.getState().token;
+            const response = await axios.post(
+                `/api/quizzes/${quizId}/publish`,
+                {},
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+            set((state) => ({
+                quizzes: state.quizzes.map((q) =>
+                    q._id === quizId ? { ...q, published: true } : q,
+                ),
+            }));
+            return response.data;
+        } catch (error) {
+            const errMsg =
+                error.response?.data?.errMsg ||
+                error.response?.data?.error ||
+                error.message ||
+                "Failed to publish quiz";
+            set({ errMsg });
+            throw error;
+        }
+    },
+
+    unpublishQuiz: async (quizId) => {
+        try {
+            set({ errMsg: null });
+            const token = useAuthStore.getState().token;
+            const response = await axios.put(
+                `/api/quizzes/${quizId}`,
+                { published: false },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+            set((state) => ({
+                quizzes: state.quizzes.map((q) =>
+                    q._id === quizId ? { ...q, published: false } : q,
+                ),
+            }));
+            return response.data;
+        } catch (error) {
+            const errMsg =
+                error.response?.data?.errMsg ||
+                error.response?.data?.error ||
+                error.message ||
+                "Failed to unpublish quiz";
+            set({ errMsg });
+            throw error;
+        }
+    },
+
+    listQuizGrades: async (quizId) => {
+        try {
+            set({ errMsg: null, gradesLoading: true, gradesError: null });
+            const token = useAuthStore.getState().token;
+            const response = await axios.get(`/api/quizzes/${quizId}/grades`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            set({ quizGrades: response.data.results || [], gradesLoading: false });
+            return response.data;
+        } catch (error) {
+            set({
+                quizGrades: [],
+                gradesError: error.response?.data?.errMsg ||
+                    error.response?.data?.error ||
+                    error.message ||
+                    "Failed to fetch quiz grades",
+                gradesLoading: false,
+            });
+            throw error;
         }
     },
 }));

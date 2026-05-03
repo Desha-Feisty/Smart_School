@@ -69,6 +69,11 @@ export default function StudentQuizzesTab({
                                                             : `Closes: ${new Date(quiz.closeAt).toLocaleString()}`
                                                     }
                                                 </div>
+                                                {quiz.questionsPerAttempt && (
+                                                    <div className="flex items-center gap-1 text-purple-600 dark:text-purple-400">
+                                                        <span>🎲 {quiz.questionsPerAttempt} random questions</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-center gap-1">

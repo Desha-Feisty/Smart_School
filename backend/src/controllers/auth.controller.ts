@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import User from "../models/user.js";
 import joi from "joi";
 import type { Role } from "./user.controller.js";
+import { logActivity } from "../services/logger.js";
 export interface RegisterBody {
     name: string;
     email: string;
@@ -40,6 +41,15 @@ const register = async (req: Request<{}, {}, RegisterBody>, res: Response) => {
         }
         const user = await User.create({ email, name, password, role });
         console.log("User created, generating token for:", email);
+        
+        await logActivity({
+            userId: user._id.toString(),
+            action: "user_created",
+            details: `New ${role} account created: ${name} (${email})`,
+            ipAddress: req.ip || undefined,
+            userAgent: req.get("User-Agent") || undefined,
+        });
+        
         const token = await user.createToken();
         console.log("Token generated successfully");
         return res.status(201).json({
@@ -88,6 +98,15 @@ const login = async (req: Request<{}, {}, loginBody>, res: Response) => {
         console.log("Password correct, generating token for user:", email);
         const token = await user.createToken();
         console.log("Token generated successfully");
+        
+        await logActivity({
+            userId: user._id.toString(),
+            action: "user_login",
+            details: `User logged in: ${user.name} (${user.email})`,
+            ipAddress: req.ip || undefined,
+            userAgent: req.get("User-Agent") || undefined,
+        });
+        
         res.status(200).json({
             success: true,
             token,
@@ -109,12 +128,12 @@ const login = async (req: Request<{}, {}, loginBody>, res: Response) => {
 };
 
 interface AuthRequest extends Request {
-    user?: { id: string };
+    user?: { _id: string };
 }
 
 const me = async (req: AuthRequest, res: Response) => {
     try {
-        const userId = req.user?.id;
+        const userId = req.user?._id;
         if (!userId) return res.status(401).json({ errMsg: "unauthorized" });
         const user = await User.findById(userId).select("-password");
         if (!user) return res.status(404).json({ errMsg: "user not found" });

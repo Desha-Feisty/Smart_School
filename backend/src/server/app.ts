@@ -40,6 +40,8 @@ app.use("/api/quizzes", quizRoutes);
 app.use("/api/attempts", attemptRoutes);
 app.use("/api/notes", noteRoutes);
 app.use("/api/comments", commentRoutes);
+app.use("/api/chats", chatRoutes);
+// Backward-compatible mount: older clients may use /api/chat
 app.use("/api/chat", chatRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);

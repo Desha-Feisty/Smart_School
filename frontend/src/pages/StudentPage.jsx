@@ -23,6 +23,7 @@ import StudentCoursesTab from "../components/student/StudentCoursesTab";
 import StudentQuizzesTab from "../components/student/StudentQuizzesTab";
 import StudentGradesTab from "../components/student/StudentGradesTab";
 import StudentCommunityTab from "../components/student/StudentCommunityTab";
+import StudentChatsTab from "../components/student/StudentChatsTab";
 import CourseContentModal from "../components/student/CourseContentModal";
 
 function StudentPage() {
@@ -122,7 +123,7 @@ function StudentPage() {
         }
         setIsLoading(true);
         try {
-            await axios.post(
+            const res = await axios.post(
                 "/api/courses/join",
                 { joinCode },
                 {
@@ -130,7 +131,17 @@ function StudentPage() {
                 },
             );
             setJoinCode("");
-            listMyCourses();
+            
+            // Add the new course directly to the state instead of waiting for fetch
+            const newCourse = {
+                ...res.data.course,
+                enrolledAt: res.data.enrolledAt || new Date(),
+            };
+            
+            // Update the store directly
+            const currentCourses = useTeacherStore.getState().allCourses;
+            useTeacherStore.getState().setAllCourses([...currentCourses, newCourse]);
+            
             toast.success("Successfully joined course!");
         } catch (err) {
             toast.error(err.response?.data?.errMsg || "Failed to join course");
@@ -230,13 +241,18 @@ function StudentPage() {
                             label: "Available Quizzes",
                             icon: Zap,
                         },
-                        { id: "leaderboard", label: "Leaderboard", icon: Trophy },
+                        {
+                            id: "leaderboard",
+                            label: "Leaderboard",
+                            icon: Trophy,
+                        },
                         { id: "grades", label: "My Grades", icon: TrendingUp },
                         {
                             id: "community",
                             label: "Community Notes",
                             icon: MessageSquare,
                         },
+                        { id: "chats", label: "Chats", icon: MessageSquare },
                     ].map(({ id, label, icon: Icon }) => (
                         <button
                             key={id}
@@ -247,7 +263,9 @@ function StudentPage() {
                                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50"
                             }`}
                         >
-                            <Icon className={`w-4 h-4 ${activeTab === id ? "opacity-100" : "opacity-70"}`} />
+                            <Icon
+                                className={`w-4 h-4 ${activeTab === id ? "opacity-100" : "opacity-70"}`}
+                            />
                             {label}
                         </button>
                     ))}
@@ -282,29 +300,44 @@ function StudentPage() {
                                     <Trophy className="w-6 h-6 text-yellow-500" />
                                     Course Leaderboards
                                 </h2>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">See how you rank against your peers</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">
+                                    See how you rank against your peers
+                                </p>
                             </div>
-                            
+
                             <div className="flex items-center gap-3">
-                                <span className="text-sm font-medium text-slate-500">Select Course:</span>
-                                <select 
+                                <span className="text-sm font-medium text-slate-500">
+                                    Select Course:
+                                </span>
+                                <select
                                     className="select select-bordered select-sm bg-white dark:bg-base-300 rounded-xl focus:ring-2 focus:ring-yellow-500/50"
-                                    value={chatCourseId || (allCourses[0]?._id || "")}
-                                    onChange={(e) => setChatCourseId(e.target.value)}
+                                    value={
+                                        chatCourseId || allCourses[0]?._id || ""
+                                    }
+                                    onChange={(e) =>
+                                        setChatCourseId(e.target.value)
+                                    }
                                 >
-                                    {allCourses.map(c => (
-                                        <option key={c._id} value={c._id}>{c.title}</option>
+                                    {allCourses.map((c) => (
+                                        <option key={c._id} value={c._id}>
+                                            {c.title}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
                         </div>
 
                         {allCourses.length > 0 ? (
-                            <Leaderboard courseId={chatCourseId || allCourses[0]._id} isTeacher={false} />
+                            <Leaderboard
+                                courseId={chatCourseId || allCourses[0]._id}
+                                isTeacher={false}
+                            />
                         ) : (
                             <div className="text-center py-20 glass-panel border-dashed">
                                 <Trophy className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                                <p className="text-slate-500">Join a course to see the leaderboard!</p>
+                                <p className="text-slate-500">
+                                    Join a course to see the leaderboard!
+                                </p>
                             </div>
                         )}
                     </div>
@@ -324,6 +357,10 @@ function StudentPage() {
                         allNotesLoading={allNotesLoading}
                         allCourseNotes={allCourseNotes}
                     />
+                )}
+
+                {activeTab === "chats" && (
+                    <StudentChatsTab allCourses={allCourses} />
                 )}
             </main>
 

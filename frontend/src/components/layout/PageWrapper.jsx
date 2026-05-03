@@ -6,11 +6,9 @@ export default function PageWrapper({ children }) {
                 <div className="absolute inset-0 mesh-bg-light" />
                 <div className="absolute inset-0 mesh-bg-dark" />
             </div>
-            
+
             {/* Main Content */}
-            <div className="relative z-10 flex-1 flex flex-col">
-                {children}
-            </div>
+            <div className="relative z-10 flex-1 flex flex-col">{children}</div>
         </div>
     );
 }

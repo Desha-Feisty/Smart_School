@@ -1,6 +1,10 @@
 import { BookOpen, Zap, Award } from "lucide-react";
 
-export default function StudentStatsCards({ allCourses, availableQuizzes, avgScore }) {
+export default function StudentStatsCards({
+    allCourses,
+    availableQuizzes,
+    avgScore,
+}) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="glass-card bg-gradient-to-br from-blue-500/10 to-blue-600/5 dark:from-blue-500/20 dark:to-blue-600/10">

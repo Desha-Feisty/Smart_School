@@ -13,6 +13,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import useAuthStore from "./stores/Authstore";
 import useSocketStore from "./stores/SocketStore";
 import useNotificationStore from "./stores/NotificationStore";
+import useQuizStore from "./stores/Quizstore";
 import useTeacherStore from "./stores/Teacherstore";
 
 const processedMessages = new Set();
@@ -22,7 +23,9 @@ function SocketListener() {
     const token = useAuthStore((state) => state.token);
     const connect = useSocketStore((state) => state.connect);
     const socket = useSocketStore((state) => state.socket);
-    const fetchNotifications = useNotificationStore((state) => state.fetchNotifications);
+    const fetchNotifications = useNotificationStore(
+        (state) => state.fetchNotifications,
+    );
     const listRecentChats = useTeacherStore((state) => state.listRecentChats);
 
     useEffect(() => {
@@ -35,27 +38,36 @@ function SocketListener() {
         if (!socket) return;
 
         socket.on("new-quiz", (data) => {
+            const token = useAuthStore.getState().token;
+            if (!token) return; // Skip if not logged in
             fetchNotifications();
             useQuizStore.getState().fetchAvailableQuizzes();
             toast.success(`🚀 New Quiz: ${data.title} in ${data.courseTitle}`, {
                 duration: 5000,
-                icon: "📝"
+                icon: "📝",
             });
         });
 
         socket.on("new-note", (data) => {
+            const token = useAuthStore.getState().token;
+            if (!token) return; // Skip if not logged in
             fetchNotifications();
             toast.success(`📚 New Note: ${data.title} was posted`, {
                 duration: 4000,
-                icon: "📖"
+                icon: "📖",
             });
         });
 
         socket.on("chat-message", (message) => {
-            // Deduplicate incoming messages using a global Set
+            // Check auth first
+            const token = useAuthStore.getState().token;
+            const currentUser = useAuthStore.getState().user;
+            if (!token || !currentUser) return; // Skip if not logged in
             const msgId = message._id || message.id;
-            const fallbackId = msgId || `${message.text}-${typeof message.sender === 'object' ? message.sender._id || message.sender.id : message.sender}`;
-            
+            const fallbackId =
+                msgId ||
+                `${message.text}-${typeof message.sender === "object" ? message.sender._id || message.sender.id : message.sender}`;
+
             if (processedMessages.has(fallbackId)) return;
             processedMessages.add(fallbackId);
             // Keep set size manageable
@@ -65,23 +77,28 @@ function SocketListener() {
             }
 
             fetchNotifications();
-            
-            const currentUser = useAuthStore.getState().user;
-            if (currentUser?.role === "teacher") {
-                listRecentChats();
+
+            if (currentUser.role === "teacher") {
+                listRecentChats(true); // silent update
             }
 
             // Only show toast if window is NOT active/visible or something
             // For now, just show a simple toast
             const myId = currentUser?.id || currentUser?._id;
             const senderId = message.sender?._id || message.sender;
-            
+
             if (senderId !== myId) {
-                const senderName = typeof message.sender === 'object' ? message.sender.name : "Teammate";
-                toast(`💬 Message from ${senderName}: ${message.text?.substring(0, 30)}...`, {
-                    id: message._id, // Add id to toast for extra deduplication safety
-                    duration: 3000,
-                });
+                const senderName =
+                    typeof message.sender === "object"
+                        ? message.sender.name
+                        : "Teammate";
+                toast(
+                    `💬 Message from ${senderName}: ${message.text?.substring(0, 30)}...`,
+                    {
+                        id: message._id, // Add id to toast for extra deduplication safety
+                        duration: 3000,
+                    },
+                );
             }
         });
 

@@ -17,4 +17,11 @@ router.delete("/users/:id", adminController.deleteUser);
 router.get("/stats", adminController.getPlatformStats);
 router.get("/analytics", adminController.getPlatformAnalytics);
 
+// System Monitoring & Logging
+router.get("/system-health", adminController.getSystemHealth);
+router.get("/logs", adminController.getLogs);
+router.get("/logs/stats", adminController.getLogStats);
+router.get("/logs/latest", adminController.getLatestLogTimestamp);
+router.get("/logs/export", adminController.exportLogs);
+
 export default router;

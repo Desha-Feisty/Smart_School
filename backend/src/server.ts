@@ -6,6 +6,8 @@ import http from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { initSocket } from "./server/socket.js";
 import { initializeChat } from "./server/chat.js";
+import { startQuizScheduler } from "./server/quizScheduler.js";
+import { startSystemScheduler } from "./server/systemScheduler.js";
 import app from "./server/app.js";
 const PORT = process.env.PORT || 3000;
 
@@ -16,6 +18,8 @@ async function start() {
         const server = http.createServer(app);
         const io = initSocket(server);
         initializeChat(io);
+        startQuizScheduler();
+        startSystemScheduler();
 
         server.listen(PORT, () => {
             console.log(`API server listening on http://localhost:${PORT}`);

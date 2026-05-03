@@ -11,7 +11,15 @@ const useTeacherStore = create((set) => ({
     recentChats: [],
     recentChatsLoading: false,
     createCourse: async (title, description) => {
-        const token = useAuthStore.getState().token;
+        // Wait for auth token to be available
+        let token = useAuthStore.getState().token;
+        let retries = 3;
+        while (!token && retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            token = useAuthStore.getState().token;
+            retries--;
+        }
+        
         console.log("Token in createCourse:", token);
         if (!token) {
             set({ errMsg: "Not authenticated. Please log in again." });
@@ -40,7 +48,15 @@ const useTeacherStore = create((set) => ({
     },
     listMyCourses: async () => {
         try {
-            const token = useAuthStore.getState().token;
+            // Wait for auth token to be available
+            let token = useAuthStore.getState().token;
+            let retries = 3;
+            while (!token && retries > 0) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                token = useAuthStore.getState().token;
+                retries--;
+            }
+            
             console.log("Token in listMyCourses:", token);
             if (!token) {
                 set({ errMsg: "Not authenticated. Please log in again." });
@@ -427,23 +443,56 @@ const useTeacherStore = create((set) => ({
         }
     },
 
-    listRecentChats: async () => {
-        set({ recentChatsLoading: true });
+listRecentChats: async (silent = false) => {
+        if (!silent) set({ recentChatsLoading: true });
+        
+        // Get current user ID and token
+        const authState = useAuthStore.getState();
+        const currentUser = authState.user;
+        const currentUserId = currentUser?.id || currentUser?._id;
+        const token = authState.token;
+        
+        if (!token) {
+            set({ recentChatsLoading: false });
+            return;
+        }
+        
         try {
-            const token = useAuthStore.getState().token;
-            if (!token) {
-                throw new Error("Not authenticated");
-            }
-            const response = await axios.get("/api/chat/recent", {
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
+            const response = await axios.get("/api/chats/v2/recent", {
+                headers: { Authorization: `Bearer ${token}` }
             });
             if (response.status !== 200) {
                 throw new Error("Failed to list recent chats");
             }
-            set({ recentChats: response.data.results, recentChatsLoading: false });
+            const data = response.data;
+            const conversationList = Object.entries(data)
+                .map(([key, convData]) => {
+                    const { messages, peer, course, peerId, courseId } =
+                        convData;
+                    if (!messages || messages.length === 0) return null;
+
+                    const lastMsg = messages[0];
+                    const isMine =
+                        lastMsg.sender &&
+                        (lastMsg.sender._id || lastMsg.sender) ===
+                            currentUserId;
+
+                    return {
+                        _id: key,
+                        peer,
+                        course,
+                        text: lastMsg.text,
+                        createdAt: lastMsg.createdAt,
+                        sender: lastMsg.sender,
+                        peerId,
+                        courseId,
+                        messages,
+                        isMine,
+                    };
+                })
+                .filter(Boolean)
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            set({ recentChats: conversationList, recentChatsLoading: false });
         } catch (error) {
             console.error("List recent chats error:", error);
             set({

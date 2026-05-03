@@ -1,6 +1,7 @@
 import { Server as SocketIOServer } from "socket.io";
 import { Server as HttpServer } from "http";
 import Notification from "../models/notification.js";
+import User from "../models/user.js";
 import type { NotificationType } from "../models/notification.js";
 
 let io: SocketIOServer | null = null;
@@ -25,6 +26,9 @@ export const getIO = (): SocketIOServer => {
 
 const saveNotification = async (userId: string, event: string, data: any) => {
     try {
+        const user = await User.findById(userId).select("role");
+        if (!user) return;
+
         let type: NotificationType = "system";
         let title = "Notification";
         let message = "You have a new update";
@@ -34,18 +38,20 @@ const saveNotification = async (userId: string, event: string, data: any) => {
             type = "quiz";
             title = "New Quiz Released";
             message = `${data.title} is now available in ${data.courseTitle}`;
-            link = `/student`; // Or more specific if added
+            link = user.role === "student" ? "/student" : "/teacher";
         } else if (event === "new-note") {
             type = "note";
             title = "New Course Note";
             message = `A new note "${data.title}" has been posted.`;
-            link = `/note/${data.noteId}`;
+            link =
+                user.role === "student" ? `/note/${data.noteId}` : "/teacher";
         } else if (event === "chat-message") {
-            const senderName = typeof data.sender === 'object' ? data.sender.name : "Teammate";
+            const senderName =
+                typeof data.sender === "object" ? data.sender.name : "Teammate";
             type = "chat";
             title = `Message from ${senderName}`;
             message = data.text;
-            link = `/student`; // Links to dashboard where chat exists
+            link = user.role === "student" ? "/student" : "/teacher";
         }
 
         await Notification.create({
@@ -54,7 +60,7 @@ const saveNotification = async (userId: string, event: string, data: any) => {
             title,
             message,
             link,
-            read: false
+            read: false,
         });
     } catch (err) {
         console.error("Failed to save persistent notification:", err);
@@ -72,7 +78,7 @@ export const notifyUser = (userId: string, event: string, data: any) => {
 // Helper for notifying multiple users (e.g. course enrollment)
 export const notifyUsers = (userIds: string[], event: string, data: any) => {
     if (io) {
-        userIds.forEach(id => {
+        userIds.forEach((id) => {
             io!.to(`user:${id}`).emit(event, data);
             saveNotification(id, event, data);
         });

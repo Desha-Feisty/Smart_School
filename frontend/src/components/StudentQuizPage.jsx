@@ -22,6 +22,7 @@ function StudentQuizPage() {
         attemptQuestions,
         submitAnswer,
         submitAttempt,
+        fetchAttempt,
         attemptError,
     } = useQuizStore();
 
@@ -31,9 +32,32 @@ function StudentQuizPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [savingIndices, setSavingIndices] = useState(new Set());
 
-    const [selectedQuestion, setSelectedQuestion] = useState(() =>
-        attemptQuestions.length > 0 ? attemptQuestions[0] : null,
-    );
+    useEffect(() => {
+        if (attemptId) {
+            fetchAttempt(attemptId).then((data) => {
+                if (data && data.responses) {
+                    const initialAnswers = {};
+                    data.responses.forEach((r) => {
+                        if (
+                            r.selectedChoiceIds &&
+                            r.selectedChoiceIds.length > 0
+                        ) {
+                            initialAnswers[r.questionId] = r.selectedChoiceIds;
+                        }
+                    });
+                    setAnswers(initialAnswers);
+                }
+            });
+        }
+    }, [attemptId, fetchAttempt]);
+
+    const [selectedQuestion, setSelectedQuestion] = useState(null);
+
+    useEffect(() => {
+        if (attemptQuestions.length > 0 && !selectedQuestion) {
+            setSelectedQuestion(attemptQuestions[0]);
+        }
+    }, [attemptQuestions, selectedQuestion]);
 
     const handleAutoSubmit = useCallback(async () => {
         setIsSubmitting(true);

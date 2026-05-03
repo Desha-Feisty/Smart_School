@@ -26,7 +26,7 @@ const createCourse = async (req: AuthRequest, res: Response) => {
             title,
             description,
             joinCode: createJoinCode(),
-            teacher: req.user.id,
+            teacher: req.user._id,
         });
         res.status(201).json({ msg: "Course created Successfully", course });
     } catch (error) {
@@ -39,8 +39,8 @@ const listMyCourses = async (req: AuthRequest, res: Response) => {
     try {
         if (!req.user) return res.status(403).json({ errMsg: "forbidden" });
         if (req.user.role === "teacher") {
-            console.log("Teacher listing courses for user:", req.user.id);
-            const courses = await Course.find({ teacher: req.user.id }).lean();
+            console.log("Teacher listing courses for user:", req.user._id);
+            const courses = await Course.find({ teacher: req.user._id }).lean();
 
             // Add enrollment count for each course
             const coursesWithCounts = await Promise.all(
@@ -58,9 +58,9 @@ const listMyCourses = async (req: AuthRequest, res: Response) => {
 
             return res.status(200).json({ courses: coursesWithCounts });
         } else {
-            console.log("Student listing courses for user:", req.user.id);
+            console.log("Student listing courses for user:", req.user._id);
             const enrollments = await Enrollment.find({
-                user: req.user.id,
+                user: req.user._id,
                 status: "active",
             })
                 .populate("course")
@@ -109,12 +109,12 @@ const getCourse = async (req: AuthRequest, res: Response) => {
         if (!course)
             return res.status(404).json({ errMsg: "error finding course" });
         if (req.user.role === "teacher") {
-            if (!req.user || req.user.id !== course.teacher.toString()) {
+            if (!req.user || req.user._id !== course.teacher.toString()) {
                 return res.status(403).json({ errMsg: "forbidden!" });
             }
         } else {
             const enrollment = Enrollment.findOne({
-                user: req.user.id,
+                user: req.user._id,
                 _id: courseId,
                 status: "active",
             })
@@ -144,7 +144,7 @@ const updateCourse = async (req: AuthRequest, res: Response) => {
         const course = await Course.findById(courseId);
         if (!course)
             return res.status(404).json({ errMsg: "course not found" });
-        if (req.user?.id !== course.teacher.toString()) {
+        if (req.user?._id !== course.teacher.toString()) {
             return res.status(403).json({ errMsg: "forbidden!" });
         }
         if (value.title) course.title = value.title;
@@ -161,21 +161,37 @@ const joinSchema = Joi.object({ joinCode: Joi.string().required() });
 
 const joinCourseByCode = async (req: AuthRequest, res: Response) => {
     try {
-        if (!req.user?.id) return res.status(403).json({ errMsg: "forbidden" });
+        if (!req.user?._id) return res.status(403).json({ errMsg: "forbidden" });
         const { error, value } = joinSchema.validate(req.body);
         if (error)
             return res
                 .status(400)
                 .json({ error: error.details[0]?.message || error.message });
+        
         const course = await Course.findOne({ joinCode: value.joinCode });
         if (!course)
             return res.status(404).json({ errMsg: "invalid join code!" });
-        await Enrollment.updateOne(
-            { course: course._id, user: req.user.id },
-            { $setOnInsert: { roleInCourse: "student", status: "active" } },
-            { upsert: true },
-        );
-        res.status(200).json({ course });
+        
+        // Check if already enrolled
+        const existingEnrollment = await Enrollment.findOne({
+            course: course._id,
+            user: req.user._id,
+            status: "active",
+        });
+        
+        if (existingEnrollment) {
+            return res.status(400).json({ errMsg: "you are already enrolled in this course" });
+        }
+        
+        // Create new enrollment
+        const enrollment = await Enrollment.create({
+            course: course._id,
+            user: req.user._id,
+            roleInCourse: "student",
+            status: "active",
+        });
+        
+        res.status(200).json({ course, enrolledAt: enrollment.createdAt });
     } catch (error) {
         console.error(
             "failed to join course",
@@ -192,17 +208,17 @@ const getRoster = async (req: AuthRequest, res: Response) => {
             "getRoster called for courseId:",
             courseId,
             "by user:",
-            req.user?.id,
+            req.user?._id,
         );
         const course = await Course.findById(courseId);
         if (!course) {
             console.log("Course not found:", courseId);
             return res.status(404).json({ errMsg: "course not found" });
         }
-        if (!req.user || req.user.id !== course.teacher.toString()) {
+        if (!req.user || req.user._id !== course.teacher.toString()) {
             console.log(
                 "Forbidden: user",
-                req.user?.id,
+                req.user?._id,
                 "is not teacher of course",
                 course.teacher.toString(),
             );
@@ -239,7 +255,7 @@ const deleteCourse = async (req: AuthRequest, res: Response) => {
             await session.abortTransaction();
             return res.status(404).json({ errMsg: "course not found" });
         }
-        if (!req.user || req.user.id !== course.teacher.toString()) {
+        if (!req.user || req.user._id !== course.teacher.toString()) {
             await session.abortTransaction();
             return res.status(403).json({ errMsg: "forbidden!" });
         }
@@ -269,7 +285,7 @@ const removeEnrollment = async (req: AuthRequest, res: Response) => {
         if (!course)
             return res.status(404).json({ errMsg: "course not found" });
 
-        if (!req.user || req.user.id !== course.teacher.toString()) {
+        if (!req.user || req.user._id !== course.teacher.toString()) {
             return res.status(403).json({
                 errMsg: "forbidden! only course teacher can remove students",
             });

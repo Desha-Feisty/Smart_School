@@ -43,7 +43,11 @@ const authMiddleware = async (
             console.log("Auth failed: user not found for id:", payload._id);
             return res.status(401).json({ errMsg: "user not found" });
         }
-        req.user = { id: user._id.toString(), role: user.role };
+        req.user = {
+            _id: user._id.toString(),
+            id: user._id.toString(),
+            role: user.role,
+        };
         next();
     } catch (error) {
         const message =

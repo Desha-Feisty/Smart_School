@@ -16,24 +16,35 @@ import Navbar from "../components/layout/Navbar";
 import ChatWindow from "../components/ChatWindow";
 
 function TeacherPage() {
-    const { allCourses, listMyCourses, createCourse, deleteCourse, recentChats, recentChatsLoading, listRecentChats } =
-        useTeacherStore();
+    const {
+        allCourses,
+        listMyCourses,
+        createCourse,
+        deleteCourse,
+        recentChats,
+        recentChatsLoading,
+        listRecentChats,
+    } = useTeacherStore();
 
-    const { user, logout } = useAuthStore();
+    const { logout } = useAuthStore();
     const navigate = useNavigate();
 
     const [newCourse, setNewCourse] = useState({ title: "", description: "" });
     const [isLoading, setIsLoading] = useState(false);
     const [showForm, setShowForm] = useState(false);
-    
+
     const [chatOpen, setChatOpen] = useState(false);
     const [chatCourseId, setChatCourseId] = useState(null);
     const [chatPeerId, setChatPeerId] = useState(null);
     const [chatPeerName, setChatPeerName] = useState("");
 
     useEffect(() => {
-        listMyCourses();
-        listRecentChats();
+        // Small delay to allow auth store to rehydrate from localStorage
+        const timer = setTimeout(() => {
+            listMyCourses();
+            listRecentChats();
+        }, 200);
+        return () => clearTimeout(timer);
     }, []);
 
     const handleLogout = () => {
@@ -97,7 +108,14 @@ function TeacherPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
                     <div
                         className="glass-card bg-gradient-to-br from-blue-500/10 to-blue-600/5 dark:from-blue-500/20 dark:to-blue-600/10 cursor-pointer group"
-                        onClick={() => document.getElementById('courses-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                        onClick={() =>
+                            document
+                                .getElementById("courses-section")
+                                ?.scrollIntoView({
+                                    behavior: "smooth",
+                                    block: "start",
+                                })
+                        }
                     >
                         <div className="card-body p-6">
                             <div className="flex items-center justify-between">
@@ -142,7 +160,10 @@ function TeacherPage() {
                         </div>
                     </div>
 
-                    <div className="glass-card bg-gradient-to-br from-emerald-500/10 to-teal-500/5 dark:from-emerald-500/20 dark:to-teal-500/10 group cursor-pointer hover:shadow-lg transition-all" onClick={() => setShowForm(!showForm)}>
+                    <div
+                        className="glass-card bg-gradient-to-br from-emerald-500/10 to-teal-500/5 dark:from-emerald-500/20 dark:to-teal-500/10 group cursor-pointer hover:shadow-lg transition-all"
+                        onClick={() => setShowForm(!showForm)}
+                    >
                         <div className="card-body p-6">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -262,7 +283,9 @@ function TeacherPage() {
                     </div>
 
                     {recentChatsLoading ? (
-                        <div className="flex justify-center p-6"><span className="loading loading-spinner text-blue-500"></span></div>
+                        <div className="flex justify-center p-6">
+                            <span className="loading loading-spinner text-blue-500"></span>
+                        </div>
                     ) : recentChats?.length === 0 ? (
                         <div className="text-slate-500 dark:text-slate-400 italic p-6 rounded-2xl bg-slate-50/50 dark:bg-base-200/50 border border-slate-200 border-dashed dark:border-slate-700 text-center">
                             No recent chats yet.
@@ -274,25 +297,33 @@ function TeacherPage() {
                                     key={chat._id || Math.random()}
                                     className="glass-card hover:-translate-y-1 cursor-pointer"
                                     onClick={() => {
-                                        setChatCourseId(chat.course?._id || chat.course);
-                                        setChatPeerId(chat.peer?._id || chat.peer);
-                                        setChatPeerName(chat.peer?.name || "Student");
+                                        setChatCourseId(chat.courseId);
+                                        setChatPeerId(chat.peerId);
+                                        setChatPeerName(
+                                            chat.peer?.name || "Student",
+                                        );
                                         setChatOpen(true);
                                     }}
                                 >
                                     <div className="card-body p-5">
                                         <div className="flex justify-between items-start mb-2">
-                                            <h4 className="font-semibold text-slate-900 dark:text-white">{chat.peer?.name || "Unknown"}</h4>
+                                            <h4 className="font-semibold text-slate-900 dark:text-white">
+                                                {chat.peer?.name || "Unknown"}
+                                            </h4>
                                             <span className="text-xs text-slate-400 dark:text-slate-500 font-medium bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">
-                                                {new Date(chat.createdAt).toLocaleDateString()}
+                                                {new Date(
+                                                    chat.createdAt,
+                                                ).toLocaleDateString()}
                                             </span>
                                         </div>
                                         <div className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-3">
                                             {chat.course?.title || "Course"}
                                         </div>
                                         <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700/50">
-                                            {chat.sender && (chat.sender._id || chat.sender) === (user?._id || user?.id) ? (
-                                                <span className="font-medium text-slate-700 dark:text-slate-300">You: </span>
+                                            {chat.isMine ? (
+                                                <span className="font-medium text-slate-700 dark:text-slate-300">
+                                                    You:{" "}
+                                                </span>
                                             ) : null}
                                             {chat.text}
                                         </p>
@@ -318,8 +349,8 @@ function TeacherPage() {
                         <div className="glass-panel border-dashed p-12 text-center rounded-3xl">
                             <BookOpen className="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
                             <p className="text-slate-600 dark:text-slate-400 mb-6">
-                                No courses yet. Start teaching by creating
-                                your first course!
+                                No courses yet. Start teaching by creating your
+                                first course!
                             </p>
                             <button
                                 onClick={() => setShowForm(true)}

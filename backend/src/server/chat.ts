@@ -6,7 +6,7 @@ import Enrollment from "../models/enrollment.js";
 import ChatMessage from "../models/chat.js";
 
 interface SocketUser {
-    id: string;
+    _id: string;
     role: string;
 }
 
@@ -23,7 +23,7 @@ function verifyToken(token: string): SocketUser {
     ) {
         throw new Error("invalid token");
     }
-    return { id: payload._id.toString(), role: payload.role.toString() };
+    return { _id: payload._id.toString(), role: payload.role.toString() };
 }
 
 function getChatRoom(courseId: string, teacherId: string, studentId: string) {
@@ -47,7 +47,7 @@ async function validateChatAccess({
     const teacherId = course.teacher.toString();
 
     if (user.role === "teacher") {
-        if (user.id !== teacherId) {
+        if (user._id !== teacherId) {
             throw new Error("forbidden");
         }
         const enrollment = await Enrollment.findOne({
@@ -72,17 +72,17 @@ async function validateChatAccess({
         }
         const enrollment = await Enrollment.findOne({
             course: course._id,
-            user: user.id,
+            user: user._id,
             status: "active",
         });
         if (!enrollment) {
             throw new Error("student is not enrolled in this course");
         }
         return {
-            room: getChatRoom(courseId, teacherId, user.id),
+            room: getChatRoom(courseId, teacherId, user._id),
             peerId,
             teacherId,
-            studentId: user.id,
+            studentId: user._id,
         };
     }
 
@@ -103,8 +103,8 @@ export function initializeChat(io: SocketIOServer) {
             user = verifyToken(rawToken);
             socket.data.user = user;
             // Join a private room for personal notifications
-            socket.join(`user:${user.id}`);
-            console.log(`User ${user.id} joined personal notification room`);
+            socket.join(`user:${user._id}`);
+            console.log(`User ${user._id} joined personal notification room`);
         } catch (error) {
             socket.emit("socket-error", {
                 message:
@@ -130,8 +130,8 @@ export function initializeChat(io: SocketIOServer) {
                 const messages = await ChatMessage.find({
                     course: courseId,
                     $or: [
-                        { sender: user.id, recipient: peerId },
-                        { sender: peerId, recipient: user.id },
+                        { sender: user._id, recipient: peerId },
+                        { sender: peerId, recipient: user._id },
                     ],
                 })
                     .sort({ createdAt: 1 })
@@ -139,21 +139,15 @@ export function initializeChat(io: SocketIOServer) {
                     .populate("recipient", "name role")
                     .lean();
 
+                const normalizedMessages = messages.map((msg: any) => ({
+                    ...msg,
+                    senderId: msg.sender?._id?.toString() || msg.sender?.toString(),
+                    recipientId: msg.recipient?._id?.toString() || msg.recipient?.toString(),
+                }));
+
                 socket.emit("chat-history", {
                     room,
-                    messages: messages.map((message) => {
-                        const sender = (message.sender as any)?._id
-                            ? (message.sender as any)._id.toString()
-                            : message.sender;
-                        const recipient = (message.recipient as any)?._id
-                            ? (message.recipient as any)._id.toString()
-                            : message.recipient;
-                        return {
-                            ...message,
-                            sender,
-                            recipient,
-                        };
-                    }),
+                    messages: normalizedMessages,
                 });
             } catch (error) {
                 socket.emit("socket-error", {
@@ -185,7 +179,7 @@ export function initializeChat(io: SocketIOServer) {
 
                 const message = await ChatMessage.create({
                     course: courseId,
-                    sender: user.id,
+                    sender: user._id,
                     recipient: recipientId,
                     senderRole: user.role,
                     text,
@@ -195,17 +189,12 @@ export function initializeChat(io: SocketIOServer) {
                 await message.populate("recipient", "name role");
 
                 const messageObj = message.toObject();
-                const sender = (message.sender as any)?._id
-                    ? (message.sender as any)._id.toString()
-                    : message.sender;
-                const recipient = (message.recipient as any)?._id
-                    ? (message.recipient as any)._id.toString()
-                    : message.recipient;
-
                 const outMessage = {
                     ...messageObj,
-                    sender: messageObj.sender, // Full object with name/role
-                    recipient,
+                    sender: messageObj.sender,
+                    recipient: messageObj.recipient,
+                    senderId: (messageObj.sender as any)?._id?.toString() || messageObj.sender?.toString(),
+                    recipientId: (messageObj.recipient as any)?._id?.toString() || messageObj.recipient?.toString(),
                 };
 
                 io.to(room).emit("chat-message", outMessage);

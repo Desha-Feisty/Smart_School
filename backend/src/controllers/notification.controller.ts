@@ -1,10 +1,11 @@
 import type { Response } from "express";
 import type { AuthRequest } from "../types/authRequest.js";
 import Notification from "../models/notification.js";
+import { Types } from "mongoose";
 
 const getNotifications = async (req: AuthRequest, res: Response) => {
     try {
-        const userId = req.user?.id;
+        const userId = req.user?._id;
         if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
         const notifications = await Notification.find({ user: userId as any })
@@ -25,20 +26,28 @@ const getNotifications = async (req: AuthRequest, res: Response) => {
 
 const markAsRead = async (req: AuthRequest, res: Response) => {
     try {
-        const userId = req.user?.id;
+        const userId = req.user?._id;
         const { id } = req.params;
-        
+
+        console.log(`Mark notification read: userId=${userId}, notificationId=${id}`);
+
+        if (!userId || !id) {
+            return res.status(400).json({ error: "Missing user ID or notification ID" });
+        }
+
         const notification = await Notification.findOneAndUpdate(
-            { _id: id, user: userId as any },
+            { _id: new Types.ObjectId(id), user: new Types.ObjectId(userId) },
             { read: true },
             { new: true }
         );
 
         if (!notification) {
+            console.log(`Notification not found: id=${id}, user=${userId}`);
             return res.status(404).json({ error: "Notification not found" });
         }
 
-        res.json({ success: true });
+        console.log(`Notification ${id} marked as read`);
+        res.json({ success: true, notification });
     } catch (err) {
         console.error("Mark read error:", err);
         res.status(500).json({ error: "Failed to mark notification as read" });
@@ -47,15 +56,16 @@ const markAsRead = async (req: AuthRequest, res: Response) => {
 
 const markAllAsRead = async (req: AuthRequest, res: Response) => {
     try {
-        const userId = req.user?.id;
+        const userId = req.user?._id;
         if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-        await Notification.updateMany(
-            { user: userId as any, read: false },
+        const result = await Notification.updateMany(
+            { user: new Types.ObjectId(userId), read: false },
             { read: true }
         );
 
-        res.json({ success: true });
+        console.log(`Marked ${result.modifiedCount} notifications as read for user ${userId}`);
+        res.json({ success: true, modifiedCount: result.modifiedCount });
     } catch (err) {
         console.error("Mark all read error:", err);
         res.status(500).json({ error: "Failed to mark all as read" });

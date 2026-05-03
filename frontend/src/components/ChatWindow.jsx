@@ -11,11 +11,20 @@ function ChatWindow({ courseId, peerId, peerName, onClose }) {
     const userId = user?.id || user?._id;
     const [messages, setMessages] = useState([]);
     const [text, setText] = useState("");
-    const messagesEndRef = useRef(null);
+    const messagesContainerRef = useRef(null);
     const socket = useSocketStore((state) => state.socket);
     const setSocket = useSocketStore((state) => state.connect);
     const isConnected = useSocketStore((state) => state.isConnected);
     const status = isConnected ? "connected" : "connecting";
+
+    const scrollToBottom = (smooth = true) => {
+        if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTo({
+                top: messagesContainerRef.current.scrollHeight,
+                behavior: smooth ? "smooth" : "instant",
+            });
+        }
+    };
 
     useEffect(() => {
         if (!token) return;
@@ -31,6 +40,7 @@ function ChatWindow({ courseId, peerId, peerName, onClose }) {
 
         const onHistory = ({ messages: history }) => {
             setMessages(history || []);
+            setTimeout(() => scrollToBottom(false), 0);
         };
 
         const onMessage = (message) => {
@@ -69,9 +79,7 @@ function ChatWindow({ courseId, peerId, peerName, onClose }) {
     }, [socket, courseId, peerId]);
 
     useEffect(() => {
-        if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-        }
+        scrollToBottom(true);
     }, [messages]);
 
     const handleSend = () => {
@@ -115,7 +123,10 @@ function ChatWindow({ courseId, peerId, peerName, onClose }) {
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-slate-50/50 dark:bg-base-200/50 backdrop-blur-sm">
+                <div 
+                    ref={messagesContainerRef}
+                    className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-slate-50/50 dark:bg-base-200/50 backdrop-blur-sm"
+                >
                     {messages.length === 0 ? (
                         <div className="text-center text-sm text-slate-500 dark:text-slate-400 py-20">
                             No messages yet. Start the conversation.
@@ -160,7 +171,6 @@ function ChatWindow({ courseId, peerId, peerName, onClose }) {
                             );
                         })
                     )}
-                    <div ref={messagesEndRef}></div>
                 </div>
 
                 <div className="px-5 py-4 border-t border-slate-200 dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md">

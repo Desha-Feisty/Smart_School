@@ -34,7 +34,7 @@ const createNote = async (req: AuthRequest, res: Response) => {
                 .json({ errMsg: error.details[0]?.message || error.message });
         }
 
-        if (!req.user?.id) {
+        if (!req.user?._id) {
             return res.status(401).json({ errMsg: "Unauthenticated" });
         }
 
@@ -44,7 +44,7 @@ const createNote = async (req: AuthRequest, res: Response) => {
         }
 
         // Only teacher of course can create notes
-        if (course.teacher.toString() !== req.user.id) {
+        if (course.teacher.toString() !== req.user._id) {
             return res
                 .status(403)
                 .json({ errMsg: "Only course teacher can post notes" });
@@ -52,7 +52,7 @@ const createNote = async (req: AuthRequest, res: Response) => {
 
         const note = await Note.create({
             course: courseId,
-            teacher: req.user.id,
+            teacher: req.user._id,
             title: value.title,
             content: value.content,
             editHistory: [],
@@ -94,7 +94,7 @@ const listCourseNotes = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({ errMsg: "Course ID required" });
         }
 
-        if (!req.user?.id) {
+        if (!req.user?._id) {
             return res.status(401).json({ errMsg: "Unauthenticated" });
         }
 
@@ -105,10 +105,10 @@ const listCourseNotes = async (req: AuthRequest, res: Response) => {
         }
 
         // Allow access if user is the course teacher OR enrolled as a student
-        const isTeacher = course.teacher.toString() === req.user.id;
+        const isTeacher = course.teacher.toString() === req.user._id;
         const enrolled = isTeacher
             ? true
-            : await ensureEnrolled(req.user.id, courseId);
+            : await ensureEnrolled(req.user._id, courseId);
 
         if (!enrolled) {
             return res
@@ -145,7 +145,7 @@ const getNoteWithComments = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({ errMsg: "Note ID required" });
         }
 
-        if (!req.user?.id) {
+        if (!req.user?._id) {
             return res.status(401).json({ errMsg: "Unauthenticated" });
         }
 
@@ -158,11 +158,11 @@ const getNoteWithComments = async (req: AuthRequest, res: Response) => {
         }
 
         // Allow access if user is the course teacher OR enrolled as a student
-        const isTeacher = (note.teacher as any)?._id.toString() === req.user.id;
+        const isTeacher = (note.teacher as any)?._id.toString() === req.user._id;
         const courseId = (note.course as any)?._id;
         const enrolled = isTeacher
             ? true
-            : await ensureEnrolled(req.user.id, courseId);
+            : await ensureEnrolled(req.user._id, courseId);
 
         if (!enrolled) {
             return res
@@ -200,7 +200,7 @@ const updateNote = async (req: AuthRequest, res: Response) => {
                 .json({ errMsg: error.details[0]?.message || error.message });
         }
 
-        if (!req.user?.id) {
+        if (!req.user?._id) {
             return res.status(401).json({ errMsg: "Unauthenticated" });
         }
 
@@ -210,7 +210,7 @@ const updateNote = async (req: AuthRequest, res: Response) => {
         }
 
         // Only note author can update
-        if (note.teacher.toString() !== req.user.id) {
+        if (note.teacher.toString() !== req.user._id) {
             return res
                 .status(403)
                 .json({ errMsg: "Only note author can edit" });
@@ -248,7 +248,7 @@ const deleteNote = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({ errMsg: "Note ID required" });
         }
 
-        if (!req.user?.id) {
+        if (!req.user?._id) {
             return res.status(401).json({ errMsg: "Unauthenticated" });
         }
 
@@ -258,7 +258,7 @@ const deleteNote = async (req: AuthRequest, res: Response) => {
         }
 
         // Only note author can delete
-        if (note.teacher.toString() !== req.user.id) {
+        if (note.teacher.toString() !== req.user._id) {
             return res
                 .status(403)
                 .json({ errMsg: "Only note author can delete" });

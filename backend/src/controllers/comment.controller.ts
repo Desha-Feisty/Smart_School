@@ -33,7 +33,7 @@ const addComment = async (req: AuthRequest, res: Response) => {
                 .json({ errMsg: error.details[0]?.message || error.message });
         }
 
-        if (!req.user?.id) {
+        if (!req.user?._id) {
             return res.status(401).json({ errMsg: "Unauthenticated" });
         }
 
@@ -45,11 +45,11 @@ const addComment = async (req: AuthRequest, res: Response) => {
         }
 
         // Allow access if user is the course teacher OR enrolled as a student
-        const isTeacher = (note.teacher as any)?._id.toString() === req.user.id;
+        const isTeacher = (note.teacher as any)?._id.toString() === req.user._id;
         const courseId = (note.course as any)?._id;
         const enrolled = isTeacher
             ? true
-            : await ensureEnrolled(req.user.id, courseId);
+            : await ensureEnrolled(req.user._id, courseId);
 
         if (!enrolled) {
             return res
@@ -59,7 +59,7 @@ const addComment = async (req: AuthRequest, res: Response) => {
 
         const comment = await Comment.create({
             note: noteId,
-            user: req.user.id,
+            user: req.user._id,
             content: value.content,
         });
 
@@ -79,7 +79,7 @@ const deleteComment = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({ errMsg: "Comment ID required" });
         }
 
-        if (!req.user?.id) {
+        if (!req.user?._id) {
             return res.status(401).json({ errMsg: "Unauthenticated" });
         }
 
@@ -94,8 +94,8 @@ const deleteComment = async (req: AuthRequest, res: Response) => {
         }
 
         // Allow deletion if: user is comment author OR user is course teacher
-        const isAuthor = comment.user.toString() === req.user.id;
-        const isTeacher = (note.teacher as any).toString() === req.user.id;
+        const isAuthor = comment.user.toString() === req.user._id;
+        const isTeacher = (note.teacher as any).toString() === req.user._id;
 
         if (!isAuthor && !isTeacher) {
             return res.status(403).json({
@@ -130,7 +130,7 @@ const updateComment = async (req: AuthRequest, res: Response) => {
                 .json({ errMsg: error.details[0]?.message || error.message });
         }
 
-        if (!req.user?.id) {
+        if (!req.user?._id) {
             return res.status(401).json({ errMsg: "Unauthenticated" });
         }
 
@@ -140,7 +140,7 @@ const updateComment = async (req: AuthRequest, res: Response) => {
         }
 
         // Only comment author can update
-        if (comment.user.toString() !== req.user.id) {
+        if (comment.user.toString() !== req.user._id) {
             return res
                 .status(403)
                 .json({ errMsg: "Only comment author can edit" });

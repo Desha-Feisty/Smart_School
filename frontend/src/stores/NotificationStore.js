@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import axios from "axios";
-import useAuthStore from "./Authstore";
+import useAuthStore from "./Authstore.js";
 
 const useNotificationStore = create((set, get) => ({
     notifications: [],
@@ -10,16 +10,16 @@ const useNotificationStore = create((set, get) => ({
     fetchNotifications: async () => {
         const token = useAuthStore.getState().token;
         if (!token) return;
-
+        
         set({ loading: true });
         try {
             const response = await axios.get("/api/notifications", {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            set({ 
-                notifications: response.data.notifications, 
+            set({
+                notifications: response.data.notifications,
                 unreadCount: response.data.unreadCount,
-                loading: false 
+                loading: false,
             });
         } catch (error) {
             console.error("Fetch notifications error:", error);
@@ -28,37 +28,42 @@ const useNotificationStore = create((set, get) => ({
     },
 
     markAsRead: async (id) => {
-        const token = useAuthStore.getState().token;
-        if (!token) return;
-
         try {
+            const token = useAuthStore.getState().token;
+            if (!token) return;
+
             await axios.patch(`/api/notifications/${id}/read`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            
+
             const current = get().notifications;
-            const updated = current.map(n => n._id === id ? { ...n, read: true } : n);
-            const newUnreadCount = Math.max(0, get().unreadCount - 1);
-            
+            const updated = current.map((n) =>
+                String(n._id) === String(id) ? { ...n, read: true } : n,
+            );
+            const newUnreadCount = updated.filter((n) => !n.read).length;
+
             set({ notifications: updated, unreadCount: newUnreadCount });
         } catch (error) {
-            console.error("Mark read error:", error);
+            console.error("Mark read error:", error.response?.data || error.message);
         }
     },
 
     markAllAsRead: async () => {
-        const token = useAuthStore.getState().token;
-        if (!token) return;
-
         try {
+            const token = useAuthStore.getState().token;
+            if (!token) return;
+
             await axios.post("/api/notifications/read-all", {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            
-            const updated = get().notifications.map(n => ({ ...n, read: true }));
+
+            const updated = get().notifications.map((n) => ({
+                ...n,
+                read: true,
+            }));
             set({ notifications: updated, unreadCount: 0 });
         } catch (error) {
-            console.error("Mark all read error:", error);
+            console.error("Mark all read error:", error.response?.data || error.message);
         }
     },
 
@@ -66,9 +71,9 @@ const useNotificationStore = create((set, get) => ({
     addNotification: (notification) => {
         set((state) => ({
             notifications: [notification, ...state.notifications].slice(0, 20),
-            unreadCount: state.unreadCount + 1
+            unreadCount: state.unreadCount + 1,
         }));
-    }
+    },
 }));
 
 export default useNotificationStore;

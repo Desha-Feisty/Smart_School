@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import useAuthStore from "../stores/Authstore.js";
+import useAuthStore from "../stores/Authstore";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { BookOpen, LogIn, Mail, Lock } from "lucide-react";
@@ -12,9 +12,9 @@ function LoginPage() {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
     const { token, role } = useAuthStore();
-    
+
     // Initialize theme store here just so it's loaded early if not in App
-    useThemeStore(); 
+    useThemeStore();
 
     useEffect(() => {
         if (token) {
@@ -80,31 +80,48 @@ function LoginPage() {
                                 <BookOpen className="w-10 h-10 text-white" />
                             </div>
                             <h1 className="text-5xl font-black tracking-tight text-slate-900 dark:text-white">
-                                Learn<span className="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-purple-600">Hub</span>
+                                Class
+                                <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-purple-600">
+                                    Box
+                                </span>
                             </h1>
                         </div>
 
                         <div className="space-y-4">
                             <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-100">
-                                Unlock your potential
+                                AI-powered learning for every student
                             </h2>
                             <p className="text-lg text-slate-600 dark:text-slate-400 max-w-md mx-auto lg:mx-0">
-                                "Live as if you were to die tomorrow. Learn as if you were to live forever."
+                                Smart course recommendations, adaptive study
+                                help, and seamless classroom collaboration in
+                                one AI-driven platform.
                             </p>
                         </div>
 
                         <div className="grid grid-cols-3 gap-6 pt-4 border-t border-slate-200 dark:border-slate-700/50">
                             <div>
-                                <div className="text-3xl font-bold mb-1 text-slate-900 dark:text-white">100+</div>
-                                <div className="text-sm text-slate-500 font-medium">Courses</div>
+                                <div className="text-3xl font-bold mb-1 text-slate-900 dark:text-white">
+                                    100+
+                                </div>
+                                <div className="text-sm text-slate-500 font-medium">
+                                    Courses
+                                </div>
                             </div>
                             <div>
-                                <div className="text-3xl font-bold mb-1 text-slate-900 dark:text-white">5K+</div>
-                                <div className="text-sm text-slate-500 font-medium">Students</div>
+                                <div className="text-3xl font-bold mb-1 text-slate-900 dark:text-white">
+                                    5K+
+                                </div>
+                                <div className="text-sm text-slate-500 font-medium">
+                                    Students
+                                </div>
                             </div>
                             <div>
-                                <div className="text-3xl font-bold mb-1 text-slate-900 dark:text-white">50+</div>
-                                <div className="text-sm text-slate-500 font-medium">Teachers</div>
+                                <div className="text-3xl font-bold mb-1 text-slate-900 dark:text-white">
+                                    50+
+                                </div>
+                                <div className="text-sm text-slate-500 font-medium">
+                                    Teachers
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -116,14 +133,20 @@ function LoginPage() {
                             <div className="absolute top-0 inset-x-0 h-1 bg-linear-to-r from-blue-500 to-purple-500"></div>
 
                             <div className="mb-8 pl-1">
-                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Welcome Back</h3>
-                                <p className="text-slate-500 dark:text-slate-400 text-sm">Please enter your details to sign in.</p>
+                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+                                    Welcome Back
+                                </h3>
+                                <p className="text-slate-500 dark:text-slate-400 text-sm">
+                                    Please enter your details to sign in.
+                                </p>
                             </div>
 
                             <div className="space-y-5">
                                 <div className="form-control">
                                     <label className="label">
-                                        <span className="label-text font-medium text-slate-700 dark:text-slate-300">Email</span>
+                                        <span className="label-text font-medium text-slate-700 dark:text-slate-300">
+                                            Email
+                                        </span>
                                     </label>
                                     <div className="relative group">
                                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
@@ -134,7 +157,9 @@ function LoginPage() {
                                             placeholder="you@example.com"
                                             className="input input-lg w-full pl-12 bg-slate-50/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all rounded-xl"
                                             value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
+                                            onChange={(e) =>
+                                                setEmail(e.target.value)
+                                            }
                                             onKeyPress={handleKeyPress}
                                             disabled={loading}
                                         />
@@ -143,7 +168,9 @@ function LoginPage() {
 
                                 <div className="form-control mt-4">
                                     <label className="label">
-                                        <span className="label-text font-medium text-slate-700 dark:text-slate-300">Password</span>
+                                        <span className="label-text font-medium text-slate-700 dark:text-slate-300">
+                                            Password
+                                        </span>
                                     </label>
                                     <div className="relative group">
                                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
@@ -154,7 +181,9 @@ function LoginPage() {
                                             placeholder="••••••••"
                                             className="input input-lg w-full pl-12 bg-slate-50/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all rounded-xl"
                                             value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
+                                            onChange={(e) =>
+                                                setPassword(e.target.value)
+                                            }
                                             onKeyPress={handleKeyPress}
                                             disabled={loading}
                                         />
@@ -181,15 +210,25 @@ function LoginPage() {
                             </div>
 
                             <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700/50">
-                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Demo Credentials</p>
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+                                    Demo Credentials
+                                </p>
                                 <div className="grid grid-cols-2 gap-3 text-sm">
                                     <div className="bg-slate-100 dark:bg-base-300/80 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
-                                        <p className="font-semibold text-slate-700 dark:text-slate-300">Teacher</p>
-                                        <p className="text-slate-500 dark:text-slate-500 mt-1 truncate">teacher@test.com</p>
+                                        <p className="font-semibold text-slate-700 dark:text-slate-300">
+                                            Teacher
+                                        </p>
+                                        <p className="text-slate-500 dark:text-slate-500 mt-1 truncate">
+                                            teacher@test.com
+                                        </p>
                                     </div>
                                     <div className="bg-slate-100 dark:bg-base-300/80 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
-                                        <p className="font-semibold text-slate-700 dark:text-slate-300">Student</p>
-                                        <p className="text-slate-500 dark:text-slate-500 mt-1 truncate">student@test.com</p>
+                                        <p className="font-semibold text-slate-700 dark:text-slate-300">
+                                            Student
+                                        </p>
+                                        <p className="text-slate-500 dark:text-slate-500 mt-1 truncate">
+                                            student@test.com
+                                        </p>
                                     </div>
                                 </div>
                             </div>

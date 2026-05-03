@@ -61,6 +61,8 @@ function TeacherCoursePage() {
         closeAt: "",
         durationMinutes: 30,
         attemptsAllowed: 1,
+        gradingMode: "onSubmit",
+        questionsPerAttempt: "",
     });
     const [chatOpen, setChatOpen] = useState(false);
     const [chatCourseId, setChatCourseId] = useState(null);
@@ -239,6 +241,21 @@ function TeacherCoursePage() {
             toast.error("Quiz title is required");
             return;
         }
+
+        const openAtDate = new Date(newQuiz.openAt);
+        const closeAtDate = new Date(newQuiz.closeAt);
+        if (
+            Number.isNaN(openAtDate.getTime()) ||
+            Number.isNaN(closeAtDate.getTime())
+        ) {
+            toast.error("Please provide valid open and close dates");
+            return;
+        }
+        if (openAtDate >= closeAtDate) {
+            toast.error("Close date must be later than open date");
+            return;
+        }
+
         setIsCreatingQuiz(true);
         try {
             await createQuiz(id, newQuiz);
@@ -249,10 +266,16 @@ function TeacherCoursePage() {
                 closeAt: "",
                 durationMinutes: 30,
                 attemptsAllowed: 1,
+                gradingMode: "onSubmit",
+                questionsPerAttempt: "",
             });
             toast.success("Quiz created successfully");
         } catch (err) {
-            toast.error(err.message || "Failed to create quiz");
+            toast.error(
+                err.response?.data?.errMsg ||
+                    err.message ||
+                    "Failed to create quiz",
+            );
         } finally {
             setIsCreatingQuiz(false);
         }
@@ -263,7 +286,11 @@ function TeacherCoursePage() {
             await publishQuiz(quizId);
             toast.success("Quiz published successfully");
         } catch (err) {
-            toast.error("Failed to publish quiz");
+            toast.error(
+                err.response?.data?.errMsg ||
+                    err.message ||
+                    "Failed to publish quiz",
+            );
         }
     };
 
@@ -339,7 +366,9 @@ function TeacherCoursePage() {
                     <div className="alert alert-error mb-8">
                         <span>{useTeacherStore.getState().errMsg}</span>
                         <button
-                            onClick={() => useTeacherStore.getState().clearErrMsg()}
+                            onClick={() =>
+                                useTeacherStore.getState().clearErrMsg()
+                            }
                             className="btn btn-ghost btn-sm"
                         >
                             Dismiss
@@ -351,8 +380,16 @@ function TeacherCoursePage() {
                 <div className="flex overflow-x-auto hide-scrollbar gap-2 mb-8 bg-slate-200/50 dark:bg-base-300/50 p-1.5 rounded-2xl w-max border border-slate-200 dark:border-slate-700/50">
                     {[
                         { id: "quizzes", label: "Quizzes", icon: BookOpen },
-                        { id: "analytics", label: "Analytics", icon: TrendingUp },
-                        { id: "leaderboard", label: "Leaderboard", icon: Trophy },
+                        {
+                            id: "analytics",
+                            label: "Analytics",
+                            icon: TrendingUp,
+                        },
+                        {
+                            id: "leaderboard",
+                            label: "Leaderboard",
+                            icon: Trophy,
+                        },
                         { id: "students", label: "Students", icon: Users },
                         { id: "grades", label: "Student Grades", icon: Award },
                         {
@@ -370,7 +407,9 @@ function TeacherCoursePage() {
                                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50"
                             }`}
                         >
-                            <Icon className={`w-4 h-4 ${activeTab === tabId ? "opacity-100" : "opacity-70"}`} />
+                            <Icon
+                                className={`w-4 h-4 ${activeTab === tabId ? "opacity-100" : "opacity-70"}`}
+                            />
                             {label}
                         </button>
                     ))}

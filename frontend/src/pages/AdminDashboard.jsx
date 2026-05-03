@@ -16,8 +16,16 @@ import {
     X,
     BarChart3,
     PieChart,
-    ArrowUpRight
+    ArrowUpRight,
+    FileText,
+    Download,
+    Server,
+    Clock,
+    AlertCircle,
+    CheckCircle,
+    RefreshCw
 } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import PageWrapper from "../components/layout/PageWrapper";
 import Navbar from "../components/layout/Navbar";
 import toast from "react-hot-toast";
@@ -38,20 +46,39 @@ function AdminDashboard() {
     const [roleFilter, setRoleFilter] = useState("all");
     const [isAddUserOpen, setIsAddUserOpen] = useState(false);
     const [newUser, setNewUser] = useState({ name: "", email: "", password: "", role: "student" });
+    
+    // Logs tab state
+    const [logs, setLogs] = useState([]);
+    const [logsLoading, setLogsLoading] = useState(false);
+    const [logsTotal, setLogsTotal] = useState(0);
+    const [logPage, setLogPage] = useState(1);
+    const [logActionFilter, setLogActionFilter] = useState("");
+    const [logDateFrom, setLogDateFrom] = useState("");
+    const [logDateTo, setLogDateTo] = useState("");
+    const [logStats, setLogStats] = useState(null);
+    const [autoRefreshLogs, setAutoRefreshLogs] = useState(false);
+    const [refreshInterval, setRefreshInterval] = useState(null);
+    const [lastLogTimestamp, setLastLogTimestamp] = useState(null);
+    
+    // System health state
+    const [systemHealth, setSystemHealth] = useState(null);
+    const [healthLoading, setHealthLoading] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
             if (!token) return;
             setLoading(true);
             try {
-                const [statsRes, usersRes, analyticsRes] = await Promise.all([
+                const [statsRes, usersRes, analyticsRes, healthRes] = await Promise.all([
                     axios.get("/api/admin/stats", { headers: { Authorization: `Bearer ${token}` } }),
                     axios.get("/api/admin/users", { headers: { Authorization: `Bearer ${token}` } }),
-                    axios.get("/api/admin/analytics", { headers: { Authorization: `Bearer ${token}` } })
+                    axios.get("/api/admin/analytics", { headers: { Authorization: `Bearer ${token}` } }),
+                    axios.get("/api/admin/system-health", { headers: { Authorization: `Bearer ${token}` } })
                 ]);
                 setStats(statsRes.data.stats);
                 setUsers(usersRes.data.users);
                 setCourseAnalytics(analyticsRes.data.courseAnalytics);
+                setSystemHealth(healthRes.data);
             } catch (err) {
                 console.error("Admin data fetch error:", err);
                 toast.error("Failed to load dashboard data");
@@ -86,6 +113,122 @@ function AdminDashboard() {
             toast.error(err.response?.data?.errMsg || "Failed to create user");
         }
     };
+
+    const fetchLogs = async () => {
+        setLogsLoading(true);
+        try {
+            const params = new URLSearchParams();
+            params.append("page", logPage);
+            params.append("limit", "20");
+            if (logActionFilter) params.append("action", logActionFilter);
+            if (logDateFrom) params.append("startDate", logDateFrom);
+            if (logDateTo) params.append("endDate", logDateTo);
+            
+            const res = await axios.get(`/api/admin/logs?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+            setLogs(res.data.logs);
+            setLogsTotal(res.data.total);
+        } catch (err) {
+            console.error("Failed to fetch logs:", err);
+            toast.error("Failed to fetch logs");
+        } finally {
+            setLogsLoading(false);
+        }
+    };
+
+    const fetchLogStats = async () => {
+        try {
+            const res = await axios.get("/api/admin/logs/stats?days=30", { headers: { Authorization: `Bearer ${token}` } });
+            setLogStats(res.data);
+        } catch (err) {
+            console.error("Failed to fetch log stats:", err);
+        }
+    };
+
+    // Poll for new data only
+    const pollForNewLogs = async () => {
+        try {
+            // Get latest timestamp from server
+            const timestampRes = await axios.get("/api/admin/logs/latest", { headers: { Authorization: `Bearer ${token}` } });
+            const latestTimestamp = timestampRes.data.latestTimestamp;
+            
+            if (!latestTimestamp || latestTimestamp === lastLogTimestamp) {
+                return; // No new data
+            }
+            
+            // New data available - fetch it
+            setLastLogTimestamp(latestTimestamp);
+            await Promise.all([fetchLogs(), fetchLogStats()]);
+        } catch (err) {
+            console.error("Poll error:", err);
+        }
+    };
+
+    const fetchSystemHealth = async () => {
+        setHealthLoading(true);
+        try {
+            const res = await axios.get("/api/admin/system-health", { headers: { Authorization: `Bearer ${token}` } });
+            setSystemHealth(res.data);
+        } catch (err) {
+            console.error("Failed to fetch system health:", err);
+            toast.error("Failed to fetch system health");
+        } finally {
+            setHealthLoading(false);
+        }
+    };
+
+    const exportLogs = async () => {
+        if (!logDateFrom || !logDateTo) {
+            toast.error("Please select date range for export");
+            return;
+        }
+        try {
+            const res = await axios.get(`/api/admin/logs/export?startDate=${logDateFrom}&endDate=${logDateTo}`, {
+                headers: { Authorization: `Bearer ${token}` },
+                responseType: "blob",
+            });
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement("a");
+            link.href = url;
+            link.setAttribute("download", `activity-logs-${logDateFrom}-${logDateTo}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            toast.success("Logs exported successfully");
+        } catch (err) {
+            toast.error("Failed to export logs");
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === "logs") {
+            fetchLogs();
+            fetchLogStats();
+            fetchSystemHealth();
+            // Initialize latest timestamp tracking
+            (async () => {
+                try {
+                    const timestampRes = await axios.get("/api/admin/logs/latest", { headers: { Authorization: `Bearer ${token}` } });
+                    setLastLogTimestamp(timestampRes.data.latestTimestamp);
+                } catch (err) {
+                    console.error("Failed to get initial timestamp:", err);
+                }
+            })();
+        }
+    }, [activeTab, logPage, logActionFilter, logDateFrom, logDateTo]);
+
+    // Auto-refresh logs - only fetches if new data exists
+    useEffect(() => {
+        if (autoRefreshLogs && activeTab === "logs") {
+            const interval = setInterval(() => {
+                pollForNewLogs();
+            }, 5000);
+            setRefreshInterval(interval);
+            return () => clearInterval(interval);
+        } else if (refreshInterval) {
+            clearInterval(refreshInterval);
+            setRefreshInterval(null);
+        }
+    }, [autoRefreshLogs, activeTab]);
 
     const filteredUsers = users.filter(u => {
         const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -127,6 +270,7 @@ function AdminDashboard() {
                             { id: "overview", label: "Overview", icon: BarChart3 },
                             { id: "users", label: "Users", icon: Users },
                             { id: "analytics", label: "Analytics", icon: TrendingUp },
+                            { id: "logs", label: "Logs", icon: FileText },
                         ].map(({ id, label, icon: Icon }) => (
                             <button
                                 key={id}
@@ -190,11 +334,45 @@ function AdminDashboard() {
                                 </div>
                             </div>
                             <div className="glass-panel p-6 flex flex-col justify-center items-center text-center space-y-4 bg-gradient-to-br from-blue-600/5 to-purple-600/5">
-                                <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center">
-                                    <Shield className="w-10 h-10 text-blue-600 dark:text-blue-400" />
-                                </div>
-                                <h4 className="text-xl font-black">System Status: Stable</h4>
-                                <p className="text-slate-500 dark:text-slate-400 max-w-sm">All core services are operational. Token verification and database connections are performing within normal parameters.</p>
+                                {systemHealth ? (
+                                    <>
+                                        <div className={`w-20 h-20 rounded-full flex items-center justify-center ${systemHealth.health.status === "healthy" ? "bg-emerald-100 dark:bg-emerald-900/40" : "bg-amber-100 dark:bg-amber-900/40"}`}>
+                                            {systemHealth.health.status === "healthy" ? (
+                                                <CheckCircle className="w-10 h-10 text-emerald-600 dark:text-emerald-400" />
+                                            ) : (
+                                                <AlertCircle className="w-10 h-10 text-amber-600 dark:text-amber-400" />
+                                            )}
+                                        </div>
+                                        <h4 className="text-xl font-black">
+                                            System Status: {systemHealth.health.status === "healthy" ? "Operational" : "Degraded"}
+                                        </h4>
+                                        <p className="text-slate-500 dark:text-slate-400 max-w-sm">
+                                            {systemHealth.health.status === "healthy" 
+                                                ? `All core services are operational. ${systemHealth.health.errorsLast24h} errors in last 24h.`
+                                                : `High error count detected (${systemHealth.health.errorsLast24h} in last 24h). Check logs.`
+                                            }
+                                        </p>
+                                        <div className="w-full mt-4">
+                                            <ResponsiveContainer width="100%" height={120}>
+                                                <LineChart data={systemHealth.activityTrend || []}>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                                                    <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                                                    <YAxis tick={{ fontSize: 10 }} />
+                                                    <Tooltip />
+                                                    <Line type="monotone" dataKey="logs" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                                                </LineChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center">
+                                            <Shield className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+                                        </div>
+                                        <h4 className="text-xl font-black">Loading...</h4>
+                                        <p className="text-slate-500 dark:text-slate-400 max-w-sm">Fetching system status...</p>
+                                    </>
+                                )}
                                 <button onClick={() => setActiveTab("users")} className="btn btn-primary rounded-xl px-12 mt-4 shadow-lg shadow-blue-500/30"> Manage Users </button>
                             </div>
                         </div>
@@ -275,7 +453,7 @@ function AdminDashboard() {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-sm text-slate-500">
-                                                    {new Date(user.createdAt).toLocaleDateString()}
+                                                    {new Date(user.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
                                                 </td>
                                                 <td className="px-6 py-4 text-right opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button 
@@ -334,7 +512,214 @@ function AdminDashboard() {
                         ))}
                     </div>
                 )}
-            {/* Add User Modal */}
+            {activeTab === "logs" && (
+                    <div className="space-y-6">
+                        {/* System Health Panel */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="lg:col-span-2 glass-panel p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        <Server className="w-5 h-5 text-blue-500" />
+                                        System Health
+                                    </h3>
+                                    <button onClick={fetchSystemHealth} className="btn btn-ghost btn-sm btn-circle">
+                                        <RefreshCw className={`w-4 h-4 ${healthLoading ? "animate-spin" : ""}`} />
+                                    </button>
+                                </div>
+                                {healthLoading ? (
+                                    <div className="flex items-center justify-center py-8">
+                                        <span className="loading loading-spinner loading-md text-blue-500"></span>
+                                    </div>
+                                ) : systemHealth ? (
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div className="p-4 bg-slate-50 dark:bg-base-300/50 rounded-xl">
+                                            <div className="text-xs text-slate-500 mb-1">Status</div>
+                                            <div className={`font-bold ${systemHealth.health.status === "healthy" ? "text-emerald-500" : "text-amber-500"} flex items-center gap-1`}>
+                                                {systemHealth.health.status === "healthy" ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                                                {systemHealth.health.status === "healthy" ? "Healthy" : "Warning"}
+                                            </div>
+                                        </div>
+                                        <div className="p-4 bg-slate-50 dark:bg-base-300/50 rounded-xl">
+                                            <div className="text-xs text-slate-500 mb-1">Uptime</div>
+                                            <div className="font-bold text-slate-900 dark:text-white">{systemHealth.system.uptime}</div>
+                                        </div>
+                                        <div className="p-4 bg-slate-50 dark:bg-base-300/50 rounded-xl">
+                                            <div className="text-xs text-slate-500 mb-1">Memory (Heap)</div>
+                                            <div className="font-bold text-slate-900 dark:text-white">{systemHealth.system.memory.heapUsed} / {systemHealth.system.memory.heapTotal}</div>
+                                        </div>
+                                        <div className="p-4 bg-slate-50 dark:bg-base-300/50 rounded-xl">
+                                            <div className="text-xs text-slate-500 mb-1">CPU Load (1m)</div>
+                                            <div className="font-bold text-slate-900 dark:text-white">{systemHealth.system.cpuLoad["1min"]}</div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-slate-500">Loading system health...</p>
+                                )}
+                            </div>
+                            
+                            {/* Log Stats */}
+                            <div className="glass-panel p-6">
+                                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                                    <Activity className="w-5 h-5 text-purple-500" />
+                                    Activity (30d)
+                                </h3>
+                                {logStats ? (
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-sm text-slate-500">Total Events</span>
+                                            <span className="font-bold text-slate-900 dark:text-white">{logStats.totalLogs}</span>
+                                        </div>
+                                        {Object.entries(logStats.actionCounts).slice(0, 5).map(([action, count]) => (
+                                            <div key={action} className="flex justify-between items-center">
+                                                <span className="text-xs text-slate-500 capitalize">{action.replace(/_/g, " ")}</span>
+                                                <span className="font-bold text-slate-900 dark:text-white">{count}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-slate-500 text-sm">Loading stats...</p>
+                                )}
+                            </div>
+                        </div>
+                        
+                        {/* Filters */}
+                        <div className="glass-panel p-4">
+                            <div className="flex flex-wrap gap-4 items-center">
+                                <div className="flex-1 min-w-[200px]">
+                                    <select 
+                                        className="select select-bordered w-full bg-white/50 dark:bg-base-300/50 rounded-xl"
+                                        value={logActionFilter}
+                                        onChange={(e) => { setLogActionFilter(e.target.value); setLogPage(1); }}
+                                    >
+                                        <option value="">All Actions</option>
+                                        <option value="user_login">User Login</option>
+                                        <option value="user_logout">User Logout</option>
+                                        <option value="user_created">User Created</option>
+                                        <option value="quiz_created">Quiz Created</option>
+                                        <option value="quiz_published">Quiz Published</option>
+                                        <option value="quiz_submitted">Quiz Submitted</option>
+                                        <option value="quiz_graded">Quiz Graded</option>
+                                        <option value="course_created">Course Created</option>
+                                        <option value="course_enrolled">Course Enrolled</option>
+                                    </select>
+                                </div>
+                                <div className="flex gap-2 items-center">
+                                    <input 
+                                        type="date" 
+                                        className="input input-bordered bg-white/50 dark:bg-base-300/50 rounded-xl"
+                                        value={logDateFrom}
+                                        onChange={(e) => { setLogDateFrom(e.target.value); setLogPage(1); }}
+                                    />
+                                    <span className="text-slate-500">to</span>
+                                    <input 
+                                        type="date" 
+                                        className="input input-bordered bg-white/50 dark:bg-base-300/50 rounded-xl"
+                                        value={logDateTo}
+                                        onChange={(e) => { setLogDateTo(e.target.value); setLogPage(1); }}
+                                    />
+                                </div>
+                                <button 
+                                    onClick={exportLogs}
+                                    className="btn btn-outline border-slate-200 dark:border-slate-700 rounded-xl"
+                                >
+                                    <Download className="w-4 h-4 mr-2" />
+                                    Export CSV
+                                </button>
+                                <button 
+                                    onClick={() => setAutoRefreshLogs(!autoRefreshLogs)}
+                                    className={`btn rounded-xl ${autoRefreshLogs ? "btn-primary" : "btn-outline border-slate-200 dark:border-slate-700"}`}
+                                >
+                                    <RefreshCw className={`w-4 h-4 mr-2 ${autoRefreshLogs ? "animate-spin" : ""}`} />
+                                    {autoRefreshLogs ? "Auto-refresh On" : "Auto-refresh Off"}
+                                </button>
+                            </div>
+                        </div>
+                        
+                        {/* Logs Table */}
+                        <div className="glass-panel overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="table w-full">
+                                    <thead className="bg-slate-50 dark:bg-base-300 text-slate-500 uppercase text-[11px] font-black tracking-widest">
+                                        <tr>
+                                            <th className="px-4 py-3">Timestamp</th>
+                                            <th className="px-4 py-3">User</th>
+                                            <th className="px-4 py-3">Action</th>
+                                            <th className="px-4 py-3">Details</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                        {logsLoading ? (
+                                            <tr>
+                                                <td colSpan="4" className="px-4 py-8 text-center">
+                                                    <span className="loading loading-spinner loading-md text-blue-500"></span>
+                                                </td>
+                                            </tr>
+                                        ) : logs.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="4" className="px-4 py-8 text-center text-slate-500">
+                                                    No activity logs found
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            logs.map((log) => (
+                                                <tr key={log._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center gap-2 text-slate-500 text-sm">
+                                                            <Clock className="w-3.5 h-3.5" />
+                                                            {new Date(log.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        {log.user ? (
+                                                            <span className="text-sm font-medium text-slate-900 dark:text-white">
+                                                                {log.user.name}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-sm text-slate-400">System</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <span className="badge badge-sm bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-none capitalize">
+                                                            {log.action.replace(/_/g, " ")}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 max-w-md truncate">
+                                                        {log.details}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            {/* Pagination */}
+                            {logsTotal > 20 && (
+                                <div className="flex justify-center items-center gap-2 p-4 border-t border-slate-100 dark:border-slate-800">
+                                    <button 
+                                        onClick={() => setLogPage(p => Math.max(1, p - 1))}
+                                        disabled={logPage === 1}
+                                        className="btn btn-sm btn-outline"
+                                    >
+                                        Previous
+                                    </button>
+                                    <span className="text-sm text-slate-500">
+                                        Page {logPage} of {Math.ceil(logsTotal / 20)}
+                                    </span>
+                                    <button 
+                                        onClick={() => setLogPage(p => p + 1)}
+                                        disabled={logPage >= Math.ceil(logsTotal / 20)}
+                                        className="btn btn-sm btn-outline"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Add User Modal */}
             {isAddUserOpen && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="glass-panel w-full max-w-md p-8 animate-in zoom-in-95 duration-200">

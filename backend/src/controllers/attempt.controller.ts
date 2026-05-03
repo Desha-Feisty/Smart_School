@@ -22,6 +22,21 @@ const countAttempts = async (userId: string, quizId: string) => {
     return Attempt.countDocuments({ user: userId, quiz: quizId });
 };
 
+// Helper function to select random questions (seeded shuffle for consistent results per user/attempt)
+const selectRandomQuestions = (allQuestions: any[], count: number, seed: string): any[] => {
+    const shuffled = [...allQuestions];
+    // Simple seeded shuffle using the seed string (userId + attemptId)
+    let seedNum = 0;
+    for (let i = 0; i < seed.length; i++) {
+        seedNum = ((seedNum << 5) - seedNum + seed.charCodeAt(i)) | 0;
+    }
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.abs((seedNum * (i + 1)) % (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled.slice(0, count);
+};
+
 const startAttempt = async (req: AuthRequest, res: Response) => {
     try {
         const { quizId } = req.params;
@@ -68,9 +83,20 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
             endAt: { $gt: now.toDate() },
         }).lean();
         if (activeAttempt) {
-            const questions = await Question.find({ quiz: quiz._id })
+            // Get all questions and apply random selection if needed
+            let allQuestions = await Question.find({ quiz: quiz._id })
                 .sort({ orderIndex: 1 })
                 .lean();
+            
+            let questions = allQuestions;
+            if (quiz.questionsPerAttempt && quiz.questionsPerAttempt < allQuestions.length) {
+                questions = selectRandomQuestions(
+                    allQuestions, 
+                    quiz.questionsPerAttempt, 
+                    `${req.user.id}-${activeAttempt._id}`
+                );
+            }
+            
             return res.status(200).json({
                 attemptId: activeAttempt._id,
                 endAt: activeAttempt.endAt,
@@ -97,9 +123,22 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
         const endAt = durationEnd.isBefore(quizEnd)
             ? durationEnd.toDate()
             : quizEnd.toDate();
-        const questions = await Question.find({ quiz: quiz._id })
+        
+        // Get all questions
+        let allQuestions = await Question.find({ quiz: quiz._id })
             .sort({ orderIndex: 1 })
             .lean();
+        
+        // Select random subset if questionsPerAttempt is set
+        let questions = allQuestions;
+        if (quiz.questionsPerAttempt && quiz.questionsPerAttempt < allQuestions.length) {
+            questions = selectRandomQuestions(
+                allQuestions, 
+                quiz.questionsPerAttempt, 
+                `${req.user.id}-new`
+            );
+        }
+        
         const responses = questions.map((q) => ({
             question: q._id,
             selectedChoiceIds: [],
@@ -177,12 +216,12 @@ const submitAttempt = async (req: AuthRequest, res: Response) => {
             return res.status(403).json({ error: "Forbidden" });
         const now = dayjs();
         const isLate = now.isAfter(dayjs(attempt.endAt));
-
+        
         // Auto-grade MCQ single
         let total = 0;
         for (const resp of attempt.responses) {
             const q = resp.question as unknown as IQuestion;
-
+            
             const correctChoice = q.choices.find((c) => c.isCorrect);
             const isCorrect =
                 correctChoice &&
@@ -206,6 +245,28 @@ const submitAttempt = async (req: AuthRequest, res: Response) => {
     } catch (err) {
         res.status(500).json({ error: "Submit failed" });
     }
+};
+
+// Helper function to grade an attempt (exported for quiz scheduler)
+export const gradeSubmittedAttempt = async (attempt: any) => {
+    await attempt.populate({
+        path: "responses.question",
+        model: "Question",
+    });
+    let total = 0;
+    for (const resp of attempt.responses) {
+        const q = resp.question as unknown as IQuestion;
+        const correctChoice = q.choices.find((c) => c.isCorrect);
+        const isCorrect =
+            correctChoice &&
+            resp.selectedChoiceIds.length === 1 &&
+            resp.selectedChoiceIds[0].toString() === correctChoice._id?.toString();
+        resp.pointsAwarded = isCorrect ? q.points || 1 : 0;
+        total += resp.pointsAwarded;
+    }
+    attempt.score = total;
+    attempt.status = "graded";
+    await attempt.save();
 };
 
 const getResult = async (req: AuthRequest, res: Response) => {
@@ -246,12 +307,16 @@ const listQuizGrades = async (req: AuthRequest, res: Response) => {
             status: { $in: ["graded", "late"] },
         })
             .populate("user", "name email")
+            .populate({ path: "responses.question", model: "Question" })
             .select("user score submittedAt status responses")
             .sort({ submittedAt: -1 })
             .lean();
         const results = attempts.map((a) => {
-            // Calculate total possible points from responses
-            const totalPossiblePoints = a.responses?.length || 0;
+            // Calculate total possible points from this attempt's questions
+            const totalPossiblePoints = a.responses?.reduce(
+                (sum, r) => sum + (((r.question as any)?.points) || 1),
+                0,
+            ) || 0;
             const scorePercentage =
                 totalPossiblePoints > 0 && a.score !== undefined
                     ? Math.round((a.score / totalPossiblePoints) * 100)
@@ -289,6 +354,7 @@ const listMyGrades = async (req: AuthRequest, res: Response) => {
                 select: "title course",
                 populate: { path: "course", select: "title" },
             })
+            .populate({ path: "responses.question", model: "Question" })
             .select("quiz score submittedAt status responses")
             .sort({ submittedAt: -1 })
             .lean();
@@ -296,8 +362,11 @@ const listMyGrades = async (req: AuthRequest, res: Response) => {
             return res.status(404).json({ error: "No attempts found" });
 
         const results = attempts.map((a) => {
-            // Calculate total possible points from responses
-            const totalPossiblePoints = a.responses?.length || 0;
+            // Calculate total possible points from this attempt's questions
+            const totalPossiblePoints = a.responses?.reduce(
+                (sum, r) => sum + (((r.question as any)?.points) || 1),
+                0,
+            ) || 0;
             const scorePercentage =
                 totalPossiblePoints > 0 && a.score !== undefined
                     ? Math.round((a.score / totalPossiblePoints) * 100)
@@ -425,6 +494,7 @@ const getStudentCourseGrades = async (req: AuthRequest, res: Response) => {
                 match: { course: courseId }, // Only quizzes from this course
                 populate: { path: "course", select: "title" },
             })
+            .populate({ path: "responses.question", model: "Question" })
             .select("quiz score submittedAt status responses")
             .sort({ submittedAt: -1 })
             .lean();
@@ -433,8 +503,11 @@ const getStudentCourseGrades = async (req: AuthRequest, res: Response) => {
         const courseAttempts = attempts.filter((a) => a.quiz);
 
         const results = courseAttempts.map((a) => {
-            // Calculate total possible points from responses
-            const totalPossiblePoints = a.responses?.length || 0;
+            // Calculate total possible points from this attempt's questions
+            const totalPossiblePoints = a.responses?.reduce(
+                (sum, r) => sum + (((r.question as any)?.points) || 1),
+                0,
+            ) || 0;
             const scorePercentage =
                 totalPossiblePoints > 0 && a.score !== undefined
                     ? Math.round((a.score / totalPossiblePoints) * 100)

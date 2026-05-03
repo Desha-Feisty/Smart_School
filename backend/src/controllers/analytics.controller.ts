@@ -13,7 +13,7 @@ const getCourseAnalytics = async (req: AuthRequest, res: Response) => {
         if (!course) return res.status(404).json({ error: "Course not found" });
 
         // Verify teacher role
-        if (!req.user || req.user.id !== course.teacher.toString()) {
+        if (!req.user || req.user._id !== course.teacher.toString()) {
             return res.status(403).json({ error: "Forbidden" });
         }
 
@@ -65,7 +65,7 @@ const getCourseAnalytics = async (req: AuthRequest, res: Response) => {
 const getStudentProgress = async (req: AuthRequest, res: Response) => {
     try {
         const { courseId } = req.params;
-        const studentId = req.user?.id;
+        const studentId = req.user?._id;
         if (!studentId) return res.status(401).json({ error: "Unauthorized" });
 
         // Find all attempts for this student in this course

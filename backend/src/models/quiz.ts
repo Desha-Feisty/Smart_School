@@ -9,7 +9,9 @@ export interface IQuiz {
     closeAt: Date;
     durationMinutes: number;
     attemptsAllowed?: number;
+    questionsPerAttempt?: number;
     published?: boolean;
+    gradingMode?: "onSubmit" | "onClose";
 }
 
 const quizSchema = new Schema<IQuiz>({
@@ -20,7 +22,9 @@ const quizSchema = new Schema<IQuiz>({
     closeAt: { type: Date, required: true },
     durationMinutes: { type: Number, required: true },
     attemptsAllowed: { type: Number, default: 1 },
+    questionsPerAttempt: { type: Number },
     published: { type: Boolean, default: false },
+    gradingMode: { type: String, enum: ["onSubmit", "onClose"], default: "onSubmit" },
 });
 
 export default model<IQuiz>("Quiz", quizSchema);
