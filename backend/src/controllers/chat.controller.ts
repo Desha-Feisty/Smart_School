@@ -2,6 +2,9 @@ import type { Response } from "express";
 import ChatMessage from "../models/chat.js";
 import type { AuthRequest } from "../types/authRequest.js";
 
+const DEFAULT_MESSAGE_LIMIT = 100;
+const MAX_MESSAGES_PER_CONVERSATION = 50;
+
 export const getRecentChatsV1 = async (req: AuthRequest, res: Response) => {
     try {
         if (!req.user || !req.user._id) {
@@ -15,6 +18,7 @@ export const getRecentChatsV1 = async (req: AuthRequest, res: Response) => {
             $or: [{ sender: userId }, { recipient: userId }],
         })
             .sort({ createdAt: -1 })
+            .limit(DEFAULT_MESSAGE_LIMIT)
             .populate("course", "title")
             .populate("sender", "name role")
             .populate("recipient", "name role")
@@ -67,10 +71,10 @@ export const getRecentChatsV1 = async (req: AuthRequest, res: Response) => {
                         lastMessage.sender?.toString()) === userId,
             }),
         );
-        res.status(200).json({ results: recentChats });
+        return res.status(200).json({ results: recentChats });
     } catch (error) {
         console.error("Error fetching recent chats V1:", error);
-        res.status(500).json({ errMsg: "Failed to fetch recent chats" });
+        return res.status(500).json({ errMsg: "Failed to fetch recent chats" });
     }
 };
 
@@ -87,6 +91,7 @@ export const getRecentChatsV2 = async (req: AuthRequest, res: Response) => {
             $or: [{ sender: userId }, { recipient: userId }],
         })
             .sort({ createdAt: -1 })
+            .limit(DEFAULT_MESSAGE_LIMIT)
             .select("text createdAt course sender recipient")
             .populate("course", "title")
             .populate("sender", "name role")
@@ -99,24 +104,24 @@ export const getRecentChatsV2 = async (req: AuthRequest, res: Response) => {
             string,
             { peer: any; course: any; messages: any[]; peerId: string; courseId: string }
         > = {};
-
+        
         messages.forEach((msg: any) => {
             // Add normalized identifiers
             msg.senderId = msg.sender?._id?.toString() || msg.sender?.toString();
             msg.recipientId = msg.recipient?._id?.toString() || msg.recipient?.toString();
-
+            
             const isSender =
                 msg.sender && (msg.sender as any)._id?.toString() === userId;
             const peer = isSender ? msg.recipient : msg.sender;
-
+            
             if (!peer || !msg.course) return;
-
+            
             const peerId = (peer as any)._id?.toString() || peer.toString();
             const courseId =
                 (msg.course as any)._id?.toString() || msg.course.toString();
-
+            
             const key = `${courseId}_${peerId}`;
-
+            
             if (!recentChatsMap[key]) {
                 recentChatsMap[key] = {
                     peer,
@@ -125,15 +130,15 @@ export const getRecentChatsV2 = async (req: AuthRequest, res: Response) => {
                     peerId,
                     courseId,
                 };
-            } else {
+            } else if (recentChatsMap[key].messages.length < MAX_MESSAGES_PER_CONVERSATION) {
                 recentChatsMap[key].messages.push(msg);
             }
         });
-
-        res.status(200).json(recentChatsMap);
+        
+        return res.status(200).json({ results: recentChatsMap });
     } catch (error) {
         console.error("Error fetching recent chats V2:", error);
-        res.status(500).json({ errMsg: "Failed to fetch recent chats" });
+        return res.status(500).json({ errMsg: "Failed to fetch recent chats" });
     }
 };
 

@@ -16,10 +16,10 @@ import { getLogs as fetchLogs, getLogStats as fetchLogStats, exportLogsToCsv } f
 export const listUsers = async (req: AuthRequest, res: Response) => {
     try {
         const users = await User.find().select("-password").sort("-createdAt");
-        res.status(200).json({ users });
+        return res.status(200).json({ users });
     } catch (error) {
         console.error("Admin listUsers error:", error);
-        res.status(500).json({ errMsg: "Failed to fetch users" });
+        return res.status(500).json({ errMsg: "Failed to fetch users" });
     }
 };
 
@@ -42,10 +42,10 @@ export const addUser = async (req: AuthRequest, res: Response) => {
         const user = new User({ name, email, password, role });
         await user.save();
 
-        res.status(201).json({ user: { id: user._id, name, email, role } });
+        return res.status(201).json({ user: { id: user._id, name, email, role } });
     } catch (error) {
         console.error("Admin addUser error:", error);
-        res.status(500).json({ errMsg: "Failed to create user" });
+        return res.status(500).json({ errMsg: "Failed to create user" });
     }
 };
 
@@ -60,27 +60,28 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
 
         // Cleanup based on role
         if (user.role === "teacher") {
-            // Delete courses owned by teacher
             const teacherCourses = await Course.find({ teacher: user._id });
             const courseIds = teacherCourses.map(c => c._id);
             
-            // Delete all quizzes in those courses
-            await Quiz.deleteMany({ course: { $in: courseIds } });
-            // Delete enrollments in those courses
-            await Enrollment.deleteMany({ course: { $in: courseIds } });
-            // Delete actual courses
-            await Course.deleteMany({ teacher: user._id });
+            // Parallel cleanup of all teacher-owned data
+            await Promise.all([
+                Quiz.deleteMany({ course: { $in: courseIds } }),
+                Enrollment.deleteMany({ course: { $in: courseIds } }),
+                Course.deleteMany({ teacher: user._id }),
+            ]);
         } else if (user.role === "student") {
-            // Delete student's attempts and enrollments
-            await Attempt.deleteMany({ user: user._id });
-            await Enrollment.deleteMany({ user: user._id });
+            // Parallel cleanup of student data
+            await Promise.all([
+                Attempt.deleteMany({ user: user._id }),
+                Enrollment.deleteMany({ user: user._id }),
+            ]);
         }
 
         await User.findByIdAndDelete(id);
-        res.status(200).json({ msg: "User and associated data deleted successfully" });
+        return res.status(200).json({ msg: "User and associated data deleted successfully" });
     } catch (error) {
         console.error("Admin deleteUser error:", error);
-        res.status(500).json({ errMsg: "Failed to delete user" });
+        return res.status(500).json({ errMsg: "Failed to delete user" });
     }
 };
 
@@ -119,8 +120,11 @@ export const getPlatformAnalytics = async (req: AuthRequest, res: Response) => {
         const courses = await Course.find().populate("teacher", "name");
         
         const courseAnalytics = await Promise.all(courses.map(async (course) => {
-            const studentCount = await Enrollment.countDocuments({ course: course._id, status: "active" });
-            const quizzes = await Quiz.find({ course: course._id });
+            // Parallel queries for independent data
+            const [studentCount, quizzes] = await Promise.all([
+                Enrollment.countDocuments({ course: course._id, status: "active" }),
+                Quiz.find({ course: course._id }),
+            ]);
             const quizIds = quizzes.map(q => q._id);
             
             const attempts = await Attempt.find({ 
@@ -168,10 +172,22 @@ export const getLogs = async (req: AuthRequest, res: Response) => {
         
         if (action) options.action = action as string;
         if (userId) options.userId = userId as string;
-        if (startDate) options.startDate = new Date(startDate as string);
-        if (endDate) options.endDate = new Date(endDate as string);
-        options.limit = parseInt(limit as string);
-        options.skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+        
+        if (startDate) {
+            const sd = new Date(startDate as string);
+            if (!isNaN(sd.getTime())) options.startDate = sd;
+        }
+        if (endDate) {
+            const ed = new Date(endDate as string);
+            if (!isNaN(ed.getTime())) options.endDate = ed;
+        }
+        
+        const parsedLimit = parseInt(limit as string, 10);
+        options.limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 20;
+        
+        const parsedPage = parseInt(page as string, 10);
+        const pageNum = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+        options.skip = (pageNum - 1) * options.limit;
         
         const result = await fetchLogs(options);
         
@@ -214,14 +230,30 @@ export const exportLogs = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({ errMsg: "startDate and endDate are required" });
         }
         
-        const csv = await exportLogsToCsv(new Date(startDate as string), new Date(endDate as string));
+        const start = new Date(startDate as string);
+        const end = new Date(endDate as string);
+        
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+            return res.status(400).json({ errMsg: "Invalid startDate or endDate" });
+        }
+        
+        if (end < start) {
+            return res.status(400).json({ errMsg: "endDate must be after startDate" });
+        }
+        
+        const MAX_RANGE_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
+        if (end.getTime() - start.getTime() > MAX_RANGE_MS) {
+            return res.status(400).json({ errMsg: "Date range cannot exceed 1 year" });
+        }
+        
+        const csv = await exportLogsToCsv(start, end);
         
         res.setHeader("Content-Type", "text/csv");
         res.setHeader("Content-Disposition", "attachment; filename=activity-logs.csv");
-        res.send(csv);
+        return res.send(csv);
     } catch (error) {
         console.error("Admin exportLogs error:", error);
-        res.status(500).json({ errMsg: "Failed to export logs" });
+        return res.status(500).json({ errMsg: "Failed to export logs" });
     }
 };
 
@@ -238,7 +270,7 @@ export const getSystemHealth = async (req: AuthRequest, res: Response) => {
         const memoryUsage = process.memoryUsage();
         const cpuLoad = os.loadavg();
         
-        // Windows often returns 0,0,0 for loadavg - provide fallback with uptime ratio
+        // Windows often returns 0,0,0 for loadavg - set to N/A
         const platform = os.platform();
         let displayCpuLoad = {
             "1min": cpuLoad[0]?.toFixed(2) || "0.00",
@@ -246,13 +278,12 @@ export const getSystemHealth = async (req: AuthRequest, res: Response) => {
             "15min": cpuLoad[2]?.toFixed(2) || "0.00",
         };
         
-        // If all values are 0 on Windows, estimate based on process uptime
+        // If all values are 0 on Windows, set to N/A (TODO: use systeminformation or os-utils for real Windows CPU metrics)
         if (cpuLoad[0] === 0 && cpuLoad[1] === 0 && cpuLoad[2] === 0 && platform === "win32") {
-            const uptimeRatio = Math.min(process.uptime() / 3600, 1); // Normalize to max 1 hour
             displayCpuLoad = {
-                "1min": (uptimeRatio * 100).toFixed(2),
-                "5min": (uptimeRatio * 80).toFixed(2),
-                "15min": (uptimeRatio * 60).toFixed(2),
+                "1min": "N/A",
+                "5min": "N/A",
+                "15min": "N/A",
             };
         }
         
@@ -268,25 +299,28 @@ export const getSystemHealth = async (req: AuthRequest, res: Response) => {
         // Calculate uptime percentage (based on start time)
         const uptimePercentage = Math.min(100, Math.round((uptime / (24 * 60 * 60)) * 100));
         
-        // Get activity trend from last 7 days
-        const last7Days = [];
-        for (let i = 6; i >= 0; i--) {
+        // Get activity trend from last 7 days (parallel queries)
+        const dayRanges = Array.from({ length: 7 }, (_, i) => {
             const dayStart = new Date();
-            dayStart.setDate(dayStart.getDate() - i);
+            dayStart.setDate(dayStart.getDate() - (6 - i));
             dayStart.setHours(0, 0, 0, 0);
-            const dayEnd = new Date();
-            dayEnd.setDate(dayEnd.getDate() - i);
+            const dayEnd = new Date(dayStart);
             dayEnd.setHours(23, 59, 59, 999);
-            
-            const logCount = await ActivityLog.countDocuments({
-                createdAt: { $gte: dayStart, $lte: dayEnd }
-            });
-            
-            last7Days.push({
-                date: dayStart.toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
-                logs: logCount
-            });
-        }
+            return { start: dayStart, end: dayEnd };
+        });
+
+        const dayCounts = await Promise.all(
+            dayRanges.map(({ start, end }) =>
+                ActivityLog.countDocuments({
+                    createdAt: { $gte: start, $lte: end },
+                }),
+            ),
+        );
+
+        const last7Days = dayRanges.map(({ start }, i) => ({
+            date: start.toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+            logs: dayCounts[i],
+        }));
         
         res.status(200).json({
             platform: {

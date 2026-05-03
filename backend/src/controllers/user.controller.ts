@@ -14,9 +14,9 @@ const getAllUsers = async (req: Request, res: Response) => {
         if (users.length === 0) {
             return res.status(200).json({ message: "No users found." });
         }
-        res.status(200).json({ num: users.length, users });
+        return res.status(200).json({ num: users.length, users });
     } catch (error) {
-        res.status(500).json({ errMsg: "An error has occured", error });
+        return res.status(500).json({ errMsg: "An error has occured", error });
     }
 };
 const getUser = async (req: Request, res: Response) => {
@@ -29,9 +29,9 @@ const getUser = async (req: Request, res: Response) => {
         if (!user) {
             return res.status(404).json({ errMsg: "user not found!" });
         }
-        res.status(200).json({ user });
+        return res.status(200).json({ user });
     } catch (error) {
-        res.status(500).json({ errMsg: "An error has occured", error });
+        return res.status(500).json({ errMsg: "An error has occured", error });
     }
 };
 const createUser = async (req: Request<{}, {}, RequestBody>, res: Response) => {
@@ -41,9 +41,9 @@ const createUser = async (req: Request<{}, {}, RequestBody>, res: Response) => {
             return res.status(400).json({ errMsg: "Bad request!" });
         }
         const user = await User.create({ name, email, password, role });
-        res.status(201).json({ user });
+        return res.status(201).json({ user });
     } catch (error) {
-        res.status(500).json({ errMsg: "An error has occured", error });
+        return res.status(500).json({ errMsg: "An error has occured", error });
     }
 };
 const updateUser = async (req: Request, res: Response) => {
@@ -66,7 +66,7 @@ const updateUser = async (req: Request, res: Response) => {
         }
         return res.status(200).json({ user });
     } catch (error) {
-        res.status(500).json({ errMsg: "An error has occured", error });
+        return res.status(500).json({ errMsg: "An error has occured", error });
     }
 };
 const deleteUser = async (req: Request, res: Response) => {
@@ -81,6 +81,6 @@ const deleteUser = async (req: Request, res: Response) => {
         }
         return res.status(200).json({ msg: "user deleted successfully" });
     } catch (error) {
-        res.status(500).json({ errMsg: "an error has occured", error });
+        return res.status(500).json({ errMsg: "an error has occured", error });
     }
 };

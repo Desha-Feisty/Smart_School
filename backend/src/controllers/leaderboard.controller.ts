@@ -82,10 +82,10 @@ const getCourseLeaderboard = async (req: AuthRequest, res: Response) => {
             averageScore: Math.round(r.averageScore)
         }));
 
-        res.json({ leaderboard });
+        return res.json({ leaderboard });
     } catch (err) {
         console.error("Leaderboard error:", err);
-        res.status(500).json({ error: "Failed to fetch leaderboard" });
+        return res.status(500).json({ error: "Failed to fetch leaderboard" });
     }
 };
 

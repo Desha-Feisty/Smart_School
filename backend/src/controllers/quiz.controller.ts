@@ -109,10 +109,10 @@ const createQuiz = async (req: AuthRequest, res: Response) => {
         });
 
         console.log("Quiz created successfully:", quiz._id);
-        res.status(201).json({ quiz });
+        return res.status(201).json({ quiz });
     } catch (error) {
         console.error("Quiz creation error:", error);
-        res.status(500).json({
+        return res.status(500).json({
             errMsg: "Internal server error while creating quiz",
             error: error instanceof Error ? error.message : "Unknown error",
         });
@@ -169,10 +169,10 @@ const addQuestion = async (req: AuthRequest, res: Response) => {
             questionType: "mcq_single",
             ...value,
         });
-        res.status(201).json({ question });
+        return res.status(201).json({ question });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
-        res.status(500).json({ errMsg: "failed to create question" });
+        return res.status(500).json({ errMsg: "failed to create question" });
     }
 };
 
@@ -217,10 +217,10 @@ const addQuestionViaBody = async (req: AuthRequest, res: Response) => {
             orderIndex: value.orderIndex,
             choices: value.choices,
         });
-        res.status(201).json({ question: q });
+        return res.status(201).json({ question: q });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
-        res.status(500).json({ errMsg: "failed to create quiz" });
+        return res.status(500).json({ errMsg: "failed to create quiz" });
     }
 };
 
@@ -277,10 +277,10 @@ const updateQuestion = async (req: AuthRequest, res: Response) => {
             question.orderIndex = value.orderIndex;
         if (value.choices !== undefined) question.choices = value.choices;
         await question.save();
-        res.status(200).json({ question });
+        return res.status(200).json({ question });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
-        res.status(500).json({ errMsg: "failed to update question" });
+        return res.status(500).json({ errMsg: "failed to update question" });
     }
 };
 
@@ -307,13 +307,13 @@ const deleteQuestion = async (req: AuthRequest, res: Response) => {
             return res.status(403).json({ errMsg: "forbidden" });
         }
         await Question.findByIdAndDelete(questionId);
-        res.status(200).json({
+        return res.status(200).json({
             msg: "question deleted successfully",
             question,
         });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
-        res.status(500).json({ errMsg: "failed to delete question" });
+        return res.status(500).json({ errMsg: "failed to delete question" });
     }
 };
 
@@ -381,10 +381,10 @@ const publishQuiz = async (req: AuthRequest, res: Response) => {
             );
         }
 
-        res.status(200).json({ quiz });
+        return res.status(200).json({ quiz });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
-        res.status(500).json({ errMsg: "could not publish quiz" });
+        return res.status(500).json({ errMsg: "could not publish quiz" });
     }
 };
 
@@ -434,10 +434,10 @@ const listCourseQuizzes = async (req: AuthRequest, res: Response) => {
             ? quizzes
             : quizzes.filter((q) => q.published);
 
-        res.json({ course, filteredQuizzes });
+        return res.json({ course, filteredQuizzes });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
-        res.status(500).json({ errMsg: "error fetching available quizzes" });
+        return res.status(500).json({ errMsg: "error fetching available quizzes" });
     }
 };
 
@@ -473,14 +473,14 @@ const getQuizDetails = async (req: AuthRequest, res: Response) => {
             ? await Question.find({ quiz: quizId }).sort("orderIndex")
             : await Question.find({ quiz: quizId }).sort("orderIndex").select("-choices.isCorrect");
             
-        res.status(200).json({ 
+        return res.status(200).json({ 
             quiz, 
             questions,
             questionCount 
         });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
-        res.status(500).json({ errMsg: "failed to fetch quizz" });
+        return res.status(500).json({ errMsg: "failed to fetch quizz" });
     }
 };
 
@@ -564,10 +564,10 @@ const listAvailableQuizzes = async (req: AuthRequest, res: Response) => {
             };
         });
 
-        res.status(200).json({ quizzes: quizzesWithStatus });
+        return res.status(200).json({ quizzes: quizzesWithStatus });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
-        res.status(500).json({ errMsg: "failed to fetch quizzes" });
+        return res.status(500).json({ errMsg: "failed to fetch quizzes" });
     }
 };
 
@@ -606,10 +606,10 @@ const updateQuiz = async (req: AuthRequest, res: Response) => {
             quiz.published = value.published;
         }
         await quiz.save();
-        res.status(200).json({ quiz });
+        return res.status(200).json({ quiz });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
-        res.status(500).json({ errMsg: "failed to update quiz" });
+        return res.status(500).json({ errMsg: "failed to update quiz" });
     }
 };
 
@@ -645,10 +645,10 @@ const deleteQuiz = async (req: AuthRequest, res: Response) => {
         // Delete the quiz itself
         const deletedQuiz = await Quiz.findByIdAndDelete(quizId);
 
-        res.status(200).json({ msg: "quiz deleted successfully", deletedQuiz });
+        return res.status(200).json({ msg: "quiz deleted successfully", deletedQuiz });
     } catch (error) {
         console.error("Delete quiz error:", error);
-        res.status(500).json({
+        return res.status(500).json({
             errMsg: "failed to delete quiz",
             error: error instanceof Error ? error.message : "Unknown error",
         });
@@ -677,10 +677,10 @@ const createQuizFromBody = async (req: AuthRequest, res: Response) => {
             ...value,
             published: false,
         });
-        res.status(201).json({ quiz });
+        return res.status(201).json({ quiz });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
-        res.status(500).json({ errMsg: "failed to create quiz" });
+        return res.status(500).json({ errMsg: "failed to create quiz" });
     }
 };
 
@@ -772,14 +772,14 @@ const generateQuestionsWithAI = async (req: AuthRequest, res: Response) => {
         }));
 
         const inserted = await Question.insertMany(questionsToInsert);
-        res.status(201).json({ questions: inserted });
+        return res.status(201).json({ questions: inserted });
     } catch (error) {
         console.error("AI Generation Error:", error);
         const errMsg =
             error instanceof Error
                 ? error.message
                 : "failed to generate questions";
-        res.status(500).json({ errMsg });
+        return res.status(500).json({ errMsg });
     }
 };
 

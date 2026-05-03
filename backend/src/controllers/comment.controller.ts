@@ -45,11 +45,13 @@ const addComment = async (req: AuthRequest, res: Response) => {
         }
 
         // Allow access if user is the course teacher OR enrolled as a student
-        const isTeacher = (note.teacher as any)?._id.toString() === req.user._id;
-        const courseId = (note.course as any)?._id;
+        const teacherId = (note.teacher as any)?._id || note.teacher;
+        const isTeacher = teacherId.equals ? teacherId.equals(req.user._id) : teacherId.toString() === req.user._id.toString();
+        const courseId = ((note.course as any)?._id || note.course)?.toString();
+        if (!courseId) return res.status(404).json({ errMsg: "Course not found" });
         const enrolled = isTeacher
             ? true
-            : await ensureEnrolled(req.user._id, courseId);
+            : await ensureEnrolled(req.user._id.toString(), courseId);
 
         if (!enrolled) {
             return res
@@ -65,10 +67,10 @@ const addComment = async (req: AuthRequest, res: Response) => {
 
         await comment.populate("user", "name email");
 
-        res.status(201).json({ comment });
+        return res.status(201).json({ comment });
     } catch (error) {
         console.error("Add comment error:", error);
-        res.status(500).json({ errMsg: "Failed to add comment" });
+        return res.status(500).json({ errMsg: "Failed to add comment" });
     }
 };
 
@@ -94,8 +96,9 @@ const deleteComment = async (req: AuthRequest, res: Response) => {
         }
 
         // Allow deletion if: user is comment author OR user is course teacher
-        const isAuthor = comment.user.toString() === req.user._id;
-        const isTeacher = (note.teacher as any).toString() === req.user._id;
+        const isAuthor = comment.user.equals ? comment.user.equals(req.user._id) : comment.user.toString() === req.user._id.toString();
+        const teacherId = (note.teacher as any)?._id || note.teacher;
+        const isTeacher = teacherId.equals ? teacherId.equals(req.user._id) : teacherId.toString() === req.user._id.toString();
 
         if (!isAuthor && !isTeacher) {
             return res.status(403).json({
@@ -105,10 +108,10 @@ const deleteComment = async (req: AuthRequest, res: Response) => {
 
         await Comment.deleteOne({ _id: commentId });
 
-        res.json({ ok: true });
+        return res.json({ ok: true });
     } catch (error) {
         console.error("Delete comment error:", error);
-        res.status(500).json({ errMsg: "Failed to delete comment" });
+        return res.status(500).json({ errMsg: "Failed to delete comment" });
     }
 };
 
@@ -140,7 +143,7 @@ const updateComment = async (req: AuthRequest, res: Response) => {
         }
 
         // Only comment author can update
-        if (comment.user.toString() !== req.user._id) {
+        if (!comment.user.equals(req.user._id)) {
             return res
                 .status(403)
                 .json({ errMsg: "Only comment author can edit" });
@@ -150,10 +153,10 @@ const updateComment = async (req: AuthRequest, res: Response) => {
         await comment.save();
         await comment.populate("user", "name email");
 
-        res.json({ comment });
+        return res.json({ comment });
     } catch (error) {
         console.error("Update comment error:", error);
-        res.status(500).json({ errMsg: "Failed to update comment" });
+        return res.status(500).json({ errMsg: "Failed to update comment" });
     }
 };
 

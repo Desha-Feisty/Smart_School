@@ -42,13 +42,17 @@ const register = async (req: Request<{}, {}, RegisterBody>, res: Response) => {
         const user = await User.create({ email, name, password, role });
         console.log("User created, generating token for:", email);
         
-        await logActivity({
-            userId: user._id.toString(),
-            action: "user_created",
-            details: `New ${role} account created: ${name} (${email})`,
-            ipAddress: req.ip || undefined,
-            userAgent: req.get("User-Agent") || undefined,
-        });
+        try {
+            await logActivity({
+                userId: user._id.toString(),
+                action: "user_created",
+                details: `New ${role} account created: ${name} (user ${user._id})`,
+                ipAddress: req.ip || undefined,
+                userAgent: req.get("User-Agent") || undefined,
+            });
+        } catch (logErr) {
+            console.error("Failed to log user creation activity:", logErr);
+        }
         
         const token = await user.createToken();
         console.log("Token generated successfully");
@@ -67,7 +71,7 @@ const register = async (req: Request<{}, {}, RegisterBody>, res: Response) => {
             "Register error:",
             error instanceof Error ? error.message : error,
         );
-        res.status(500).json({ errMsg: "An error has occurred" });
+        return res.status(500).json({ errMsg: "An error has occurred" });
     }
 };
 
@@ -99,15 +103,19 @@ const login = async (req: Request<{}, {}, loginBody>, res: Response) => {
         const token = await user.createToken();
         console.log("Token generated successfully");
         
-        await logActivity({
-            userId: user._id.toString(),
-            action: "user_login",
-            details: `User logged in: ${user.name} (${user.email})`,
-            ipAddress: req.ip || undefined,
-            userAgent: req.get("User-Agent") || undefined,
-        });
+        try {
+            await logActivity({
+                userId: user._id.toString(),
+                action: "user_login",
+                details: `User logged in: ${user.name} (user ${user._id})`,
+                ipAddress: req.ip || undefined,
+                userAgent: req.get("User-Agent") || undefined,
+            });
+        } catch (logErr) {
+            console.error("Failed to log user login activity:", logErr);
+        }
         
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             token,
             user: {
@@ -123,7 +131,7 @@ const login = async (req: Request<{}, {}, loginBody>, res: Response) => {
             "Login error:",
             error instanceof Error ? error.message : error,
         );
-        res.status(500).json({ errMsg: "internal server error" });
+        return res.status(500).json({ errMsg: "internal server error" });
     }
 };
 
@@ -137,14 +145,14 @@ const me = async (req: AuthRequest, res: Response) => {
         if (!userId) return res.status(401).json({ errMsg: "unauthorized" });
         const user = await User.findById(userId).select("-password");
         if (!user) return res.status(404).json({ errMsg: "user not found" });
-        res.status(200).json({
+        return res.status(200).json({
             _id: user._id,
             name: user.name,
             email: user.email,
             role: user.role,
         });
     } catch (error) {
-        res.status(500).json({ errMsg: "failed to fetch user data" });
+        return res.status(500).json({ errMsg: "failed to fetch user data" });
     }
 };
 

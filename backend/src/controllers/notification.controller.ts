@@ -17,10 +17,10 @@ const getNotifications = async (req: AuthRequest, res: Response) => {
             read: false
         });
 
-        res.json({ notifications, unreadCount });
+        return res.json({ notifications, unreadCount });
     } catch (err) {
         console.error("Get notifications error:", err);
-        res.status(500).json({ error: "Failed to fetch notifications" });
+        return res.status(500).json({ error: "Failed to fetch notifications" });
     }
 };
 
@@ -47,10 +47,10 @@ const markAsRead = async (req: AuthRequest, res: Response) => {
         }
 
         console.log(`Notification ${id} marked as read`);
-        res.json({ success: true, notification });
+        return res.json({ success: true, notification });
     } catch (err) {
         console.error("Mark read error:", err);
-        res.status(500).json({ error: "Failed to mark notification as read" });
+        return res.status(500).json({ error: "Failed to mark notification as read" });
     }
 };
 
@@ -65,10 +65,10 @@ const markAllAsRead = async (req: AuthRequest, res: Response) => {
         );
 
         console.log(`Marked ${result.modifiedCount} notifications as read for user ${userId}`);
-        res.json({ success: true, modifiedCount: result.modifiedCount });
+        return res.json({ success: true, modifiedCount: result.modifiedCount });
     } catch (err) {
         console.error("Mark all read error:", err);
-        res.status(500).json({ error: "Failed to mark all as read" });
+        return res.status(500).json({ error: "Failed to mark all as read" });
     }
 };
 

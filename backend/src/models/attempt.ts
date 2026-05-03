@@ -41,6 +41,9 @@ const attemptSchema = new Schema<IAttempt>(
     { timestamps: true },
 );
 
-attemptSchema.index({ quiz: 1, user: 1 });
+attemptSchema.index({ quiz: 1, status: 1 });
+attemptSchema.index({ user: 1, quiz: 1, status: 1 });
+attemptSchema.index({ user: 1, status: 1 });
+attemptSchema.index({ status: 1, endAt: 1 });
 
 export default model<IAttempt>("Attempt", attemptSchema);

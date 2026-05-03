@@ -45,15 +45,14 @@ const authMiddleware = async (
         }
         req.user = {
             _id: user._id.toString(),
-            id: user._id.toString(),
             role: user.role,
         };
-        next();
+        return next();
     } catch (error) {
         const message =
             error instanceof Error ? error.message : "unknown error";
         console.error("JWT verification error details:", message);
-        res.status(401).json({
+        return res.status(401).json({
             errMsg: "unable to verify user",
             details: message,
         });
@@ -65,7 +64,7 @@ function requireRole(role: string) {
         if (req.user?.role !== role) {
             return res.status(403).json({ errMsg: "forbidden" });
         }
-        next();
+        return next();
     };
 }
 export { authMiddleware, requireRole };

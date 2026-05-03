@@ -3,17 +3,19 @@ import { authMiddleware, requireRole } from "../middleware/auth.js";
 import * as attemptController from "../controllers/attempt.controller.js";
 const router = Router();
 
-router.post(
-    "/:quizId/attempts/start",
-    authMiddleware,
-    requireRole("student"),
-    attemptController.startAttempt,
-);
+// Literal routes MUST come before parameterized routes
+// Otherwise "/start" gets captured as ":quizId"
 router.post(
     "/start",
     authMiddleware,
     requireRole("student"),
     attemptController.startAttemptFromBody,
+);
+router.post(
+    "/:quizId/attempts/start",
+    authMiddleware,
+    requireRole("student"),
+    attemptController.startAttempt,
 );
 router.patch(
     "/:attemptId/answers",

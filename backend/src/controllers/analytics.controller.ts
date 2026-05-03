@@ -51,14 +51,14 @@ const getCourseAnalytics = async (req: AuthRequest, res: Response) => {
             };
         }));
 
-        res.json({
+        return res.json({
             courseTitle: course.title,
             studentCount: enrollments,
             quizStats
         });
     } catch (err) {
         console.error("Course analytics error:", err);
-        res.status(500).json({ error: "Failed to fetch course analytics" });
+        return res.status(500).json({ error: "Failed to fetch course analytics" });
     }
 };
 
@@ -90,10 +90,10 @@ const getStudentProgress = async (req: AuthRequest, res: Response) => {
             };
         });
 
-        res.json({ history });
+        return res.json({ history });
     } catch (err) {
         console.error("Student progress error:", err);
-        res.status(500).json({ error: "Failed to fetch student progress" });
+        return res.status(500).json({ error: "Failed to fetch student progress" });
     }
 };
 

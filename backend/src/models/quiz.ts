@@ -27,4 +27,6 @@ const quizSchema = new Schema<IQuiz>({
     gradingMode: { type: String, enum: ["onSubmit", "onClose"], default: "onSubmit" },
 });
 
+quizSchema.index({ closeAt: 1 });
+
 export default model<IQuiz>("Quiz", quizSchema);

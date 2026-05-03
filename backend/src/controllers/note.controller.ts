@@ -62,12 +62,12 @@ const createNote = async (req: AuthRequest, res: Response) => {
 
         // Real-time Notification
         try {
-            const enrollments = await Enrollment.find({ 
-                course: note.course, 
-                status: "active" 
+            const enrollments = await Enrollment.find({
+                course: note.course,
+                status: "active",
             }).select("user");
-            
-            const studentIds = enrollments.map(e => e.user.toString());
+
+            const studentIds = enrollments.map((e) => e.user.toString());
             if (studentIds.length > 0) {
                 const { notifyUsers } = await import("../server/socket.js");
                 notifyUsers(studentIds, "new-note", {
@@ -77,13 +77,16 @@ const createNote = async (req: AuthRequest, res: Response) => {
                 });
             }
         } catch (error) {
-            console.error("Failed to send socket notification for new note:", error);
+            console.error(
+                "Failed to send socket notification for new note:",
+                error,
+            );
         }
 
-        res.status(201).json({ note });
+        return res.status(201).json({ note });
     } catch (error) {
         console.error("Create note error:", error);
-        res.status(500).json({ errMsg: "Failed to create note" });
+        return res.status(500).json({ errMsg: "Failed to create note" });
     }
 };
 
@@ -131,10 +134,10 @@ const listCourseNotes = async (req: AuthRequest, res: Response) => {
             }),
         );
 
-        res.json({ notes: notesWithCounts });
+        return res.json({ notes: notesWithCounts });
     } catch (error) {
         console.error("List course notes error:", error);
-        res.status(500).json({ errMsg: "Failed to fetch notes" });
+        return res.status(500).json({ errMsg: "Failed to fetch notes" });
     }
 };
 
@@ -158,7 +161,8 @@ const getNoteWithComments = async (req: AuthRequest, res: Response) => {
         }
 
         // Allow access if user is the course teacher OR enrolled as a student
-        const isTeacher = (note.teacher as any)?._id.toString() === req.user._id;
+        const isTeacher =
+            (note.teacher as any)?._id.toString() === req.user._id;
         const courseId = (note.course as any)?._id;
         const enrolled = isTeacher
             ? true
@@ -174,10 +178,10 @@ const getNoteWithComments = async (req: AuthRequest, res: Response) => {
             .populate("user", "name email")
             .sort({ createdAt: 1 });
 
-        res.json({ note, comments });
+        return res.json({ note, comments });
     } catch (error) {
         console.error("Get note with comments error:", error);
-        res.status(500).json({ errMsg: "Failed to fetch note" });
+        return res.status(500).json({ errMsg: "Failed to fetch note" });
     }
 };
 
@@ -210,7 +214,7 @@ const updateNote = async (req: AuthRequest, res: Response) => {
         }
 
         // Only note author can update
-        if (note.teacher.toString() !== req.user._id) {
+        if (note.teacher.toString() !== req.user._id.toString()) {
             return res
                 .status(403)
                 .json({ errMsg: "Only note author can edit" });
@@ -234,10 +238,10 @@ const updateNote = async (req: AuthRequest, res: Response) => {
         await note.save();
         await note.populate("teacher", "name email");
 
-        res.json({ note });
+        return res.json({ note });
     } catch (error) {
         console.error("Update note error:", error);
-        res.status(500).json({ errMsg: "Failed to update note" });
+        return res.status(500).json({ errMsg: "Failed to update note" });
     }
 };
 
@@ -269,10 +273,10 @@ const deleteNote = async (req: AuthRequest, res: Response) => {
 
         await Note.deleteOne({ _id: noteId });
 
-        res.json({ ok: true });
+        return res.json({ ok: true });
     } catch (error) {
         console.error("Delete note error:", error);
-        res.status(500).json({ errMsg: "Failed to delete note" });
+        return res.status(500).json({ errMsg: "Failed to delete note" });
     }
 };
 

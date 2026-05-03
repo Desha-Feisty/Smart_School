@@ -6,43 +6,65 @@ import { gradeSubmittedAttempt } from "../controllers/attempt.controller.js";
 
 export function startQuizScheduler() {
     cron.schedule("* * * * *", async () => {
-        console.log("Running quiz scheduler check...");
         const now = dayjs();
+        let processedCount = 0;
 
-        const closedQuizzes = await Quiz.find({
-            closeAt: { $lte: now.toDate() },
-            published: true,
-        }).lean();
+        // ── Phase 1: Auto-submit expired in-progress attempts ──────────────
+        // Only queries attempts that actually need work (naturally idempotent)
+        const expiredAttempts = await Attempt.find({
+            status: "inProgress",
+            endAt: { $lte: now.toDate() },
+        }).populate("quiz");
 
-        for (const quiz of closedQuizzes) {
-            const inProgressAttempts = await Attempt.find({
-                quiz: quiz._id,
-                status: "inProgress",
-            });
+        for (const attempt of expiredAttempts) {
+            const quiz = attempt.quiz as any;
+            if (!quiz) continue;
 
-            for (const attempt of inProgressAttempts) {
-                console.log(`Auto-submitting in-progress attempt: ${attempt._id}`);
-                const wasLate = now.isAfter(dayjs(attempt.endAt));
-                attempt.status = "submitted";
-                attempt.submittedAt = now.toDate();
-                await attempt.save();
+            const wasLate = now.isAfter(dayjs(attempt.endAt));
+            console.log(
+                `[scheduler] Auto-submitting attempt ${attempt._id} (${wasLate ? "late" : "on time"})`,
+            );
 
-                if (quiz.gradingMode === "onClose") {
-                    await gradeSubmittedAttempt(attempt);
-                }
+            attempt.status = wasLate ? "late" : "submitted";
+            attempt.submittedAt = now.toDate();
+            await attempt.save();
+
+            // Grade immediately for onSubmit mode
+            if (quiz.gradingMode === "onSubmit") {
+                console.log(`[scheduler] Grading attempt ${attempt._id}`);
+                await gradeSubmittedAttempt(attempt, wasLate);
             }
 
-            if (quiz.gradingMode === "onClose") {
-                const submittedAttempts = await Attempt.find({
-                    quiz: quiz._id,
-                    status: "submitted",
-                });
+            processedCount++;
+        }
 
-                for (const attempt of submittedAttempts) {
-                    console.log(`Grading submitted attempt: ${attempt._id}`);
-                    await gradeSubmittedAttempt(attempt);
-                }
-            }
+        // ── Phase 2: Grade ungraded attempts for closed onClose quizzes ────
+        // Only fetch attempts with submitted/late status (graded attempts excluded)
+        // Also limit to quizzes that have closed to avoid scanning open quizzes
+        const ungradedAttempts = await Attempt.find({
+            status: { $in: ["submitted", "late"] },
+            quiz: { $in: await Quiz.find({ closeAt: { $lte: now.toDate() } }).distinct("_id") },
+        }).populate("quiz");
+
+        for (const attempt of ungradedAttempts) {
+            const quiz = attempt.quiz as any;
+            if (!quiz) continue;
+
+            // Only grade if the quiz has actually closed
+            if (dayjs(quiz.closeAt).isAfter(now)) continue;
+            if (quiz.gradingMode !== "onClose") continue;
+
+            // Attempt status is already "submitted" or "late" at this point
+            // gradeSubmittedAttempt will transition it to "graded"
+            const wasLate = attempt.status === "late";
+            console.log(`[scheduler] Grading attempt ${attempt._id}`);
+            await gradeSubmittedAttempt(attempt, wasLate);
+
+            processedCount++;
+        }
+
+        if (processedCount > 0) {
+            console.log(`[scheduler] Processed ${processedCount} attempt(s)`);
         }
     });
 

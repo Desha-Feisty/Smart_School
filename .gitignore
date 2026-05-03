@@ -5,3 +5,10 @@ dist
 /.vscode
 /.opencode
 AGENTS.md
+backend/tests/*.js
+backend/tests/*.js.map
+backend/tests/*.d.ts
+backend/tests/*.d.ts.map
+backend/tests/*.test.js
+backend/tests/*.test.js.map
+/backend/tests

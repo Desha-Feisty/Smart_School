@@ -28,10 +28,10 @@ const createCourse = async (req: AuthRequest, res: Response) => {
             joinCode: createJoinCode(),
             teacher: req.user._id,
         });
-        res.status(201).json({ msg: "Course created Successfully", course });
+        return res.status(201).json({ msg: "Course created Successfully", course });
     } catch (error) {
         console.error("Failed to create course", error);
-        res.status(500).json({ errMsg: "Failed to create course!" });
+        return res.status(500).json({ errMsg: "Failed to create course!" });
     }
 };
 
@@ -76,7 +76,7 @@ const listMyCourses = async (req: AuthRequest, res: Response) => {
         }
     } catch (error) {
         console.error("Failed to list my courses:", error);
-        res.status(500).json({
+        return res.status(500).json({
             errMsg: "failed to list courses",
             error: error instanceof Error ? error.message : "Unknown error",
         });
@@ -88,10 +88,10 @@ const listAllCourses = async (req: Request, res: Response) => {
         const courses = await Course.find({}).select("-joinCode").lean();
         if (courses.length === 0)
             return res.status(404).json({ errMsg: "no courses found!" });
-        res.status(200).json({ numCourses: courses.length, courses });
+        return res.status(200).json({ numCourses: courses.length, courses });
     } catch (error) {
         console.error("Error listing courses", error);
-        res.status(500).json({ errMsg: "failed to list courses!" });
+        return res.status(500).json({ errMsg: "failed to list courses!" });
     }
 };
 
@@ -113,20 +113,19 @@ const getCourse = async (req: AuthRequest, res: Response) => {
                 return res.status(403).json({ errMsg: "forbidden!" });
             }
         } else {
-            const enrollment = Enrollment.findOne({
+            const enrollment = await Enrollment.findOne({
                 user: req.user._id,
-                _id: courseId,
+                course: courseId,
                 status: "active",
             })
-                .select("-joinCode")
                 .lean();
             if (!enrollment)
                 return res.status(403).json({ errMsg: "forbidden" });
         }
-        res.status(200).json({ course });
+        return res.status(200).json({ course });
     } catch (error) {
         console.error("Failed to fetch course", error);
-        res.status(500).json({ errMsg: "internal server error!" });
+        return res.status(500).json({ errMsg: "internal server error!" });
     }
 };
 
@@ -150,10 +149,10 @@ const updateCourse = async (req: AuthRequest, res: Response) => {
         if (value.title) course.title = value.title;
         if (value.description) course.description = value.description;
         await course.save();
-        res.json({ course });
+        return res.json({ course });
     } catch (error) {
         console.error({ errMsg: "error updating course", error });
-        res.status(500).json({ errMsg: "failed to update course" });
+        return res.status(500).json({ errMsg: "failed to update course" });
     }
 };
 
@@ -191,13 +190,13 @@ const joinCourseByCode = async (req: AuthRequest, res: Response) => {
             status: "active",
         });
         
-        res.status(200).json({ course, enrolledAt: enrollment.createdAt });
+        return res.status(200).json({ course, enrolledAt: enrollment.createdAt });
     } catch (error) {
         console.error(
             "failed to join course",
             error instanceof Error ? error.message : error,
         );
-        res.status(500).json({ errMsg: "failed to join course" });
+        return res.status(500).json({ errMsg: "failed to join course" });
     }
 };
 
@@ -236,10 +235,10 @@ const getRoster = async (req: AuthRequest, res: Response) => {
             "enrollments for course",
             courseId,
         );
-        res.status(200).json({ num: enrollment.length, enrollment });
+        return res.status(200).json({ num: enrollment.length, enrollment });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
-        res.status(500).json({ errMsg: "failed to get roster" });
+        return res.status(500).json({ errMsg: "failed to get roster" });
     }
 };
 
@@ -262,11 +261,11 @@ const deleteCourse = async (req: AuthRequest, res: Response) => {
         await Enrollment.deleteMany({ course: course._id }).session(session);
         await Course.findByIdAndDelete(courseId).session(session);
         await session.commitTransaction();
-        res.status(200).json({ msg: "course successfully deleted" });
+        return res.status(200).json({ msg: "course successfully deleted" });
     } catch (error) {
         await session.abortTransaction();
         console.error(error instanceof Error ? error.message : error);
-        res.status(500).json({ errMsg: "failed to delete course" });
+        return res.status(500).json({ errMsg: "failed to delete course" });
     } finally {
         session.endSession();
     }
@@ -304,7 +303,7 @@ const removeEnrollment = async (req: AuthRequest, res: Response) => {
                 .json({ errMsg: "student not enrolled in this course" });
         }
 
-        res.status(200).json({
+        return res.status(200).json({
             message: "Student removed from course successfully",
         });
     } catch (error) {
@@ -312,7 +311,7 @@ const removeEnrollment = async (req: AuthRequest, res: Response) => {
             "Remove enrollment error:",
             error instanceof Error ? error.message : error,
         );
-        res.status(500).json({
+        return res.status(500).json({
             errMsg: "failed to remove student from course",
         });
     }

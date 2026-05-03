@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import useAuthStore from "../stores/Authstore";
 import { 
@@ -57,12 +57,27 @@ function AdminDashboard() {
     const [logDateTo, setLogDateTo] = useState("");
     const [logStats, setLogStats] = useState(null);
     const [autoRefreshLogs, setAutoRefreshLogs] = useState(false);
-    const [refreshInterval, setRefreshInterval] = useState(null);
     const [lastLogTimestamp, setLastLogTimestamp] = useState(null);
     
-    // System health state
-    const [systemHealth, setSystemHealth] = useState(null);
-    const [healthLoading, setHealthLoading] = useState(false);
+    // Refs for ALL values accessed inside interval callback (avoids stale closures)
+    const autoRefreshRef = useRef(false);
+    const activeTabRef = useRef("overview");
+    const lastLogTimestampRef = useRef(null);
+    const tokenRef = useRef(null);
+    const logPageRef = useRef(1);
+    const logActionFilterRef = useRef("");
+    const logDateFromRef = useRef("");
+    const logDateToRef = useRef("");
+
+    // Keep refs in sync with state
+    useEffect(() => { autoRefreshRef.current = autoRefreshLogs; }, [autoRefreshLogs]);
+    useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+    useEffect(() => { lastLogTimestampRef.current = lastLogTimestamp; }, [lastLogTimestamp]);
+    useEffect(() => { tokenRef.current = token; }, [token]);
+    useEffect(() => { logPageRef.current = logPage; }, [logPage]);
+    useEffect(() => { logActionFilterRef.current = logActionFilter; }, [logActionFilter]);
+    useEffect(() => { logDateFromRef.current = logDateFrom; }, [logDateFrom]);
+    useEffect(() => { logDateToRef.current = logDateTo; }, [logDateTo]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -118,11 +133,11 @@ function AdminDashboard() {
         setLogsLoading(true);
         try {
             const params = new URLSearchParams();
-            params.append("page", logPage);
+            params.append("page", logPageRef.current);
             params.append("limit", "20");
-            if (logActionFilter) params.append("action", logActionFilter);
-            if (logDateFrom) params.append("startDate", logDateFrom);
-            if (logDateTo) params.append("endDate", logDateTo);
+            if (logActionFilterRef.current) params.append("action", logActionFilterRef.current);
+            if (logDateFromRef.current) params.append("startDate", logDateFromRef.current);
+            if (logDateToRef.current) params.append("endDate", logDateToRef.current);
             
             const res = await axios.get(`/api/admin/logs?${params}`, { headers: { Authorization: `Bearer ${token}` } });
             setLogs(res.data.logs);
@@ -144,24 +159,47 @@ function AdminDashboard() {
         }
     };
 
-    // Poll for new data only
-    const pollForNewLogs = async () => {
+    // Poll for new data only — uses refs for all params to avoid stale closures
+    const pollForNewLogs = useCallback(async () => {
         try {
-            // Get latest timestamp from server
-            const timestampRes = await axios.get("/api/admin/logs/latest", { headers: { Authorization: `Bearer ${token}` } });
+            const currentToken = tokenRef.current;
+            if (!currentToken) return;
+
+            const timestampRes = await axios.get("/api/admin/logs/latest", {
+                headers: { Authorization: `Bearer ${currentToken}` },
+            });
             const latestTimestamp = timestampRes.data.latestTimestamp;
-            
-            if (!latestTimestamp || latestTimestamp === lastLogTimestamp) {
+
+            if (!latestTimestamp || latestTimestamp === lastLogTimestampRef.current) {
                 return; // No new data
             }
-            
-            // New data available - fetch it
+
+            // New data available — fetch it
             setLastLogTimestamp(latestTimestamp);
-            await Promise.all([fetchLogs(), fetchLogStats()]);
+
+            // Build params from refs (all params accessed via refs)
+            const params = new URLSearchParams();
+            params.append("page", logPageRef.current);
+            params.append("limit", "20");
+            if (logActionFilterRef.current) params.append("action", logActionFilterRef.current);
+            if (logDateFromRef.current) params.append("startDate", logDateFromRef.current);
+            if (logDateToRef.current) params.append("endDate", logDateToRef.current);
+
+            const [logsRes, statsRes] = await Promise.all([
+                axios.get(`/api/admin/logs?${params}`, {
+                    headers: { Authorization: `Bearer ${currentToken}` },
+                }),
+                axios.get("/api/admin/logs/stats?days=30", {
+                    headers: { Authorization: `Bearer ${currentToken}` },
+                }),
+            ]);
+            setLogs(logsRes.data.logs);
+            setLogsTotal(logsRes.data.total);
+            setLogStats(statsRes.data);
         } catch (err) {
             console.error("Poll error:", err);
         }
-    };
+    }, []); // No dependencies needed - all values come from refs
 
     const fetchSystemHealth = async () => {
         setHealthLoading(true);
@@ -214,21 +252,20 @@ function AdminDashboard() {
                 }
             })();
         }
-    }, [activeTab, logPage, logActionFilter, logDateFrom, logDateTo]);
+    }, [activeTab, token]);
 
-    // Auto-refresh logs - only fetches if new data exists
+    // Auto-refresh logs — uses refs for stable interval lifecycle
     useEffect(() => {
-        if (autoRefreshLogs && activeTab === "logs") {
-            const interval = setInterval(() => {
-                pollForNewLogs();
-            }, 5000);
-            setRefreshInterval(interval);
-            return () => clearInterval(interval);
-        } else if (refreshInterval) {
-            clearInterval(refreshInterval);
-            setRefreshInterval(null);
+        if (!autoRefreshRef.current || activeTabRef.current !== "logs") {
+            return;
         }
-    }, [autoRefreshLogs, activeTab]);
+
+        const interval = setInterval(() => {
+            pollForNewLogs();
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, [autoRefreshLogs, activeTab, pollForNewLogs]);
 
     const filteredUsers = users.filter(u => {
         const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 

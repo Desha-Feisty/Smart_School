@@ -22,16 +22,33 @@ const countAttempts = async (userId: string, quizId: string) => {
     return Attempt.countDocuments({ user: userId, quiz: quizId });
 };
 
-// Helper function to select random questions (seeded shuffle for consistent results per user/attempt)
+// Seeded PRNG (Mulberry32) — deterministic, fast, good distribution
+const mulberry32 = (seed: number) => {
+    return () => {
+        seed |= 0;
+        seed = (seed + 0x6d2b79f5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+};
+
+// Hash a string to a 32-bit integer seed
+const hashString = (str: string): number => {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) {
+        h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+    }
+    return h;
+};
+
+// Fisher-Yates shuffle with seeded PRNG for deterministic random selection
 const selectRandomQuestions = (allQuestions: any[], count: number, seed: string): any[] => {
     const shuffled = [...allQuestions];
-    // Simple seeded shuffle using the seed string (userId + attemptId)
-    let seedNum = 0;
-    for (let i = 0; i < seed.length; i++) {
-        seedNum = ((seedNum << 5) - seedNum + seed.charCodeAt(i)) | 0;
-    }
+    const rng = mulberry32(hashString(seed));
+
     for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.abs((seedNum * (i + 1)) % (i + 1));
+        const j = Math.floor(rng() * (i + 1));
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
     return shuffled.slice(0, count);
@@ -57,11 +74,11 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
         if (now.isAfter(dayjs(quiz.closeAt))) {
             return res.status(400).json({ errMsg: "quiz is closed" });
         }
-        if (!req.user || !req.user.id) {
+        if (!req.user || !req.user._id) {
             return res.status(401).json({ errMsg: "unauthenticated" });
         }
         const enrolled = await ensureEnrollment(
-            req.user.id,
+            req.user._id,
             quiz.course.toString(),
         );
         if (!enrolled) {
@@ -69,7 +86,7 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
         }
         await Attempt.updateMany(
             {
-                user: req.user.id,
+                user: req.user._id,
                 quiz: quiz._id,
                 status: "inProgress",
                 endAt: { $lte: now.toDate() },
@@ -77,7 +94,7 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
             { $set: { status: "expired" } },
         );
         const activeAttempt = await Attempt.findOne({
-            user: req.user.id,
+            user: req.user._id,
             quiz: quiz._id,
             status: "inProgress",
             endAt: { $gt: now.toDate() },
@@ -93,7 +110,7 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
                 questions = selectRandomQuestions(
                     allQuestions, 
                     quiz.questionsPerAttempt, 
-                    `${req.user.id}-${activeAttempt._id}`
+                    `${req.user._id}-${activeAttempt._id}`
                 );
             }
             
@@ -110,7 +127,7 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
                 })),
             });
         }
-        const taken = await countAttempts(req.user.id, quizId);
+        const taken = await countAttempts(req.user._id, quizId);
         if (taken >= (quiz.attemptsAllowed || 1)) {
             return res.status(400).json({
                 errMsg: `Attempts exhausted (${taken}/${
@@ -135,7 +152,7 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
             questions = selectRandomQuestions(
                 allQuestions, 
                 quiz.questionsPerAttempt, 
-                `${req.user.id}-new`
+                `${req.user._id}-new`
             );
         }
         
@@ -146,12 +163,12 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
         }));
         const attempt = await Attempt.create({
             quiz: quiz._id,
-            user: req.user.id,
+            user: req.user._id,
             startAt: now.toDate(),
             endAt,
             responses,
         });
-        res.status(201).json({
+        return res.status(201).json({
             attemptId: attempt._id,
             endAt,
             questions: questions.map((q) => ({
@@ -165,7 +182,7 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
         });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
-        res.status(500).json({ errMsg: "failed to start attempt" });
+        return res.status(500).json({ errMsg: "failed to start attempt" });
     }
 };
 
@@ -197,9 +214,9 @@ const autoSaveAnswer = async (req: AuthRequest, res: Response) => {
         if (!resp) return res.status(404).json({ error: "Response not found" });
         resp.selectedChoiceIds = value.selectedChoiceIds;
         await attempt.save();
-        res.json({ ok: true });
+        return res.json({ ok: true });
     } catch (error) {
-        res.status(500).json({ errMsg: "Autosave failed" });
+        return res.status(500).json({ errMsg: "Autosave failed" });
     }
 };
 
@@ -212,43 +229,36 @@ const submitAttempt = async (req: AuthRequest, res: Response) => {
         });
         if (!attempt)
             return res.status(404).json({ error: "Attempt not found" });
-        if (attempt.user.toString() !== req.user?.id)
+        if (attempt.user.toString() !== req.user?._id)
             return res.status(403).json({ error: "Forbidden" });
         const now = dayjs();
         const isLate = now.isAfter(dayjs(attempt.endAt));
-        
-        // Auto-grade MCQ single
-        let total = 0;
-        for (const resp of attempt.responses) {
-            const q = resp.question as unknown as IQuestion;
-            
-            const correctChoice = q.choices.find((c) => c.isCorrect);
-            const isCorrect =
-                correctChoice &&
-                resp.selectedChoiceIds.length === 1 &&
-                resp.selectedChoiceIds[0].toString() ===
-                    correctChoice._id?.toString();
-            resp.pointsAwarded = isCorrect ? q.points || 1 : 0;
-            total += resp.pointsAwarded;
-        }
-        attempt.score = total;
-        attempt.status = isLate ? "late" : "graded";
+
+        // Set status to submitted or late (align with scheduler state machine)
+        attempt.status = isLate ? "late" : "submitted";
         attempt.submittedAt = now.toDate();
         await attempt.save();
+
+        // Grade if onSubmit mode (align with scheduler Phase 1)
+        const quiz = attempt.quiz as any;
+        if (quiz && quiz.gradingMode === "onSubmit") {
+            await gradeSubmittedAttempt(attempt, isLate);
+        }
+
         console.log("Attempt submitted:", {
             id: attempt._id,
             submittedAt: attempt.submittedAt,
             status: attempt.status,
             score: attempt.score,
         });
-        res.json({ attempt: attempt });
+        return res.json({ attempt: attempt });
     } catch (err) {
-        res.status(500).json({ error: "Submit failed" });
+        return res.status(500).json({ error: "Submit failed" });
     }
 };
 
 // Helper function to grade an attempt (exported for quiz scheduler)
-export const gradeSubmittedAttempt = async (attempt: any) => {
+export const gradeSubmittedAttempt = async (attempt: any, wasLate = false) => {
     await attempt.populate({
         path: "responses.question",
         model: "Question",
@@ -278,15 +288,15 @@ const getResult = async (req: AuthRequest, res: Response) => {
         });
         if (!attempt)
             return res.status(404).json({ error: "Attempt not found" });
-        if (attempt.user.toString() !== req.user?.id)
+        if (attempt.user.toString() !== req.user?._id)
             return res.status(403).json({ error: "Forbidden" });
-        res.json({
+        return res.json({
             status: attempt.status,
             score: attempt.score,
             submittedAt: attempt.submittedAt,
         });
     } catch (err) {
-        res.status(500).json({ error: "Get result failed" });
+        return res.status(500).json({ error: "Get result failed" });
     }
 };
 
@@ -300,7 +310,7 @@ const listQuizGrades = async (req: AuthRequest, res: Response) => {
         }
         if (!quiz.course?.teacher)
             return res.status(403).json({ error: "Forbidden" });
-        if (quiz.course.teacher.toString() !== req.user?.id)
+        if (quiz.course.teacher.toString() !== req.user?._id)
             return res.status(403).json({ error: "Forbidden" });
         const attempts = await Attempt.find({
             quiz: quiz._id,
@@ -330,7 +340,7 @@ const listQuizGrades = async (req: AuthRequest, res: Response) => {
                 status: a.status,
             };
         });
-        res.json({
+        return res.json({
             quiz: {
                 _id: quiz._id,
                 title: (quiz as any)?.title || "Unknown Quiz",
@@ -338,7 +348,7 @@ const listQuizGrades = async (req: AuthRequest, res: Response) => {
             results,
         });
     } catch (err) {
-        res.status(500).json({ error: "List grades failed" });
+        return res.status(500).json({ error: "List grades failed" });
     }
 };
 
@@ -346,7 +356,7 @@ const listMyGrades = async (req: AuthRequest, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ errMsg: "forbidden" });
         const attempts = await Attempt.find({
-            user: req.user.id,
+            user: req.user._id,
             status: { $in: ["graded", "late"] },
         })
             .populate({
@@ -387,10 +397,10 @@ const listMyGrades = async (req: AuthRequest, res: Response) => {
                 status: a.status,
             };
         });
-        res.json({ results });
+        return res.json({ results });
     } catch (err) {
         console.error("listMyGrades error:", err);
-        res.status(500).json({ error: "List my grades failed" });
+        return res.status(500).json({ error: "List my grades failed" });
     }
 };
 
@@ -402,7 +412,7 @@ const startAttemptFromBody = async (req: AuthRequest, res: Response) => {
         req.params.quizId = quizId;
         return startAttempt(req, res);
     } catch (err) {
-        res.status(500).json({ error: "Start attempt failed" });
+        return res.status(500).json({ error: "Start attempt failed" });
     }
 };
 
@@ -418,7 +428,7 @@ const getAttemptDetails = async (req: AuthRequest, res: Response) => {
             });
         if (!attempt)
             return res.status(404).json({ error: "Attempt not found" });
-        if (attempt.user.toString() !== req.user?.id)
+        if (attempt.user.toString() !== req.user?._id)
             return res.status(403).json({ error: "Forbidden" });
         const resp = attempt.responses.map((r) => {
             const question = r.question as unknown as IQuestion;
@@ -443,7 +453,7 @@ const getAttemptDetails = async (req: AuthRequest, res: Response) => {
         if (attempt.quiz instanceof Types.ObjectId) {
             return res.status(500).json({ errMsg: "server error" });
         }
-        res.json({
+        return res.json({
             attempt: {
                 _id: attempt._id,
                 status: attempt.status,
@@ -462,14 +472,8 @@ const getAttemptDetails = async (req: AuthRequest, res: Response) => {
             },
             responses: resp,
         });
-        console.log("Get attempt details response:", {
-            attemptId: attempt._id,
-            submittedAt: attempt.submittedAt,
-            startedAt: attempt.startAt,
-            status: attempt.status,
-        });
     } catch (err) {
-        res.status(500).json({ error: "Get attempt details failed" });
+        return res.status(500).json({ error: "Get attempt details failed" });
     }
 };
 
@@ -480,7 +484,7 @@ const getStudentCourseGrades = async (req: AuthRequest, res: Response) => {
         // Verify the requester is the course teacher
         const course = await Course.findById(courseId);
         if (!course) return res.status(404).json({ error: "Course not found" });
-        if (!req.user || req.user.id !== course.teacher.toString()) {
+        if (!req.user || req.user._id !== course.teacher.toString()) {
             return res.status(403).json({ error: "Forbidden" });
         }
 
@@ -525,10 +529,10 @@ const getStudentCourseGrades = async (req: AuthRequest, res: Response) => {
             };
         });
 
-        res.json({ results });
+        return res.json({ results });
     } catch (err) {
         console.error("getStudentCourseGrades error:", err);
-        res.status(500).json({ error: "Failed to get student course grades" });
+        return res.status(500).json({ error: "Failed to get student course grades" });
     }
 };
 
