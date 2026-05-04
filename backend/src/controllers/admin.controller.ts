@@ -30,8 +30,8 @@ export const addUser = async (req: AuthRequest, res: Response) => {
     try {
         const { name, email, password, role } = req.body;
 
-        if (!["student", "teacher"].includes(role)) {
-            return res.status(400).json({ errMsg: "Invalid role. Only 'student' and 'teacher' can be added." });
+        if (!["student", "teacher", "admin"].includes(role)) {
+            return res.status(400).json({ errMsg: "Invalid role. Only 'student', 'teacher', and 'admin' can be added." });
         }
 
         const existingUser = await User.findOne({ email });

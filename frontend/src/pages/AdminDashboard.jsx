@@ -58,6 +58,8 @@ function AdminDashboard() {
     const [logStats, setLogStats] = useState(null);
     const [autoRefreshLogs, setAutoRefreshLogs] = useState(false);
     const [lastLogTimestamp, setLastLogTimestamp] = useState(null);
+    const [systemHealth, setSystemHealth] = useState(null);
+    const [healthLoading, setHealthLoading] = useState(false);
     
     // Refs for ALL values accessed inside interval callback (avoids stale closures)
     const autoRefreshRef = useRef(false);

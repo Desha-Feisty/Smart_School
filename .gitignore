@@ -12,3 +12,7 @@ backend/tests/*.d.ts.map
 backend/tests/*.test.js
 backend/tests/*.test.js.map
 /backend/tests
+test-api.js
+test-api.cjs
+comprehensive.test.js
+/tests/

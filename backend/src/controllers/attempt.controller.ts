@@ -368,10 +368,8 @@ const listMyGrades = async (req: AuthRequest, res: Response) => {
             .select("quiz score submittedAt status responses")
             .sort({ submittedAt: -1 })
             .lean();
-        if (!attempts || attempts.length === 0)
-            return res.status(404).json({ error: "No attempts found" });
-
-        const results = attempts.map((a) => {
+        
+        const results = (attempts || []).map((a) => {
             // Calculate total possible points from this attempt's questions
             const totalPossiblePoints = a.responses?.reduce(
                 (sum, r) => sum + (((r.question as any)?.points) || 1),

@@ -18,7 +18,7 @@ const registerSchema = joi.object({
     name: joi.string().min(6).max(40).required(),
     password: joi.string().min(6).max(20).required(),
     email: joi.string().email().required(),
-    role: joi.string().valid("student", "teacher").required(),
+    role: joi.string().valid("student", "teacher", "admin").required(),
 });
 
 const register = async (req: Request<{}, {}, RegisterBody>, res: Response) => {

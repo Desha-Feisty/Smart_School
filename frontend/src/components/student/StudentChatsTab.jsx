@@ -20,7 +20,7 @@ function StudentChatsTab({ allCourses }) {
             const response = await axios.get("/api/chats/v2/recent", {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            const data = response.data;
+            const data = response.data.results || response.data;
 
             // Transform backend data to conversation objects
             const conversationList = Object.entries(data)

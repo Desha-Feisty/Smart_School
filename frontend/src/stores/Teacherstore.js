@@ -464,7 +464,7 @@ listRecentChats: async (silent = false) => {
             if (response.status !== 200) {
                 throw new Error("Failed to list recent chats");
             }
-            const data = response.data;
+            const data = response.data.results || response.data;
             const conversationList = Object.entries(data)
                 .map(([key, convData]) => {
                     const { messages, peer, course, peerId, courseId } =

@@ -17,6 +17,7 @@ router.post("/", authMiddleware, requireRole("teacher"), createCourse);
 router.get("/", authMiddleware, listMyCourses);
 router.get("/my", authMiddleware, listMyCourses);
 router.get("/my-courses", authMiddleware, listMyCourses);
+router.get("/all", authMiddleware, listAllCourses);
 router.get("/:id", authMiddleware, getCourse);
 router.patch("/:id", authMiddleware, requireRole("teacher"), updateCourse);
 router.delete("/:id", authMiddleware, requireRole("teacher"), deleteCourse);
@@ -28,5 +29,4 @@ router.delete(
     requireRole("teacher"),
     removeEnrollment,
 );
-router.get("/all", authMiddleware, listAllCourses);
 export default router;
