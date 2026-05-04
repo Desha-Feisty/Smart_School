@@ -37,49 +37,30 @@ const createCourse = async (req: AuthRequest, res: Response) => {
 
 const listMyCourses = async (req: AuthRequest, res: Response) => {
     try {
-        if (!req.user) return res.status(403).json({ errMsg: "forbidden" });
-        if (req.user.role === "teacher") {
-            console.log("Teacher listing courses for user:", req.user._id);
-            const courses = await Course.find({ teacher: req.user._id }).lean();
-
-            // Add enrollment count for each course
-            const coursesWithCounts = await Promise.all(
-                courses.map(async (course) => {
-                    const enrollmentCount = await Enrollment.countDocuments({
-                        course: course._id,
-                        status: "active",
-                    });
-                    return {
-                        ...course,
-                        enrollmentCount,
-                    };
-                }),
-            );
-
-            return res.status(200).json({ courses: coursesWithCounts });
-        } else {
-            console.log("Student listing courses for user:", req.user._id);
-            const enrollments = await Enrollment.find({
-                user: req.user._id,
-                status: "active",
-            })
-                .populate("course")
-                .lean();
-
-            const courses = enrollments
-                .filter((e) => e.course) // Filter out null courses
-                .map((e) => ({
-                    ...(e.course as any),
-                    enrolledAt: e.createdAt,
-                }));
-            return res.status(200).json({ courses });
+        if (!req.user || !req.user._id) {
+            return res.status(401).json({ errMsg: "unauthenticated" });
         }
+
+        if (req.user.role === "teacher") {
+            const courses = await Course.find({ teacher: req.user._id }).sort(
+                "-createdAt",
+            );
+            return res.json({ courses });
+        }
+
+        // Student - show enrolled courses
+        const enrollments = await Enrollment.find({
+            user: req.user._id,
+            status: "active",
+        }).populate("course");
+
+        const courses = enrollments
+            .map((e) => e.course)
+            .filter((c) => c !== null);
+        return res.json({ courses });
     } catch (error) {
         console.error("Failed to list my courses:", error);
-        return res.status(500).json({
-            errMsg: "failed to list courses",
-            error: error instanceof Error ? error.message : "Unknown error",
-        });
+        return res.status(500).json({ errMsg: "failed to fetch courses" });
     }
 };
 
@@ -166,22 +147,22 @@ const joinCourseByCode = async (req: AuthRequest, res: Response) => {
             return res
                 .status(400)
                 .json({ error: error.details[0]?.message || error.message });
-        
+
         const course = await Course.findOne({ joinCode: value.joinCode });
         if (!course)
             return res.status(404).json({ errMsg: "invalid join code!" });
-        
+
         // Check if already enrolled
         const existingEnrollment = await Enrollment.findOne({
             course: course._id,
             user: req.user._id,
             status: "active",
         });
-        
+
         if (existingEnrollment) {
             return res.status(400).json({ errMsg: "you are already enrolled in this course" });
         }
-        
+
         // Create new enrollment
         const enrollment = await Enrollment.create({
             course: course._id,
@@ -189,7 +170,7 @@ const joinCourseByCode = async (req: AuthRequest, res: Response) => {
             roleInCourse: "student",
             status: "active",
         });
-        
+
         return res.status(200).json({ course, enrolledAt: enrollment.createdAt });
     } catch (error) {
         console.error(
@@ -203,24 +184,11 @@ const joinCourseByCode = async (req: AuthRequest, res: Response) => {
 const getRoster = async (req: AuthRequest, res: Response) => {
     try {
         const { id: courseId } = req.params;
-        console.log(
-            "getRoster called for courseId:",
-            courseId,
-            "by user:",
-            req.user?._id,
-        );
         const course = await Course.findById(courseId);
         if (!course) {
-            console.log("Course not found:", courseId);
             return res.status(404).json({ errMsg: "course not found" });
         }
         if (!req.user || req.user._id !== course.teacher.toString()) {
-            console.log(
-                "Forbidden: user",
-                req.user?._id,
-                "is not teacher of course",
-                course.teacher.toString(),
-            );
             return res.status(403).json({ errMsg: "forbidden!" });
         }
         const enrollment = await Enrollment.find({
@@ -229,12 +197,6 @@ const getRoster = async (req: AuthRequest, res: Response) => {
         })
             .populate("user", "name email")
             .lean();
-        console.log(
-            "Found",
-            enrollment.length,
-            "enrollments for course",
-            courseId,
-        );
         return res.status(200).json({ num: enrollment.length, enrollment });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);

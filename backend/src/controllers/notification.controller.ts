@@ -29,8 +29,6 @@ const markAsRead = async (req: AuthRequest, res: Response) => {
         const userId = req.user?._id;
         const { id } = req.params;
 
-        console.log(`Mark notification read: userId=${userId}, notificationId=${id}`);
-
         if (!userId || !id) {
             return res.status(400).json({ error: "Missing user ID or notification ID" });
         }
@@ -42,11 +40,9 @@ const markAsRead = async (req: AuthRequest, res: Response) => {
         );
 
         if (!notification) {
-            console.log(`Notification not found: id=${id}, user=${userId}`);
             return res.status(404).json({ error: "Notification not found" });
         }
 
-        console.log(`Notification ${id} marked as read`);
         return res.json({ success: true, notification });
     } catch (err) {
         console.error("Mark read error:", err);
@@ -64,7 +60,6 @@ const markAllAsRead = async (req: AuthRequest, res: Response) => {
             { read: true }
         );
 
-        console.log(`Marked ${result.modifiedCount} notifications as read for user ${userId}`);
         return res.json({ success: true, modifiedCount: result.modifiedCount });
     } catch (err) {
         console.error("Mark all read error:", err);

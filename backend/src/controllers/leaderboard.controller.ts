@@ -8,25 +8,12 @@ import { Types } from "mongoose";
 const getCourseLeaderboard = async (req: AuthRequest, res: Response) => {
     try {
         const { courseId } = req.params;
-        
-        if (!courseId || !Types.ObjectId.isValid(courseId)) {
-            return res.status(400).json({ error: "Invalid course ID format" });
-        }
-
         const courseObjectId = new Types.ObjectId(courseId);
 
-        // Check if course exists
-        const enrollmentCheck = await Enrollment.findOne({ course: courseObjectId });
-        if (!enrollmentCheck) {
-            return res.json({ leaderboard: [] });
-        }
-
         const quizzes = await Quiz.find({ course: courseObjectId }).select("_id");
-        console.log(`Found ${quizzes.length} quizzes for course: ${courseId}`);
         const quizIds = quizzes.map(q => q._id);
 
         if (quizIds.length === 0) {
-            console.log("No quizzes found, returning empty leaderboard");
             return res.json({ leaderboard: [] });
         }
 

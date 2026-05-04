@@ -62,10 +62,6 @@ userSchema.methods.createToken = async function () {
         console.error("JWT_SECRET is missing during token generation!");
         throw new Error("JWT secret is not found");
     }
-    console.log(
-        "Signing token with secret starting with:",
-        secret.substring(0, 3),
-    );
     const expiresIn: StringValue | number = (process.env.JWT_LIFETIME ??
         "1h") as StringValue;
     if (!expiresIn) throw new Error("Token expiresIn is undefined");

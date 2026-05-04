@@ -51,20 +51,39 @@ function StudentQuizPage() {
         }
     }, [attemptId, fetchAttempt]);
 
-    const [selectedQuestion, setSelectedQuestion] = useState(null);
+    const [selectedQuestionId, setSelectedQuestionId] = useState(null);
 
+    // Derive selected question from attemptQuestions based on selectedQuestionId
+    const selectedQuestion = selectedQuestionId
+        ? attemptQuestions.find(q => q._id === selectedQuestionId) || attemptQuestions[0] || null
+        : (attemptQuestions[0] || null);
+
+    // Initialize selectedQuestionId when attemptQuestions becomes available
     useEffect(() => {
-        if (attemptQuestions.length > 0 && !selectedQuestion) {
-            setSelectedQuestion(attemptQuestions[0]);
+        if (attemptQuestions.length > 0 && !selectedQuestionId) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setSelectedQuestionId(attemptQuestions[0]._id);
         }
-    }, [attemptQuestions, selectedQuestion]);
+    }, [attemptQuestions, selectedQuestionId]);
+
+    const handleSelectQuestion = (question) => {
+        setSelectedQuestionId(question._id);
+    };
 
     const handleAutoSubmit = useCallback(async () => {
         setIsSubmitting(true);
         const result = await submitAttempt(attemptId);
         if (result) {
             toast.success("Quiz submitted successfully!");
-            navigate(`/student/quiz/${attemptId}/results`);
+            // If gradingMode is "onSubmit", show results immediately
+            // If gradingMode is "onClose", show submission success page
+            if (result.gradingMode === "onSubmit") {
+                navigate(`/student/quiz/${attemptId}/results`);
+            } else {
+                navigate(`/student/quiz/${attemptId}/submitted`, {
+                    state: { quizEndAt: result.quizEndAt }
+                });
+            }
         } else {
             toast.error("Failed to submit quiz. Please try again.");
         }
@@ -244,7 +263,7 @@ function StudentQuizPage() {
                                             <button
                                                 key={question._id}
                                                 onClick={() =>
-                                                    setSelectedQuestion(
+                                                    handleSelectQuestion(
                                                         question,
                                                     )
                                                 }
@@ -423,7 +442,7 @@ function StudentQuizPage() {
                                                                     selectedQuestion._id,
                                                             );
                                                         if (idx > 0) {
-                                                            setSelectedQuestion(
+                                                            handleSelectQuestion(
                                                                 attemptQuestions[
                                                                     idx - 1
                                                                 ],
@@ -456,7 +475,7 @@ function StudentQuizPage() {
                                                             attemptQuestions.length -
                                                                 1
                                                         ) {
-                                                            setSelectedQuestion(
+                                                            handleSelectQuestion(
                                                                 attemptQuestions[
                                                                     idx + 1
                                                                 ],

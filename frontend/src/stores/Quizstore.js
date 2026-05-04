@@ -181,7 +181,7 @@ const useQuizStore = create((set) => ({
                 headers: { Authorization: `Bearer ${token}` },
             });
             set({ availableQuizzes: response.data.quizzes || [] });
-        } catch (error) {
+        } catch {
             set({ availableQuizzes: [] });
         }
     },
@@ -252,6 +252,8 @@ const useQuizStore = create((set) => ({
             let questions;
 
             if (attempt?.status === "inProgress") {
+                // For in-progress attempts, fetch questions from the quiz API
+                // but don't rely on it for choices - they're already in responses
                 const quizResponse = await axios.get(
                     `/api/quizzes/${response.data.quiz._id}`,
                     { headers: { Authorization: `Bearer ${token}` } },
@@ -260,12 +262,22 @@ const useQuizStore = create((set) => ({
                 const answeredMap = new Map(
                     (response.data.responses || []).map((r) => [r.questionId, r]),
                 );
-                questions = quizQuestions.map((q) => {
-                    const answered = answeredMap.get(q._id?.toString() || q._id);
-                    return answered
-                        ? { ...q, selectedChoiceIds: answered.selectedChoiceIds }
-                        : q;
-                });
+                
+                // Get choices from responses if available, otherwise use quiz questions
+                questions = response.data.responses?.length > 0 && response.data.responses[0]?.choices?.length > 0
+                    ? response.data.responses.map((r) => ({
+                        _id: r.questionId,
+                        prompt: r.prompt,
+                        points: r.points,
+                        choices: r.choices || [],
+                        selectedChoiceIds: r.selectedChoiceIds,
+                    }))
+                    : quizQuestions.map((q) => {
+                        const answered = answeredMap.get(q._id?.toString() || q._id);
+                        return answered
+                            ? { ...q, selectedChoiceIds: answered.selectedChoiceIds }
+                            : q;
+                    });
             } else {
                 questions = (response.data.responses || []).map((r) => ({
                     _id: r.questionId,
@@ -308,13 +320,14 @@ const useQuizStore = create((set) => ({
     submitAttempt: async (attemptId) => {
         try {
             const token = useAuthStore.getState().token;
-            await axios.post(
+            const response = await axios.post(
                 `/api/attempts/${attemptId}/submit`,
                 {},
                 { headers: { Authorization: `Bearer ${token}` } },
             );
             set({ currentAttempt: null, attemptQuestions: [] });
-            return true;
+            // Return the full response data including gradingMode
+            return response.data;
         } catch (error) {
             console.error("Failed to submit attempt:", error);
             return false;

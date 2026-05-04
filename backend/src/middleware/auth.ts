@@ -13,7 +13,6 @@ const authMiddleware = async (
         const header = req.headers.authorization || "";
         const token = header.startsWith("Bearer ") ? header.slice(7) : null;
         if (!token) {
-            console.log("Auth failed: no token provided");
             return res.status(401).json({ errMsg: "unauthenticated" });
         }
         if (!process.env.JWT_SECRET) {
@@ -23,24 +22,12 @@ const authMiddleware = async (
                 debug: "JWT_SECRET_MISSING",
             });
         }
-        console.log(
-            "Token received length:",
-            token.length,
-            "starts with:",
-            token.substring(0, 10),
-        );
-        console.log(
-            "Using secret starting with:",
-            process.env.JWT_SECRET.substring(0, 3),
-        );
         const payload = Jwt.verify(token, process.env.JWT_SECRET) as JwtPayload;
         if (!payload || typeof payload === "string" || !payload._id) {
-            console.log("Auth failed: invalid payload");
             return res.status(500).json({ errMsg: "error verify user" });
         }
         const user = await User.findById(payload._id);
         if (!user) {
-            console.log("Auth failed: user not found for id:", payload._id);
             return res.status(401).json({ errMsg: "user not found" });
         }
         req.user = {
@@ -51,7 +38,7 @@ const authMiddleware = async (
     } catch (error) {
         const message =
             error instanceof Error ? error.message : "unknown error";
-        console.error("JWT verification error details:", message);
+        console.error("JWT verification error:", message);
         return res.status(401).json({
             errMsg: "unable to verify user",
             details: message,

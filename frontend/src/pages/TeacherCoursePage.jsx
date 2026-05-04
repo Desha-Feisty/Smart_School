@@ -27,7 +27,7 @@ import CourseCommunityTab from "../components/teacher/CourseCommunityTab";
 function TeacherCoursePage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { token, logout } = useAuthStore();
+    const { token } = useAuthStore();
     const {
         allCourses,
         updateCourse,
@@ -110,7 +110,7 @@ function TeacherCoursePage() {
         try {
             const notes = await useTeacherStore.getState().listCourseNotes(id);
             setCourseNotes(notes);
-        } catch (err) {
+        } catch {
             toast.error("Failed to load notes");
         } finally {
             setNotesLoading(false);
@@ -188,7 +188,7 @@ function TeacherCoursePage() {
                 toast.success("Student removed from course");
                 // Reload the students list
                 loadEnrolledStudents();
-            } catch (err) {
+            } catch {
                 toast.error("Failed to remove student");
             }
         }
@@ -212,7 +212,7 @@ function TeacherCoursePage() {
             await updateCourse(id, editData.title, editData.description);
             setIsEditing(false);
             toast.success("Course updated successfully");
-        } catch (err) {
+        } catch {
             toast.error("Failed to update course");
         } finally {
             setIsUpdatingCourse(false);
@@ -229,7 +229,7 @@ function TeacherCoursePage() {
                 await deleteCourse(id);
                 toast.success("Course deleted successfully");
                 navigate("/teacher");
-            } catch (err) {
+            } catch {
                 toast.error("Failed to delete course");
             }
         }
@@ -298,7 +298,7 @@ function TeacherCoursePage() {
         try {
             await unpublishQuiz(quizId);
             toast.success("Quiz unpublished successfully");
-        } catch (err) {
+        } catch {
             toast.error("Failed to unpublish quiz");
         }
     };
@@ -312,7 +312,7 @@ function TeacherCoursePage() {
             try {
                 await deleteQuiz(quizId);
                 toast.success("Quiz deleted successfully");
-            } catch (err) {
+            } catch {
                 toast.error("Failed to delete quiz");
             }
         }

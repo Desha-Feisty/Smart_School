@@ -27,7 +27,7 @@ import StudentChatsTab from "../components/student/StudentChatsTab";
 import CourseContentModal from "../components/student/CourseContentModal";
 
 function StudentPage() {
-    const { token, user, logout } = useAuthStore();
+    const { token } = useAuthStore();
     const { allCourses, listMyCourses, listCourseNotes } = useTeacherStore();
     const {
         startAttempt,

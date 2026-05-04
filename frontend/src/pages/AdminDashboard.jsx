@@ -113,7 +113,7 @@ function AdminDashboard() {
             await axios.delete(`/api/admin/users/${userId}`, { headers: { Authorization: `Bearer ${token}` } });
             setUsers(users.filter(u => u._id !== userId));
             toast.success("User deleted successfully");
-        } catch (err) {
+        } catch {
             toast.error("Failed to delete user");
         }
     };
@@ -126,8 +126,8 @@ function AdminDashboard() {
             setIsAddUserOpen(false);
             setNewUser({ name: "", email: "", password: "", role: "student" });
             toast.success("User created successfully");
-        } catch (err) {
-            toast.error(err.response?.data?.errMsg || "Failed to create user");
+        } catch {
+            toast.error("Failed to create user");
         }
     };
 
@@ -234,7 +234,7 @@ function AdminDashboard() {
             link.click();
             link.remove();
             toast.success("Logs exported successfully");
-        } catch (err) {
+        } catch {
             toast.error("Failed to export logs");
         }
     };

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { io } from "socket.io-client";
 
-const useSocketStore = create((set, get) => {
+const useSocketStore = create((set) => {
     let socket = null;
 
     const backendUrl =

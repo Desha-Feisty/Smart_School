@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import useTeacherStore from "../stores/Teacherstore";
-import useAuthStore from "../stores/Authstore";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
@@ -26,7 +25,6 @@ function TeacherPage() {
         listRecentChats,
     } = useTeacherStore();
 
-    const { logout } = useAuthStore();
     const navigate = useNavigate();
 
     const [newCourse, setNewCourse] = useState({ title: "", description: "" });
@@ -47,12 +45,6 @@ function TeacherPage() {
         return () => clearTimeout(timer);
     }, []);
 
-    const handleLogout = () => {
-        logout();
-        toast.success("Logged out successfully!");
-        navigate("/login");
-    };
-
     const handleCreateCourse = async (e) => {
         e.preventDefault();
         if (!newCourse.title.trim() || !newCourse.description.trim()) {
@@ -66,9 +58,9 @@ function TeacherPage() {
             toast.success("Course created successfully!");
             setNewCourse({ title: "", description: "" });
             setShowForm(false);
-        } catch (error) {
-            toast.error(error.message || "Failed to create course");
-        } finally {
+} catch {
+                toast.error("Failed to create course");
+            } finally {
             setIsLoading(false);
         }
     };
@@ -82,7 +74,7 @@ function TeacherPage() {
             try {
                 await deleteCourse(id);
                 toast.success("Course deleted successfully");
-            } catch (error) {
+            } catch {
                 toast.error("Failed to delete course");
             }
         }

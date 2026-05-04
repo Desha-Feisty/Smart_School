@@ -8,6 +8,7 @@ import TeacherCoursePage from "./pages/TeacherCoursePage";
 import QuizQuestionsPage from "./pages/QuizQuestionsPage";
 import StudentQuizPage from "./components/StudentQuizPage";
 import QuizResultsPage from "./components/QuizResultsPage";
+import QuizSubmittedPage from "./components/QuizSubmittedPage";
 import NoteDetail from "./components/NoteDetail";
 import AdminDashboard from "./pages/AdminDashboard";
 import useAuthStore from "./stores/Authstore";
@@ -19,7 +20,6 @@ import useTeacherStore from "./stores/Teacherstore";
 const processedMessages = new Set();
 
 function SocketListener() {
-    const user = useAuthStore((state) => state.user);
     const token = useAuthStore((state) => state.token);
     const connect = useSocketStore((state) => state.connect);
     const socket = useSocketStore((state) => state.socket);
@@ -128,6 +128,10 @@ function App() {
                 <Route
                     path="/student/quiz/:attemptId/results"
                     element={<QuizResultsPage />}
+                />
+                <Route
+                    path="/student/quiz/:attemptId/submitted"
+                    element={<QuizSubmittedPage />}
                 />
                 <Route path="/teacher" element={<TeacherPage />} />
                 <Route

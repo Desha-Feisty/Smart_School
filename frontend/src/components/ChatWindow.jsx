@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { io } from "socket.io-client";
 import { Send, X } from "lucide-react";
 import useAuthStore from "../stores/Authstore";
 import useSocketStore from "../stores/SocketStore";
-import toast from "react-hot-toast";
 
 function ChatWindow({ courseId, peerId, peerName, onClose }) {
     const token = useAuthStore((state) => state.token);

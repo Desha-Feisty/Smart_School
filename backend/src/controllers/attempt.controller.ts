@@ -118,10 +118,10 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
                 attemptId: activeAttempt._id,
                 endAt: activeAttempt.endAt,
                 questions: questions.map((q) => ({
-                    id: q._id,
+                    _id: q._id,
                     prompt: q.prompt,
                     choices: q.choices.map((c) => ({
-                        id: c._id,
+                        _id: c._id,
                         text: c.text,
                     })),
                 })),
@@ -172,10 +172,10 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
             attemptId: attempt._id,
             endAt,
             questions: questions.map((q) => ({
-                id: q._id,
+                _id: q._id,
                 prompt: q.prompt,
                 choices: q.choices.map((c) => ({
-                    id: c._id,
+                    _id: c._id,
                     text: c.text,
                 })),
             })),
@@ -204,15 +204,16 @@ const autoSaveAnswer = async (req: AuthRequest, res: Response) => {
             return res.status(404).json({ errMsg: "attempt not found" });
         }
         const now = dayjs();
-        // Allow saving even after expiration in case auto-submit fails
-        // if (now.isAfter(dayjs(attempt.endAt))) {
-        //     return res.status(400).json({ error: "Attempt expired" });
-        // }
         const resp = attempt.responses.find(
             (r) => r.question.toString() === value.questionId,
         );
         if (!resp) return res.status(404).json({ error: "Response not found" });
-        resp.selectedChoiceIds = value.selectedChoiceIds;
+        
+        // Convert string IDs to ObjectIds before storing
+        const objectIdSelection = value.selectedChoiceIds.map((id: string) => 
+            Types.ObjectId.isValid(id) ? new Types.ObjectId(id) : id
+        );
+        resp.selectedChoiceIds = objectIdSelection as any;
         await attempt.save();
         return res.json({ ok: true });
     } catch (error) {
@@ -239,19 +240,25 @@ const submitAttempt = async (req: AuthRequest, res: Response) => {
         attempt.submittedAt = now.toDate();
         await attempt.save();
 
-        // Grade if onSubmit mode (align with scheduler Phase 1)
+        // Grade attempt immediately (teacher sees grades now, students see after quiz closes)
+        // Must populate quiz to get gradingMode and closeAt
+        await attempt.populate("quiz");
         const quiz = attempt.quiz as any;
-        if (quiz && quiz.gradingMode === "onSubmit") {
-            await gradeSubmittedAttempt(attempt, isLate);
-        }
+        const gradingMode = quiz?.gradingMode || "onSubmit";
+        const quizCloseAt = quiz?.closeAt;
+        
+        console.log(`[submitAttempt] Attempt ${attempt._id} - gradingMode: ${gradingMode}, quizCloseAt: ${quizCloseAt}`);
+        
+        await gradeSubmittedAttempt(attempt, isLate);
+        
+        console.log(`[submitAttempt] Graded attempt ${attempt._id}, status: ${attempt.status}, score: ${attempt.score}`);
 
-        console.log("Attempt submitted:", {
-            id: attempt._id,
-            submittedAt: attempt.submittedAt,
-            status: attempt.status,
-            score: attempt.score,
+        return res.json({ 
+            attempt: attempt,
+            gradingMode: gradingMode,
+            quizCloseAt: quizCloseAt,
+            quizEndAt: attempt.endAt,
         });
-        return res.json({ attempt: attempt });
     } catch (err) {
         return res.status(500).json({ error: "Submit failed" });
     }
@@ -265,15 +272,36 @@ export const gradeSubmittedAttempt = async (attempt: any, wasLate = false) => {
     });
     let total = 0;
     for (const resp of attempt.responses) {
-        const q = resp.question as unknown as IQuestion;
-        const correctChoice = q.choices.find((c) => c.isCorrect);
-        const isCorrect =
-            correctChoice &&
-            resp.selectedChoiceIds.length === 1 &&
-            resp.selectedChoiceIds[0].toString() === correctChoice._id?.toString();
+        const q = resp.question as any;
+        const choices = q.choices || [];
+        
+        // Find the correct choice
+        const correctChoice = choices.find((c: any) => c.isCorrect);
+        
+        if (!correctChoice) {
+            console.warn(`Question ${q._id} has no correct choice marked`);
+            resp.pointsAwarded = 0;
+            continue;
+        }
+        
+        // Convert correct choice ID to string for comparison
+        const correctChoiceId = correctChoice._id?.toString();
+        const selectedIds = (resp.selectedChoiceIds || []).map((id: any) => 
+            id instanceof Types.ObjectId ? id.toString() : String(id)
+        );
+        
+        // Check if exactly one correct choice is selected (compare as strings)
+        const isCorrect = 
+            selectedIds.length === 1 && 
+            selectedIds[0] === correctChoiceId;
+        
         resp.pointsAwarded = isCorrect ? q.points || 1 : 0;
+        
+        console.log(`[grade] Q(${q._id}): points=${q.points}, correctId=${correctChoiceId}, selectedIds=${JSON.stringify(selectedIds)}, isCorrect=${isCorrect}, awarded=${resp.pointsAwarded}`);
+        
         total += resp.pointsAwarded;
     }
+    console.log(`[grade] Total raw score: ${total}`);
     attempt.score = total;
     attempt.status = "graded";
     await attempt.save();
@@ -303,6 +331,7 @@ const getResult = async (req: AuthRequest, res: Response) => {
 const listQuizGrades = async (req: AuthRequest, res: Response) => {
     try {
         const { id: quizId } = req.params;
+        console.log(`[listQuizGrades] Fetching grades for quiz: ${quizId}`);
         const quiz = await Quiz.findById(quizId).populate("course");
         if (!quiz) return res.status(404).json({ error: "Quiz not found" });
         if (quiz.course instanceof Types.ObjectId) {
@@ -314,13 +343,23 @@ const listQuizGrades = async (req: AuthRequest, res: Response) => {
             return res.status(403).json({ error: "Forbidden" });
         const attempts = await Attempt.find({
             quiz: quiz._id,
-            status: { $in: ["graded", "late"] },
+            status: { $in: ["graded", "late", "submitted"] },
         })
             .populate("user", "name email")
             .populate({ path: "responses.question", model: "Question" })
             .select("user score submittedAt status responses")
             .sort({ submittedAt: -1 })
             .lean();
+        
+        console.log(`[listQuizGrades] Found ${attempts.length} attempts, statuses: ${attempts.map(a => a.status).join(", ")}`);
+        
+        // Debug: log first attempt's question points
+        const firstAttempt = attempts[0];
+        if (firstAttempt && firstAttempt.responses && firstAttempt.responses.length > 0 && firstAttempt.responses[0]) {
+            const firstResp = firstAttempt.responses[0] as any;
+            const firstQ = firstResp.question as any;
+            console.log(`[listQuizGrades] First question points: ${firstQ?.points}, full question: ${JSON.stringify(firstQ).slice(0, 200)}`);
+        }
         const results = attempts.map((a) => {
             // Calculate total possible points from this attempt's questions
             const totalPossiblePoints = a.responses?.reduce(
@@ -331,6 +370,8 @@ const listQuizGrades = async (req: AuthRequest, res: Response) => {
                 totalPossiblePoints > 0 && a.score !== undefined
                     ? Math.round((a.score / totalPossiblePoints) * 100)
                     : 0;
+
+            console.log(`[listGrades] Attempt ${a._id}: rawScore=${a.score}, totalPossible=${totalPossiblePoints}, percentage=${scorePercentage}`);
 
             return {
                 attemptId: a._id,
@@ -355,13 +396,16 @@ const listQuizGrades = async (req: AuthRequest, res: Response) => {
 const listMyGrades = async (req: AuthRequest, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ errMsg: "forbidden" });
+        const now = new Date();
+        
+        // Fetch graded attempts with quiz details including closeAt
         const attempts = await Attempt.find({
             user: req.user._id,
             status: { $in: ["graded", "late"] },
         })
             .populate({
                 path: "quiz",
-                select: "title course",
+                select: "title course closeAt gradingMode",
                 populate: { path: "course", select: "title" },
             })
             .populate({ path: "responses.question", model: "Question" })
@@ -370,6 +414,10 @@ const listMyGrades = async (req: AuthRequest, res: Response) => {
             .lean();
         
         const results = (attempts || []).map((a) => {
+            const quiz = a.quiz as any;
+            const quizCloseAt = quiz?.closeAt ? new Date(quiz.closeAt) : null;
+            const isAvailable = !quizCloseAt || quizCloseAt <= now;
+            
             // Calculate total possible points from this attempt's questions
             const totalPossiblePoints = a.responses?.reduce(
                 (sum, r) => sum + (((r.question as any)?.points) || 1),
@@ -383,18 +431,22 @@ const listMyGrades = async (req: AuthRequest, res: Response) => {
             return {
                 attemptId: a._id,
                 quiz: {
-                    _id: a.quiz?._id,
-                    title: (a.quiz as any)?.title || "Unknown Quiz",
+                    _id: quiz?._id,
+                    title: quiz?.title || "Unknown Quiz",
                 },
                 course: {
-                    _id: (a.quiz as any)?.course?._id,
-                    title: (a.quiz as any)?.course?.title || "Unknown Course",
+                    _id: quiz?.course?._id,
+                    title: quiz?.course?.title || "Unknown Course",
                 },
-                score: scorePercentage,
+                score: isAvailable ? scorePercentage : null,
                 submittedAt: a.submittedAt,
                 status: a.status,
+                gradingMode: quiz?.gradingMode || "onSubmit",
+                closeAt: quiz?.closeAt,
+                isAvailable,
             };
         });
+        
         return res.json({ results });
     } catch (err) {
         console.error("listMyGrades error:", err);
@@ -439,13 +491,21 @@ const getAttemptDetails = async (req: AuthRequest, res: Response) => {
             
             const correctText = choices.filter(c => c.isCorrect).map(c => c.text);
             
+            // Include the full choices array for displaying answer options
+            const choiceOptions = choices.map(c => ({
+                _id: c._id?.toString(),
+                text: c.text,
+            }));
+            
             return {
                 questionId: (question as any)?._id,
                 prompt: question?.prompt,
+                points: question?.points,
                 selectedChoiceIds: r.selectedChoiceIds,
                 pointsAwarded: r.pointsAwarded,
                 selectedText,
                 correctText,
+                choices: choiceOptions,
             };
         });
         if (attempt.quiz instanceof Types.ObjectId) {

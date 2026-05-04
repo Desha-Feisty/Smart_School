@@ -27,21 +27,17 @@ const register = async (req: Request<{}, {}, RegisterBody>, res: Response) => {
             stripUnknown: true,
         });
         if (error) {
-            console.log("Register validation error:", error.message);
             return res
                 .status(400)
                 .json({ errMsg: "invalid input", details: error.details });
         }
         const { name, email, password, role } = value as RegisterBody;
-        console.log("Register attempt for email:", email, "role:", role);
         const exists = await User.findOne({ email });
         if (exists) {
-            console.log("Email already exists:", email);
             return res.status(400).json({ errMsg: "email is already used" });
         }
         const user = await User.create({ email, name, password, role });
-        console.log("User created, generating token for:", email);
-        
+
         try {
             await logActivity({
                 userId: user._id.toString(),
@@ -53,9 +49,8 @@ const register = async (req: Request<{}, {}, RegisterBody>, res: Response) => {
         } catch (logErr) {
             console.error("Failed to log user creation activity:", logErr);
         }
-        
+
         const token = await user.createToken();
-        console.log("Token generated successfully");
         return res.status(201).json({
             success: true,
             token,
@@ -84,25 +79,19 @@ const login = async (req: Request<{}, {}, loginBody>, res: Response) => {
     try {
         const { value, error } = loginSchema.validate(req.body);
         if (error) {
-            console.log("Login validation error:", error.message);
             return res.status(400).json({ errMsg: "invalid request" });
         }
         const { email, password } = value as loginBody;
-        console.log("Login attempt for email:", email);
         const user = await User.findOne({ email });
         if (!user) {
-            console.log("User not found for email:", email);
             return res.status(400).json({ errMsg: "email is not registered" });
         }
         const checkPassword = await user.comparePassword(password);
         if (!checkPassword) {
-            console.log("Wrong password for email:", email);
             return res.status(401).json({ errMsg: "wrong password" });
         }
-        console.log("Password correct, generating token for user:", email);
         const token = await user.createToken();
-        console.log("Token generated successfully");
-        
+
         try {
             await logActivity({
                 userId: user._id.toString(),
@@ -114,7 +103,7 @@ const login = async (req: Request<{}, {}, loginBody>, res: Response) => {
         } catch (logErr) {
             console.error("Failed to log user login activity:", logErr);
         }
-        
+
         return res.status(200).json({
             success: true,
             token,

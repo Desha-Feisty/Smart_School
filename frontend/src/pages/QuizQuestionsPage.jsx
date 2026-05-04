@@ -20,7 +20,7 @@ import Navbar from "../components/layout/Navbar";
 function QuizQuestionsPage() {
     const { id: quizId } = useParams();
     const navigate = useNavigate();
-    const { token, logout } = useAuthStore();
+    const { token } = useAuthStore();
     const {
         listQuizQuestions,
         addQuestion,
@@ -64,11 +64,6 @@ function QuizQuestionsPage() {
         }
         fetchQuestions();
     }, [quizId, token, navigate]);
-
-    const handleLogout = () => {
-        logout();
-        navigate("/login");
-    };
 
     const handleChoiceChange = (index, field, value) => {
         const newChoices = [...formData.choices];
@@ -184,7 +179,7 @@ function QuizQuestionsPage() {
                 await deleteQuestion(questionId);
                 fetchQuestions();
                 toast.success("Question deleted successfully");
-            } catch (err) {
+            } catch {
                 toast.error("Failed to delete question");
             }
         }

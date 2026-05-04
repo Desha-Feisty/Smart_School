@@ -1,4 +1,4 @@
-import { Award } from "lucide-react";
+import { Award, Lock } from "lucide-react";
 import AnalyticsDashboard from "../AnalyticsDashboard";
 
 export default function StudentGradesTab({
@@ -7,6 +7,17 @@ export default function StudentGradesTab({
     myGrades,
     viewContentCourse
 }) {
+    const isGradeAvailable = (grade) => {
+        if (grade.isAvailable === false) return false;
+        if (!grade.closeAt) return true;
+        return new Date(grade.closeAt) <= new Date();
+    };
+
+    const formatCloseAt = (closeAt) => {
+        if (!closeAt) return "";
+        return new Date(closeAt).toLocaleString();
+    };
+
     return (
         <div className="glass-panel rounded-2xl overflow-hidden shadow-sm">
             <div className="p-6 md:p-8">
@@ -51,37 +62,49 @@ export default function StudentGradesTab({
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                {myGrades.map((grade) => (
-                                    <tr key={grade.attemptId} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                        <td className="font-medium text-slate-900 dark:text-slate-200">
-                                            {grade.quiz?.title || "Unnamed Quiz"}
-                                        </td>
-                                        <td className="text-slate-600 dark:text-slate-400">
-                                            {grade.course?.title || "Unknown Course"}
-                                        </td>
-                                        <td className="font-bold text-lg text-slate-900 dark:text-white">
-                                            {grade.score}%
-                                        </td>
-                                        <td className="text-slate-600 dark:text-slate-400 text-sm">
-                                            {grade.submittedAt
-                                                ? new Date(grade.submittedAt).toLocaleString()
-                                                : "-"}
-                                        </td>
-                                        <td>
-                                            <span
-                                                className={`badge badge-sm font-medium ${
-                                                    grade.status === "graded"
-                                                        ? "badge-success bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800/50"
-                                                        : grade.status === "late"
-                                                          ? "badge-warning bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50"
-                                                          : "badge-error bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50"
-                                                }`}
-                                            >
-                                                {grade.status}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {myGrades.map((grade) => {
+                                    const available = isGradeAvailable(grade);
+                                    return (
+                                        <tr key={grade.attemptId} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                            <td className="font-medium text-slate-900 dark:text-slate-200">
+                                                {grade.quiz?.title || "Unnamed Quiz"}
+                                            </td>
+                                            <td className="text-slate-600 dark:text-slate-400">
+                                                {grade.course?.title || "Unknown Course"}
+                                            </td>
+                                            <td className="font-bold text-lg text-slate-900 dark:text-white">
+                                                {available ? (
+                                                    `${grade.score}%`
+                                                ) : (
+                                                    <span className="flex items-center gap-1 text-slate-400 dark:text-slate-500 text-sm font-normal">
+                                                        <Lock className="w-3 h-3" />
+                                                        Available {formatCloseAt(grade.closeAt)}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="text-slate-600 dark:text-slate-400 text-sm">
+                                                {grade.submittedAt
+                                                    ? new Date(grade.submittedAt).toLocaleString()
+                                                    : "-"}
+                                            </td>
+                                            <td>
+                                                <span
+                                                    className={`badge badge-sm font-medium ${
+                                                        !available
+                                                            ? "badge-neutral bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-700/50 dark:text-slate-400 dark:border-slate-600/50"
+                                                            : grade.status === "graded"
+                                                                ? "badge-success bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800/50"
+                                                                : grade.status === "late"
+                                                                    ? "badge-warning bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50"
+                                                                    : "badge-error bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50"
+                                                    }`}
+                                                >
+                                                    {!available ? "pending" : grade.status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>

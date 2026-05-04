@@ -21,11 +21,20 @@ const createQuizSchema = Joi.object({
         .required(),
     attemptsAllowed: Joi.number().min(1).default(1),
     durationMinutes: Joi.number().min(10).required(),
-    questionsPerAttempt: Joi.number().integer().min(1).optional(),
+    questionsPerAttempt: Joi.number().integer().min(1).allow("").optional(),
+    gradingMode: Joi.string().valid("onSubmit", "onClose").default("onSubmit"),
 })
     .unknown(true)
     .custom((value, helpers) => {
         try {
+            // Convert empty string to undefined for optional fields
+            if (value.questionsPerAttempt === "") {
+                value.questionsPerAttempt = undefined;
+            }
+            if (value.attemptsAllowed === "") {
+                value.attemptsAllowed = undefined;
+            }
+            
             const openDate = new Date(value.openAt);
             const closeDate = new Date(value.closeAt);
             if (openDate >= closeDate) {
@@ -47,15 +56,6 @@ const createQuizSchema = Joi.object({
 const createQuiz = async (req: AuthRequest, res: Response) => {
     try {
         const courseId = req.params.id || req.params.courseId;
-        console.log("Creating quiz for courseId:", courseId);
-        console.log("Request body:", {
-            title: req.body.title,
-            description: req.body.description,
-            openAt: req.body.openAt,
-            closeAt: req.body.closeAt,
-            durationMinutes: req.body.durationMinutes,
-            attemptsAllowed: req.body.attemptsAllowed,
-        });
 
         if (!courseId) {
             return res.status(400).json({
@@ -108,7 +108,7 @@ const createQuiz = async (req: AuthRequest, res: Response) => {
             details: `Quiz created: "${quiz.title}" for course "${course.title}"`,
         });
 
-        console.log("Quiz created successfully:", quiz._id);
+        
         return res.status(201).json({ quiz });
     } catch (error) {
         console.error("Quiz creation error:", error);
@@ -391,12 +391,6 @@ const publishQuiz = async (req: AuthRequest, res: Response) => {
 const listCourseQuizzes = async (req: AuthRequest, res: Response) => {
     try {
         const courseId = req.params.id || req.params.courseId;
-        console.log(
-            "Listing quizzes for courseId:",
-            courseId,
-            "Params:",
-            req.params,
-        );
         if (!courseId)
             return res.status(400).json({
                 errMsg: "invalid course id - parameter 'id' is missing",
@@ -493,6 +487,7 @@ const updateQuizSchema = Joi.object({
     durationMinutes: Joi.number().min(10).optional(),
     questionsPerAttempt: Joi.number().integer().min(1).optional(),
     published: Joi.boolean().optional(),
+    gradingMode: Joi.string().valid("onSubmit", "onClose").optional(),
 }).custom((value, helpers) => {
     if (
         value.openAt &&
@@ -604,6 +599,9 @@ const updateQuiz = async (req: AuthRequest, res: Response) => {
         }
         if (value.published !== undefined) {
             quiz.published = value.published;
+        }
+        if (value.gradingMode !== undefined) {
+            quiz.gradingMode = value.gradingMode;
         }
         await quiz.save();
         return res.status(200).json({ quiz });

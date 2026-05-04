@@ -1,6 +1,5 @@
 import cron from "node-cron";
 import dayjs from "dayjs";
-import Quiz from "../models/quiz.js";
 import Attempt from "../models/attempt.js";
 import { gradeSubmittedAttempt } from "../controllers/attempt.controller.js";
 
@@ -29,34 +28,7 @@ export function startQuizScheduler() {
             attempt.submittedAt = now.toDate();
             await attempt.save();
 
-            // Grade immediately for onSubmit mode
-            if (quiz.gradingMode === "onSubmit") {
-                console.log(`[scheduler] Grading attempt ${attempt._id}`);
-                await gradeSubmittedAttempt(attempt, wasLate);
-            }
-
-            processedCount++;
-        }
-
-        // ── Phase 2: Grade ungraded attempts for closed onClose quizzes ────
-        // Only fetch attempts with submitted/late status (graded attempts excluded)
-        // Also limit to quizzes that have closed to avoid scanning open quizzes
-        const ungradedAttempts = await Attempt.find({
-            status: { $in: ["submitted", "late"] },
-            quiz: { $in: await Quiz.find({ closeAt: { $lte: now.toDate() } }).distinct("_id") },
-        }).populate("quiz");
-
-        for (const attempt of ungradedAttempts) {
-            const quiz = attempt.quiz as any;
-            if (!quiz) continue;
-
-            // Only grade if the quiz has actually closed
-            if (dayjs(quiz.closeAt).isAfter(now)) continue;
-            if (quiz.gradingMode !== "onClose") continue;
-
-            // Attempt status is already "submitted" or "late" at this point
-            // gradeSubmittedAttempt will transition it to "graded"
-            const wasLate = attempt.status === "late";
+            // Grade immediately (teacher sees grades now, students see after quiz closes)
             console.log(`[scheduler] Grading attempt ${attempt._id}`);
             await gradeSubmittedAttempt(attempt, wasLate);
 
