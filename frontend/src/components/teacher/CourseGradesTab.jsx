@@ -13,15 +13,15 @@ export default function CourseGradesTab({
     return (
         <div className="glass-panel overflow-hidden rounded-3xl border border-white/40 dark:border-slate-700/50 shadow-xl">
             <div className="p-8">
-                <h2 className="card-title text-2xl mb-6 flex items-center gap-2">
-                    <Award className="w-6 h-6 text-blue-600" />
+                <h2 className="card-title text-2xl mb-6 flex items-center gap-2 text-slate-900 dark:text-white">
+                    <Award className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                     Student Grades by Quiz
                 </h2>
 
                 {quizzes.length === 0 ? (
                     <div className="text-center py-12">
-                        <Award className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                        <p className="text-gray-500">
+                        <Award className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                        <p className="text-slate-600 dark:text-slate-400">
                             No quizzes available yet. Create a quiz
                             to see student grades.
                         </p>
@@ -44,10 +44,10 @@ export default function CourseGradesTab({
                                     }`}
                                 >
                                     <div className="card-body p-4">
-                                        <h3 className="font-semibold text-gray-900">
+                                        <h3 className="font-semibold text-slate-900 dark:text-white">
                                             {quiz.title}
                                         </h3>
-                                        <p className="text-xs text-gray-600 truncate">
+                                        <p className="text-xs text-slate-600 dark:text-slate-400 truncate">
                                             {quiz.description}
                                         </p>
                                     </div>
@@ -57,8 +57,8 @@ export default function CourseGradesTab({
 
                         {/* Grades Table */}
                         {selectedQuiz && (
-                            <div className="border-t border-slate-200 pt-6">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                            <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
+                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
                                     Grades for: {selectedQuizTitle}
                                 </h3>
 
@@ -72,36 +72,36 @@ export default function CourseGradesTab({
                                     </div>
                                 ) : quizGrades.length === 0 ? (
                                     <div className="text-center py-12">
-                                        <Award className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                                        <p className="text-gray-500">
+                                        <Award className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                                        <p className="text-slate-600 dark:text-slate-400">
                                             No graded submissions found yet.
                                         </p>
                                     </div>
                                 ) : (
                                     <div className="overflow-x-auto">
                                         <table className="table table-zebra w-full">
-                                            <thead className="bg-slate-50">
+                                            <thead className="bg-slate-50 dark:bg-slate-800">
                                                 <tr>
-                                                    <th className="text-gray-700 font-semibold">Name</th>
-                                                    <th className="text-gray-700 font-semibold">Email</th>
-                                                    <th className="text-gray-700 font-semibold">Score</th>
-                                                    <th className="text-gray-700 font-semibold">Submitted</th>
-                                                    <th className="text-gray-700 font-semibold">Status</th>
+                                                    <th className="text-slate-700 dark:text-slate-200 font-semibold">Name</th>
+                                                    <th className="text-slate-700 dark:text-slate-200 font-semibold">Email</th>
+                                                    <th className="text-slate-700 dark:text-slate-200 font-semibold">Score</th>
+                                                    <th className="text-slate-700 dark:text-slate-200 font-semibold">Submitted</th>
+                                                    <th className="text-slate-700 dark:text-slate-200 font-semibold">Status</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {quizGrades.map((grade) => (
                                                     <tr key={grade.attemptId}>
-                                                        <td className="font-medium">
+                                                        <td className="font-medium text-slate-900 dark:text-white">
                                                             {grade.student?.name || "Unknown"}
                                                         </td>
-                                                        <td className="text-gray-600">
+                                                        <td className="text-slate-600 dark:text-slate-300">
                                                             {grade.student?.email || "-"}
                                                         </td>
-                                                        <td className="font-bold text-lg">
+                                                        <td className="font-bold text-lg text-slate-900 dark:text-white">
                                                             {grade.score}%
                                                         </td>
-                                                        <td className="text-gray-600">
+                                                        <td className="text-slate-600 dark:text-slate-300">
                                                             {grade.submittedAt
                                                                 ? new Date(grade.submittedAt).toLocaleString()
                                                                 : "-"}

@@ -21,6 +21,7 @@ export interface IAttempt {
     submittedAt?: Date;
     status?: AttemptStatus;
     score?: number;
+    maxScore?: number;
     responses: IResponse[];
 }
 
@@ -36,6 +37,7 @@ const attemptSchema = new Schema<IAttempt>(
             enum: ["inProgress", "graded", "expired", "late", "submitted"],
         },
         score: { type: Number, default: 0 },
+        maxScore: { type: Number, default: 0 },
         responses: [responseSchema],
     },
     { timestamps: true },

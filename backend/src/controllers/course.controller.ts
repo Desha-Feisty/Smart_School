@@ -42,10 +42,21 @@ const listMyCourses = async (req: AuthRequest, res: Response) => {
         }
 
         if (req.user.role === "teacher") {
-            const courses = await Course.find({ teacher: req.user._id }).sort(
-                "-createdAt",
+            // Fetch courses normally
+            const courses = await Course.find({ teacher: req.user._id }).sort("-createdAt").lean();
+            
+            // Add enrollmentCount to each course
+            const coursesWithCounts = await Promise.all(
+                courses.map(async (course) => {
+                    const count = await Enrollment.countDocuments({ 
+                        course: course._id, 
+                        status: "active" 
+                    });
+                    return { ...course, enrollmentCount: count };
+                })
             );
-            return res.json({ courses });
+            
+            return res.json({ courses: coursesWithCounts });
         }
 
         // Student - show enrolled courses

@@ -1,6 +1,6 @@
 import { Schema, model, Types, Document } from "mongoose";
 
-export type NotificationType = "quiz" | "note" | "chat" | "system";
+export type NotificationType = "quiz" | "quiz-graded" | "quiz-missed" | "note" | "chat" | "system";
 
 export interface INotification {
     user: Types.ObjectId;
@@ -19,7 +19,7 @@ const notificationSchema = new Schema<INotification>(
         message: { type: String, required: true },
         type: { 
             type: String, 
-            enum: ["quiz", "note", "chat", "system"], 
+            enum: ["quiz", "quiz-graded", "quiz-missed", "note", "chat", "system"], 
             required: true 
         },
         link: { type: String },

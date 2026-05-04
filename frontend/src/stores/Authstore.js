@@ -16,11 +16,12 @@ const useAuthStore = create(
             clearToken: () => set({ token: null }),
             isLoggingIn: false,
             setIsLoggingIn: (isLoggingIn) => set({ isLoggingIn }),
+            isExplicitLogout: false,
             errMsg: null,
             setErrMsg: (errMsg) => set({ errMsg }),
             clearErrMsg: () => set({ errMsg: null }),
             login: async (email, password) => {
-                set({ isLoggingIn: true, errMsg: null });
+                set({ isLoggingIn: true, errMsg: null, isExplicitLogout: false });
                 try {
                     const response = await axios.post("/api/auth/login", {
                         email,
@@ -57,7 +58,7 @@ const useAuthStore = create(
                 }
             },
             register: async (name, email, password, role) => {
-                set({ errMsg: null });
+                set({ errMsg: null, isExplicitLogout: false });
                 try {
                     const response = await axios.post("/api/auth/register", {
                         name,
@@ -98,11 +99,17 @@ const useAuthStore = create(
                     role: null,
                     errMsg: null,
                     isLoggingIn: false,
+                    isExplicitLogout: true,
                 });
             },
         }),
         {
-            name: "auth-storage", // name of the item in the storage (must be unique)
+            name: "auth-storage",
+            partialize: (state) => ({
+                user: state.user,
+                token: state.token,
+                role: state.role,
+            }),
         },
     ),
 );
@@ -111,15 +118,15 @@ const useAuthStore = create(
 axios.interceptors.response.use(
     (response) => response,
     (error) => {
+        const isExplicitLogout = useAuthStore.getState().isExplicitLogout;
         if (
             error.response?.status === 401 &&
+            !isExplicitLogout &&
             (error.response?.data?.details === "jwt expired" ||
                 error.response?.data?.errMsg === "unable to verify user")
         ) {
             console.log("Token expired, logging out...");
-            // Clear the Authstore by accessing the state directly
             useAuthStore.getState().logout();
-            // Redirect to login page if window is available
             if (
                 typeof window !== "undefined" &&
                 !window.location.pathname.includes("/login")

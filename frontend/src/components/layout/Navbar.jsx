@@ -8,6 +8,7 @@ import {
     ExternalLink,
     Inbox,
     Shield,
+    MessageSquare,
 } from "lucide-react";
 import useThemeStore from "../../stores/ThemeStore";
 import useAuthStore from "../../stores/Authstore";
@@ -29,7 +30,7 @@ export default function Navbar() {
     const disconnectSocket = useSocketStore((state) => state.disconnect);
     const navigate = useNavigate();
 
-    useEffect(() => {
+useEffect(() => {
         fetchNotifications();
     }, []);
 
@@ -114,14 +115,27 @@ export default function Navbar() {
                                                 onClick={() => {
                                                     if (!n.read)
                                                         markAsRead(n._id);
-                                                    let link = n.link;
-                                                    if (
-                                                        link === "/student" &&
-                                                        user?.role === "teacher"
-                                                    ) {
-                                                        link = "/teacher";
+                                                    const link = n.link;
+                                                    
+                                                    // For chat notifications, navigate to main page (user can access chat from there)
+                                                    // Chat window integration has build issues - simplifying for now
+                                                    if (link?.startsWith("__chat__")) {
+                                                        if (user?.role === "teacher") {
+                                                            navigate("/teacher");
+                                                        } else {
+                                                            navigate("/student");
+                                                        }
+                                                    } else {
+                                                        // Normal navigation
+                                                        let navLink = link;
+                                                        if (
+                                                            navLink === "/student" &&
+                                                            user?.role === "teacher"
+                                                        ) {
+                                                            navLink = "/teacher";
+                                                        }
+                                                        if (navLink) navigate(navLink);
                                                     }
-                                                    if (link) navigate(link);
                                                 }}
                                                 className={`p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group relative ${!n.read ? "bg-blue-50/30 dark:bg-blue-900/10" : ""}`}
                                             >
@@ -131,18 +145,21 @@ export default function Navbar() {
                                                 <div className="flex gap-4">
                                                     <div
                                                         className={`mt-1 p-2 rounded-xl shrink-0 ${
-                                                            n.type === "quiz"
+                                                            n.type === "quiz" || n.type === "quiz-graded"
                                                                 ? "bg-orange-100 text-orange-600"
-                                                                : n.type ===
-                                                                    "note"
-                                                                  ? "bg-emerald-100 text-emerald-600"
-                                                                  : "bg-blue-100 text-blue-600"
+                                                                : n.type === "note"
+                                                                    ? "bg-emerald-100 text-emerald-600"
+                                                                    : n.type === "chat"
+                                                                        ? "bg-purple-100 text-purple-600"
+                                                                        : "bg-blue-100 text-blue-600"
                                                         }`}
                                                     >
-                                                        {n.type === "quiz" ? (
+                                                        {(n.type === "quiz" || n.type === "quiz-graded" || n.type === "quiz-missed") ? (
                                                             <BookMarked className="w-4 h-4" />
                                                         ) : n.type ===
                                                           "note" ? (
+                                                            <ExternalLink className="w-4 h-4" />
+                                                        ) : n.type === "chat" ? (
                                                             <ExternalLink className="w-4 h-4" />
                                                         ) : (
                                                             <Inbox className="w-4 h-4" />

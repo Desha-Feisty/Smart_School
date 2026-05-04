@@ -271,6 +271,7 @@ export const gradeSubmittedAttempt = async (attempt: any, wasLate = false) => {
         model: "Question",
     });
     let total = 0;
+    let maxScore = 0;
     for (const resp of attempt.responses) {
         const q = resp.question as any;
         const choices = q.choices || [];
@@ -300,9 +301,11 @@ export const gradeSubmittedAttempt = async (attempt: any, wasLate = false) => {
         console.log(`[grade] Q(${q._id}): points=${q.points}, correctId=${correctChoiceId}, selectedIds=${JSON.stringify(selectedIds)}, isCorrect=${isCorrect}, awarded=${resp.pointsAwarded}`);
         
         total += resp.pointsAwarded;
+        maxScore += q.points || 1;
     }
-    console.log(`[grade] Total raw score: ${total}`);
+    console.log(`[grade] Total raw score: ${total}, maxScore: ${maxScore}`);
     attempt.score = total;
+    attempt.maxScore = maxScore;
     attempt.status = "graded";
     await attempt.save();
 };

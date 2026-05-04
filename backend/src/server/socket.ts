@@ -51,7 +51,18 @@ const saveNotification = async (userId: string, event: string, data: any) => {
             type = "chat";
             title = `Message from ${senderName}`;
             message = data.text;
-            link = user.role === "student" ? "/student" : "/teacher";
+            // Store chat params in link for frontend to open chat window directly
+            link = `__chat__?courseId=${data.courseId}&peerId=${data.peerId}&peerName=${encodeURIComponent(senderName)}`;
+        } else if (event === "quiz-graded") {
+            type = "quiz-graded";
+            title = "Grades Released";
+            message = `Your grades for "${data.quizTitle}" are now available`;
+            link = `/student/quiz/${data.attemptId}/results`;
+        } else if (event === "quiz-missed") {
+            type = "quiz-missed";
+            title = "Quiz Closed";
+            message = `Quiz "${data.quizTitle}" has closed. You did not complete it.`;
+            link = "/student";
         }
 
         await Notification.create({
