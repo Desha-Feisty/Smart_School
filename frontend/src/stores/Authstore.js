@@ -27,7 +27,6 @@ const useAuthStore = create(
                         email,
                         password,
                     });
-                    console.log("Login response:", response.data);
                     if (!response.data.success) {
                         set({
                             isLoggingIn: false,
@@ -66,7 +65,6 @@ const useAuthStore = create(
                         password,
                         role,
                     });
-                    console.log("Register response:", response.data);
                     if (!response.data.success) {
                         set({ errMsg: response.data.errMsg });
                         return response.data;
@@ -125,7 +123,6 @@ axios.interceptors.response.use(
             (error.response?.data?.details === "jwt expired" ||
                 error.response?.data?.errMsg === "unable to verify user")
         ) {
-            console.log("Token expired, logging out...");
             useAuthStore.getState().logout();
             if (
                 typeof window !== "undefined" &&

@@ -1,8 +1,19 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { authMiddleware, requireRole } from "../middleware/auth.js";
 import * as quizController from "../controllers/quiz.controller.js";
 import * as attemptController from "../controllers/attempt.controller.js";
 const router = Router();
+
+// More lenient limiter for read operations
+const readLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 200, // 200 requests per minute for reads
+    message: { error: "Too many read requests, please try again later." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 router.post(
     "/:id/quizzes",
     authMiddleware,
@@ -15,9 +26,9 @@ router.post(
     requireRole("teacher"),
     quizController.createQuizFromBody,
 );
-router.get("/course/:id", authMiddleware, quizController.listCourseQuizzes);
-router.get("/available", authMiddleware, quizController.listAvailableQuizzes);
-router.get("/:id", authMiddleware, quizController.getQuizDetails);
+router.get("/course/:id", authMiddleware, readLimiter, quizController.listCourseQuizzes);
+router.get("/available", authMiddleware, readLimiter, quizController.listAvailableQuizzes);
+router.get("/:id", authMiddleware, readLimiter, quizController.getQuizDetails);
 router.put(
     "/:id",
     authMiddleware,

@@ -1,7 +1,17 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { authMiddleware, requireRole } from "../middleware/auth.js";
 import * as attemptController from "../controllers/attempt.controller.js";
 const router = Router();
+
+// Rate limiter for autosave endpoint
+const autosaveLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 30, // 30 requests per minute per IP
+    message: { error: "Too many autosave requests, please try again later." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 
 // Literal routes MUST come before parameterized routes
 // Otherwise "/start" gets captured as ":quizId"
@@ -21,12 +31,14 @@ router.patch(
     "/:attemptId/answers",
     authMiddleware,
     requireRole("student"),
+    autosaveLimiter,
     attemptController.autoSaveAnswer,
 );
 router.put(
     "/:attemptId/answer",
     authMiddleware,
     requireRole("student"),
+    autosaveLimiter,
     attemptController.autoSaveAnswer,
 );
 router.post(
@@ -71,6 +83,12 @@ router.get(
     authMiddleware,
     requireRole("teacher"),
     attemptController.getStudentCourseGrades,
+);
+router.get(
+    "/batch/students/:studentIds/course/:courseId",
+    authMiddleware,
+    requireRole("teacher"),
+    attemptController.getBatchStudentGrades,
 );
 
 export default router;

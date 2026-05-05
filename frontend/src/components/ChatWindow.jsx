@@ -42,7 +42,6 @@ function ChatWindow({ courseId, peerId, peerName, onClose }) {
         };
 
         const onMessage = (message) => {
-            console.log("Received chat message:", message);
             setMessages((prev) => {
                 // Deduplicate by ID
                 const msgId = message._id || message.id;

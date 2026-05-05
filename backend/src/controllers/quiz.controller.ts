@@ -515,7 +515,8 @@ const listAvailableQuizzes = async (req: AuthRequest, res: Response) => {
         if (!req.user || !req.user._id) {
             return res.status(401).json({ errMsg: "unauthenticated" });
         }
-        const enrollments = await Enrollment.find({ user: req.user._id });
+        // Only get active enrollments
+        const enrollments = await Enrollment.find({ user: req.user._id, status: "active" });
         const courseIds = enrollments.map((e) => e.course);
         if (courseIds.length === 0) {
             return res.status(200).json({ quizzes: [] });

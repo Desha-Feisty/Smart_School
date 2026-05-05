@@ -28,5 +28,6 @@ const quizSchema = new Schema<IQuiz>({
 });
 
 quizSchema.index({ closeAt: 1 });
+quizSchema.index({ closeAt: 1, gradingMode: 1 });
 
 export default model<IQuiz>("Quiz", quizSchema);

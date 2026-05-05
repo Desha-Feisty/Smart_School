@@ -20,7 +20,6 @@ const useTeacherStore = create((set) => ({
             retries--;
         }
         
-        console.log("Token in createCourse:", token);
         if (!token) {
             set({ errMsg: "Not authenticated. Please log in again." });
             return;
@@ -51,18 +50,17 @@ const useTeacherStore = create((set) => ({
             // Wait for auth token to be available
             let token = useAuthStore.getState().token;
             let retries = 3;
-            while (!token && retries > 0) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-                token = useAuthStore.getState().token;
-                retries--;
-            }
-            
-            console.log("Token in listMyCourses:", token);
-            if (!token) {
-                set({ errMsg: "Not authenticated. Please log in again." });
-                return;
-            }
-            const response = await axios.get("/api/courses/my", {
+while (!token && retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            token = useAuthStore.getState().token;
+            retries--;
+        }
+        
+        if (!token) {
+            set({ errMsg: "Not authenticated. Please log in again." });
+            return;
+        }
+        const response = await axios.get("/api/courses/my", {
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,

@@ -42,7 +42,6 @@ function ChatPanel({ courseId, peerId, peerName, courseName, onNewMessage }) {
         };
 
         const onMessage = (message) => {
-            console.log("Received chat message:", message);
             let shouldNotify = true;
 
             setMessages((prev) => {

@@ -166,6 +166,7 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
             user: req.user._id,
             startAt: now.toDate(),
             endAt,
+            status: "inProgress",
             responses,
         });
         return res.status(201).json({
@@ -203,7 +204,18 @@ const autoSaveAnswer = async (req: AuthRequest, res: Response) => {
         if (!attempt) {
             return res.status(404).json({ errMsg: "attempt not found" });
         }
-        const now = dayjs();
+        
+        // Security: Verify ownership
+        if (attempt.user.toString() !== req.user?._id) {
+            return res.status(403).json({ error: "Forbidden" });
+        }
+        
+        // Security: Only allow saving to in-progress attempts (or undefined for legacy attempts)
+        const attemptStatus = attempt.status;
+        if (attemptStatus && attemptStatus !== "inProgress") {
+            return res.status(403).json({ error: "Attempt not in progress" });
+        }
+        
         const resp = attempt.responses.find(
             (r) => r.question.toString() === value.questionId,
         );
@@ -247,17 +259,14 @@ const submitAttempt = async (req: AuthRequest, res: Response) => {
         const gradingMode = quiz?.gradingMode || "onSubmit";
         const quizCloseAt = quiz?.closeAt;
         
-        console.log(`[submitAttempt] Attempt ${attempt._id} - gradingMode: ${gradingMode}, quizCloseAt: ${quizCloseAt}`);
-        
         await gradeSubmittedAttempt(attempt, isLate);
         
-        console.log(`[submitAttempt] Graded attempt ${attempt._id}, status: ${attempt.status}, score: ${attempt.score}`);
-
         return res.json({ 
             attempt: attempt,
             gradingMode: gradingMode,
             quizCloseAt: quizCloseAt,
             quizEndAt: attempt.endAt,
+            quizCloseAtDate: quizCloseAt, // Add the actual quiz close date
         });
     } catch (err) {
         return res.status(500).json({ error: "Submit failed" });
@@ -298,12 +307,9 @@ export const gradeSubmittedAttempt = async (attempt: any, wasLate = false) => {
         
         resp.pointsAwarded = isCorrect ? q.points || 1 : 0;
         
-        console.log(`[grade] Q(${q._id}): points=${q.points}, correctId=${correctChoiceId}, selectedIds=${JSON.stringify(selectedIds)}, isCorrect=${isCorrect}, awarded=${resp.pointsAwarded}`);
-        
         total += resp.pointsAwarded;
         maxScore += q.points || 1;
     }
-    console.log(`[grade] Total raw score: ${total}, maxScore: ${maxScore}`);
     attempt.score = total;
     attempt.maxScore = maxScore;
     attempt.status = "graded";
@@ -334,7 +340,6 @@ const getResult = async (req: AuthRequest, res: Response) => {
 const listQuizGrades = async (req: AuthRequest, res: Response) => {
     try {
         const { id: quizId } = req.params;
-        console.log(`[listQuizGrades] Fetching grades for quiz: ${quizId}`);
         const quiz = await Quiz.findById(quizId).populate("course");
         if (!quiz) return res.status(404).json({ error: "Quiz not found" });
         if (quiz.course instanceof Types.ObjectId) {
@@ -354,15 +359,6 @@ const listQuizGrades = async (req: AuthRequest, res: Response) => {
             .sort({ submittedAt: -1 })
             .lean();
         
-        console.log(`[listQuizGrades] Found ${attempts.length} attempts, statuses: ${attempts.map(a => a.status).join(", ")}`);
-        
-        // Debug: log first attempt's question points
-        const firstAttempt = attempts[0];
-        if (firstAttempt && firstAttempt.responses && firstAttempt.responses.length > 0 && firstAttempt.responses[0]) {
-            const firstResp = firstAttempt.responses[0] as any;
-            const firstQ = firstResp.question as any;
-            console.log(`[listQuizGrades] First question points: ${firstQ?.points}, full question: ${JSON.stringify(firstQ).slice(0, 200)}`);
-        }
         const results = attempts.map((a) => {
             // Calculate total possible points from this attempt's questions
             const totalPossiblePoints = a.responses?.reduce(
@@ -373,8 +369,6 @@ const listQuizGrades = async (req: AuthRequest, res: Response) => {
                 totalPossiblePoints > 0 && a.score !== undefined
                     ? Math.round((a.score / totalPossiblePoints) * 100)
                     : 0;
-
-            console.log(`[listGrades] Attempt ${a._id}: rawScore=${a.score}, totalPossible=${totalPossiblePoints}, percentage=${scorePercentage}`);
 
             return {
                 attemptId: a._id,
@@ -597,6 +591,93 @@ const getStudentCourseGrades = async (req: AuthRequest, res: Response) => {
     }
 };
 
+// Batch endpoint: Get grades for multiple students in a single query
+const getBatchStudentGrades = async (req: AuthRequest, res: Response) => {
+    try {
+        const { courseId, studentIds } = req.params;
+        
+        if (!studentIds) {
+            return res.status(400).json({ error: "No student IDs provided" });
+        }
+        
+        // Parse comma-separated student IDs
+        const studentIdList = studentIds.split(",").map(id => id.trim()).filter(Boolean);
+        
+        if (!studentIdList.length) {
+            return res.status(400).json({ error: "No student IDs provided" });
+        }
+        
+        // Limit batch size to prevent abuse
+        if (studentIdList.length > 50) {
+            return res.status(400).json({ error: "Maximum 50 students per batch" });
+        }
+
+        // Verify the requester is the course teacher
+        const course = await Course.findById(courseId);
+        if (!course) return res.status(404).json({ error: "Course not found" });
+        if (!req.user || req.user._id !== course.teacher.toString()) {
+            return res.status(403).json({ error: "Forbidden" });
+        }
+
+        // Fetch all attempts for all students in a single query
+        const objectIds = studentIdList.map(id => new Types.ObjectId(id));
+        const attempts = await Attempt.find({
+            user: { $in: objectIds },
+            status: { $in: ["graded", "late"] },
+        })
+            .populate({
+                path: "quiz",
+                select: "title course",
+                match: { course: courseId },
+                populate: { path: "course", select: "title" },
+            })
+            .populate({ path: "responses.question", model: "Question" })
+            .select("user quiz score submittedAt status responses")
+            .sort({ submittedAt: -1 })
+            .lean();
+
+        // Filter out attempts where quiz population failed (not from this course)
+        const courseAttempts = attempts.filter((a) => a.quiz);
+
+        // Group results by student ID
+        const gradesByStudent: Record<string, any[]> = {};
+        
+        for (const studentId of studentIdList) {
+            gradesByStudent[studentId] = [];
+        }
+        
+        for (const a of courseAttempts) {
+            const userId = a.user?.toString();
+            if (!userId || !gradesByStudent[userId]) continue;
+            
+            const totalPossiblePoints = a.responses?.reduce(
+                (sum, r) => sum + (((r.question as any)?.points) || 1),
+                0,
+            ) || 0;
+            const scorePercentage =
+                totalPossiblePoints > 0 && a.score !== undefined
+                    ? Math.round((a.score / totalPossiblePoints) * 100)
+                    : 0;
+
+            gradesByStudent[userId].push({
+                attemptId: a._id,
+                quiz: {
+                    _id: a.quiz?._id,
+                    title: (a.quiz as any)?.title || "Unknown Quiz",
+                },
+                score: scorePercentage,
+                submittedAt: a.submittedAt,
+                status: a.status,
+            });
+        }
+
+        return res.json({ results: gradesByStudent });
+    } catch (err) {
+        console.error("getBatchStudentGrades error:", err);
+        return res.status(500).json({ error: "Failed to get batch student grades" });
+    }
+};
+
 export {
     startAttempt,
     autoSaveAnswer,
@@ -607,4 +688,5 @@ export {
     startAttemptFromBody,
     getStudentCourseGrades,
     getAttemptDetails,
+    getBatchStudentGrades,
 };

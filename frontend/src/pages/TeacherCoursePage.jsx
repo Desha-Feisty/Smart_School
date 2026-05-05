@@ -120,22 +120,15 @@ function TeacherCoursePage() {
     const loadEnrolledStudents = async () => {
         setStudentsLoading(true);
         try {
-            console.log("Loading enrolled students for course:", id);
             const roster = await getRoster(id);
-            console.log("Roster response:", roster);
             const enrollment = roster?.enrollment || [];
             setEnrolledStudents(enrollment);
-            console.log("Enrolled students:", enrollment);
 
             // Load grades for each student
             const gradesMap = {};
             for (const student of enrollment) {
                 try {
                     if (!student?.user?._id) continue;
-                    console.log(
-                        "Loading grades for student:",
-                        student.user._id,
-                    );
                     const response = await fetch(
                         `/api/attempts/student/${student.user._id}/course/${id}`,
                         {
@@ -147,12 +140,6 @@ function TeacherCoursePage() {
                     if (response.ok) {
                         const data = await response.json();
                         gradesMap[student.user._id] = data.results || [];
-                        console.log(
-                            "Grades for student",
-                            student.user._id,
-                            ":",
-                            data.results || [],
-                        );
                     } else {
                         console.error(
                             "Failed to load grades for student",

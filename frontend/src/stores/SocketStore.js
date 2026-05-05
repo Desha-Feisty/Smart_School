@@ -24,12 +24,10 @@ const useSocketStore = create((set) => {
 
             socket.on("connect", () => {
                 set({ isConnected: true, socket });
-                console.log("Global socket connected");
             });
 
             socket.on("disconnect", () => {
                 set({ isConnected: false });
-                console.log("Global socket disconnected");
             });
 
             socket.on("socket-error", ({ message }) => {

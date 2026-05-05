@@ -26,8 +26,6 @@ const useQuizStore = create((set) => ({
                 set({ errMsg });
                 throw new Error(errMsg);
             }
-            console.log("Creating quiz for course:", courseId);
-            console.log("Quiz data:", JSON.stringify(quizData, null, 2));
             const response = await axios.post(
                 `/api/quizzes/${courseId}/quizzes`,
                 quizData,
@@ -38,7 +36,6 @@ const useQuizStore = create((set) => ({
                     },
                 },
             );
-            console.log("Quiz creation response:", response.data);
             if (response.status === 201) {
                 set((state) => ({
                     quizzes: [...state.quizzes, response.data.quiz],

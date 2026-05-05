@@ -1,4 +1,5 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { authMiddleware, requireRole } from "../middleware/auth.js";
 import {
     getCourse,
@@ -13,12 +14,22 @@ import {
 } from "../controllers/course.controller.js";
 
 const router = Router();
+
+// More lenient limiter for read operations
+const readLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 200, // 200 requests per minute for reads
+    message: { error: "Too many read requests, please try again later." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 router.post("/", authMiddleware, requireRole("teacher"), createCourse);
-router.get("/", authMiddleware, listMyCourses);
-router.get("/my", authMiddleware, listMyCourses);
-router.get("/my-courses", authMiddleware, listMyCourses);
-router.get("/all", authMiddleware, listAllCourses);
-router.get("/:id", authMiddleware, getCourse);
+router.get("/", authMiddleware, readLimiter, listMyCourses);
+router.get("/my", authMiddleware, readLimiter, listMyCourses);
+router.get("/my-courses", authMiddleware, readLimiter, listMyCourses);
+router.get("/all", authMiddleware, readLimiter, listAllCourses);
+router.get("/:id", authMiddleware, readLimiter, getCourse);
 router.patch("/:id", authMiddleware, requireRole("teacher"), updateCourse);
 router.delete("/:id", authMiddleware, requireRole("teacher"), deleteCourse);
 router.post("/join", authMiddleware, requireRole("student"), joinCourseByCode);

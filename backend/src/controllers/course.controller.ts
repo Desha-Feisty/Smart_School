@@ -174,15 +174,22 @@ const joinCourseByCode = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({ errMsg: "you are already enrolled in this course" });
         }
 
-        // Create new enrollment
-        const enrollment = await Enrollment.create({
-            course: course._id,
-            user: req.user._id,
-            roleInCourse: "student",
-            status: "active",
-        });
-
-        return res.status(200).json({ course, enrolledAt: enrollment.createdAt });
+        // Create new enrollment with error handling for duplicates
+        try {
+            const enrollment = await Enrollment.create({
+                course: course._id,
+                user: req.user._id,
+                roleInCourse: "student",
+                status: "active",
+            });
+            return res.status(200).json({ course, enrolledAt: enrollment.createdAt });
+        } catch (createError: any) {
+            // Handle duplicate key error (race condition)
+            if (createError.code === 11000) {
+                return res.status(400).json({ errMsg: "you are already enrolled in this course" });
+            }
+            throw createError; // Re-throw for other errors
+        }
     } catch (error) {
         console.error(
             "failed to join course",

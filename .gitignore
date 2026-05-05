@@ -16,3 +16,4 @@ test-api.js
 test-api.cjs
 comprehensive.test.js
 /tests/
+*.md

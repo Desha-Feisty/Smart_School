@@ -5,6 +5,8 @@ import express, {
 } from "express";
 import cors from "cors";
 import morgan from "morgan";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import path from "path";
 import authRoutes from "../routes/auth.routes.js";
 import courseRoutes from "../routes/course.routes.js";
@@ -26,6 +28,38 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
+
+// Security: Helmet headers
+app.use(helmet());
+
+// Security: Rate limiting - increased for normal use
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 500, // Increased limit per IP for normal usage
+    message: { error: "Too many requests, please try again later." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Strict rate limit for autosave (frequent endpoint)
+const autosaveLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 30, // 30 requests per minute
+    message: { error: "Too many autosave requests, please try again later." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// More lenient limiter for read operations (GET requests)
+const readLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 200, // 200 requests per minute for reads
+    message: { error: "Too many read requests, please try again later." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+app.use(limiter);
 app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));

@@ -15,7 +15,7 @@ export function startQuizScheduler() {
         let processedCount = 0;
         let notifiedCount = 0;
 
-        // ── Phase 1: Auto-submit expired in-progress attempts ──────────────
+        // Phase 1: Auto-submit expired in-progress attempts
         // Only queries attempts that actually need work (naturally idempotent)
         const expiredAttempts = await Attempt.find({
             status: "inProgress",
@@ -27,26 +27,18 @@ export function startQuizScheduler() {
             if (!quiz) continue;
 
             const wasLate = now.isAfter(dayjs(attempt.endAt));
-            console.log(
-                `[scheduler] Auto-submitting attempt ${attempt._id} (${wasLate ? "late" : "on time"})`,
-            );
 
             attempt.status = wasLate ? "late" : "submitted";
             attempt.submittedAt = now.toDate();
             await attempt.save();
 
             // Grade immediately (teacher sees grades now, students see after quiz closes)
-            console.log(`[scheduler] Grading attempt ${attempt._id}`);
             await gradeSubmittedAttempt(attempt, wasLate);
 
             processedCount++;
         }
 
-        if (processedCount > 0) {
-            console.log(`[scheduler] Processed ${processedCount} attempt(s)`);
-        }
-
-        // ── Phase 2: Notify students when quiz closes (gradingMode="onClose") ──────────────
+        // Phase 2: Notify students when quiz closes (gradingMode="onClose")
         const closedQuizzes = await Quiz.find({
             closeAt: { $lte: now.toDate() },
             gradingMode: "onClose",
@@ -85,14 +77,9 @@ export function startQuizScheduler() {
                 const studentId = attempt.user?._id?.toString();
                 if (!studentId) continue;
 
-                const studentName = (attempt.user as any)?.name || "Student";
                 const score = attempt.score || 0;
                 const maxScore = attempt.maxScore || 100;
                 const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-
-                console.log(
-                    `[scheduler] Notifying ${studentName} about grades for "${quiz.title}" - ${score}/${maxScore} (${percentage}%)`,
-                );
 
                 notifyUser(studentId, "quiz-graded", {
                     quizId,
@@ -112,12 +99,6 @@ export function startQuizScheduler() {
                 const studentId = enrollment.user?._id?.toString();
                 if (!studentId || attemptedUserIds.has(studentId)) continue;
 
-                const studentName = (enrollment.user as any)?.name || "Student";
-
-                console.log(
-                    `[scheduler] Notifying ${studentName} about missed quiz "${quiz.title}"`,
-                );
-
                 notifyUser(studentId, "quiz-missed", {
                     quizId,
                     quizTitle: quiz.title,
@@ -126,10 +107,6 @@ export function startQuizScheduler() {
 
                 notifiedCount++;
             }
-        }
-
-        if (notifiedCount > 0) {
-            console.log(`[scheduler] Sent ${notifiedCount} quiz notification(s)`);
         }
     });
 
