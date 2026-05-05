@@ -8,6 +8,7 @@ import morgan from "morgan";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import path from "path";
+import swaggerUi from "swagger-ui-express";
 import authRoutes from "../routes/auth.routes.js";
 import courseRoutes from "../routes/course.routes.js";
 import quizRoutes from "../routes/quiz.routes.js";
@@ -23,6 +24,8 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { authMiddleware, requireRole } from "../middleware/auth.js";
 import * as quizController from "../controllers/quiz.controller.js";
+import { specs } from "../utils/swagger.js";
+import { requestLogger } from "../middleware/requestLogger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -32,10 +35,12 @@ const app = express();
 // Security: Helmet headers
 app.use(helmet());
 
+const isTest = process.env.NODE_ENV === "test";
+
 // Security: Rate limiting - increased for normal use
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 500, // Increased limit per IP for normal usage
+    max: isTest ? 10000 : 500, // Much higher for tests
     message: { error: "Too many requests, please try again later." },
     standardHeaders: true,
     legacyHeaders: false,
@@ -44,7 +49,7 @@ const limiter = rateLimit({
 // Strict rate limit for autosave (frequent endpoint)
 const autosaveLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: 30, // 30 requests per minute
+    max: isTest ? 1000 : 30, // Much higher for tests
     message: { error: "Too many autosave requests, please try again later." },
     standardHeaders: true,
     legacyHeaders: false,
@@ -53,7 +58,7 @@ const autosaveLimiter = rateLimit({
 // More lenient limiter for read operations (GET requests)
 const readLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: 200, // 200 requests per minute for reads
+    max: isTest ? 10000 : 200, // Much higher for tests
     message: { error: "Too many read requests, please try again later." },
     standardHeaders: true,
     legacyHeaders: false,
@@ -63,11 +68,23 @@ app.use(limiter);
 app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));
+app.use(requestLogger);
 
 // Serve simple UI for testing endpoints
 app.use(express.static(path.join(__dirname, "..", "public")));
 app.use("/docs", express.static(path.join(__dirname, "..", "docs")));
 
+// Swagger documentation
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: "LMS API Documentation",
+    swaggerOptions: {
+        persistAuthorization: true,
+        displayRequestDuration: true,
+    },
+}));
+
+// API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/quizzes", quizRoutes);

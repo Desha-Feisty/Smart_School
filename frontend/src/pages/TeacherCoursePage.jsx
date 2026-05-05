@@ -384,7 +384,7 @@ function TeacherCoursePage() {
                             label: "Community Notes",
                             icon: MessageSquare,
                         },
-                    ].map(({ id: tabId, label, icon: Icon }) => (
+                    ].map(({ id: tabId, label, icon: TabIcon }) => (
                         <button
                             key={tabId}
                             onClick={() => setActiveTab(tabId)}
@@ -394,7 +394,7 @@ function TeacherCoursePage() {
                                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50"
                             }`}
                         >
-                            <Icon
+                            <TabIcon
                                 className={`w-4 h-4 ${activeTab === tabId ? "opacity-100" : "opacity-70"}`}
                             />
                             {label}

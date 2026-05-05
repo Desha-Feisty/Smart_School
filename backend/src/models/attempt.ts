@@ -27,14 +27,15 @@ export interface IAttempt {
 
 const attemptSchema = new Schema<IAttempt>(
     {
-        quiz: { type: Types.ObjectId, ref: "Quiz", required: true },
-        user: { type: Types.ObjectId, ref: "User", required: true },
-        startAt: { type: Date, required: true },
-        endAt: { type: Date, required: true },
-        submittedAt: { type: Date },
+        quiz: { type: Types.ObjectId, ref: "Quiz", required: true, index: true },
+        user: { type: Types.ObjectId, ref: "User", required: true, index: true },
+        startAt: { type: Date, required: true, index: true },
+        endAt: { type: Date, required: true, index: true },
+        submittedAt: { type: Date, index: true },
         status: {
             type: String,
             enum: ["inProgress", "graded", "expired", "late", "submitted"],
+            index: true,
         },
         score: { type: Number, default: 0 },
         maxScore: { type: Number, default: 0 },
@@ -43,11 +44,14 @@ const attemptSchema = new Schema<IAttempt>(
     { timestamps: true },
 );
 
+// Compound indexes for common queries
+attemptSchema.index({ quiz: 1, user: 1 });
 attemptSchema.index({ quiz: 1, status: 1 });
 attemptSchema.index({ user: 1, quiz: 1, status: 1 });
 attemptSchema.index({ user: 1, status: 1 });
 attemptSchema.index({ status: 1, endAt: 1 });
 attemptSchema.index({ user: 1, quiz: 1, status: 1, submittedAt: -1 });
 attemptSchema.index({ quiz: 1, status: 1, submittedAt: -1 });
+attemptSchema.index({ user: 1, createdAt: -1 });
 
 export default model<IAttempt>("Attempt", attemptSchema);

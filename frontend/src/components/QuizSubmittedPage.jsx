@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { CheckCircle, Clock, Calendar } from "lucide-react";
 import PageWrapper from "./layout/PageWrapper";
 import Navbar from "./layout/Navbar";
 
 function QuizSubmittedPage() {
-    const { attemptId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
     const [timeRemaining, setTimeRemaining] = useState(null);

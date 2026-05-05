@@ -61,13 +61,16 @@ useEffect(() => {
                     <div className="dropdown dropdown-end relative">
                         <label
                             tabIndex={0}
+                            role="button"
+                            aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
                             className="btn btn-ghost btn-circle relative hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                         >
                             <Bell
                                 className={`w-5 h-5 ${unreadCount > 0 ? "text-blue-600 dark:text-blue-400" : "text-slate-500"}`}
+                                aria-hidden="true"
                             />
                             {unreadCount > 0 && (
-                                <span className="absolute top-2 right-2 flex h-3 w-3">
+                                <span className="absolute top-2 right-2 flex h-3 w-3" aria-hidden="true">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white dark:border-slate-900"></span>
                                 </span>
@@ -203,8 +206,9 @@ useEffect(() => {
                         <button
                             onClick={() => navigate("/admin")}
                             className="btn btn-primary btn-sm rounded-xl px-4 hidden md:flex"
+                            aria-label="Go to Admin Dashboard"
                         >
-                            <Shield className="w-4 h-4 mr-2" />
+                            <Shield className="w-4 h-4 mr-2" aria-hidden="true" />
                             Admin Dashboard
                         </button>
                     )}
@@ -215,20 +219,22 @@ useEffect(() => {
                             type="checkbox"
                             onChange={toggleTheme}
                             checked={theme === "night"}
+                            aria-label={`Switch to ${theme === "night" ? "light" : "dark"} mode`}
                         />
 
                         {/* sun icon */}
-                        <Sun className="swap-off w-5 h-5 text-yellow-500" />
+                        <Sun className="swap-off w-5 h-5 text-yellow-500" aria-hidden="true" />
 
                         {/* moon icon */}
-                        <Moon className="swap-on w-5 h-5 text-blue-300" />
+                        <Moon className="swap-on w-5 h-5 text-blue-300" aria-hidden="true" />
                     </label>
 
                     <button
                         onClick={handleLogout}
                         className="btn btn-ghost btn-sm gap-2 text-slate-600 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-400"
+                        aria-label="Logout"
                     >
-                        <LogOut className="w-5 h-5" />
+                        <LogOut className="w-5 h-5" aria-hidden="true" />
                         <span className="hidden sm:inline">Logout</span>
                     </button>
                 </div>

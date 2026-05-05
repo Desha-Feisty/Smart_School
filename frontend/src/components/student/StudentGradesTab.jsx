@@ -9,6 +9,7 @@ export default function StudentGradesTab({
 }) {
     const isGradeAvailable = (grade) => {
         if (grade.isAvailable === false) return false;
+        if (grade.gradingMode === "onSubmit") return true;
         if (!grade.closeAt) return true;
         return new Date(grade.closeAt) <= new Date();
     };

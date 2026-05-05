@@ -168,11 +168,12 @@ function StudentPage() {
         }
     };
 
+    const availableGrades = myGrades.filter(g => g.score !== null);
     const avgScore =
-        myGrades.length > 0
+        availableGrades.length > 0
             ? (
-                  myGrades.reduce((sum, g) => sum + g.score, 0) /
-                  myGrades.length
+                  availableGrades.reduce((sum, g) => sum + g.score, 0) /
+                  availableGrades.length
               ).toFixed(1)
             : 0;
 

@@ -504,7 +504,9 @@ const listMyGrades = async (req: AuthRequest, res: Response) => {
         const results = (attempts || []).map((a) => {
             const quiz = a.quiz as any;
             const quizCloseAt = quiz?.closeAt ? new Date(quiz.closeAt) : null;
-            const isAvailable = !quizCloseAt || quizCloseAt <= now;
+            const gradingMode = quiz?.gradingMode || "onSubmit";
+            // Show score immediately if gradingMode is "onSubmit", otherwise wait until quiz closes
+            const isAvailable = gradingMode === "onSubmit" || !quizCloseAt || quizCloseAt <= now;
             
             // Calculate total possible points from this attempt's questions
             const totalPossiblePoints = a.responses?.reduce(

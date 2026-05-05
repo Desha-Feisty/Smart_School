@@ -34,14 +34,14 @@ const useAuthStore = create(
                         });
                         return response.data;
                     }
+                    // Handle new response format: { success, data: { token, refreshToken, user }, message }
+                    const userData = response.data.data?.user || response.data.user;
                     const loginUser = {
-                        ...response.data.user,
-                        id:
-                            response.data.user.id ||
-                            response.data.user._id?.toString(),
+                        ...userData,
+                        id: userData?.id || userData?._id?.toString(),
                     };
                     set({ user: loginUser });
-                    set({ token: response.data.token });
+                    set({ token: response.data.data?.token || response.data.token });
                     set({ role: loginUser.role });
                     set({ isLoggingIn: false });
                     set({ errMsg: null });
@@ -69,14 +69,14 @@ const useAuthStore = create(
                         set({ errMsg: response.data.errMsg });
                         return response.data;
                     }
+                    // Handle new response format: { success, data: { token, refreshToken, user }, message }
+                    const userData = response.data.data?.user || response.data.user;
                     const registerUser = {
-                        ...response.data.user,
-                        id:
-                            response.data.user.id ||
-                            response.data.user._id?.toString(),
+                        ...userData,
+                        id: userData?.id || userData?._id?.toString(),
                     };
                     set({ user: registerUser });
-                    set({ token: response.data.token });
+                    set({ token: response.data.data?.token || response.data.token });
                     set({ role: registerUser.role });
                     set({ errMsg: null });
                     return response.data;

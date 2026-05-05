@@ -3,13 +3,25 @@ import User from "../models/user.js";
 import joi from "joi";
 import type { Role } from "./user.controller.js";
 import { logActivity } from "../services/logger.js";
+import {
+    sendCreated,
+    sendSuccess,
+    sendError,
+    sendValidationError,
+    sendConflict,
+    sendUnauthorized,
+    sendNotFound,
+} from "../utils/response.js";
+import { createError } from "../middleware/errorHandler.js";
+
 export interface RegisterBody {
     name: string;
     email: string;
     password: string;
     role: Role;
 }
-export interface loginBody {
+
+export interface LoginBody {
     email: string;
     password: string;
 }
@@ -21,23 +33,44 @@ const registerSchema = joi.object({
     role: joi.string().valid("student", "teacher", "admin").required(),
 });
 
+const loginSchema = joi.object({
+    email: joi.string().email().required(),
+    password: joi.string().required(),
+});
+
 const register = async (req: Request<{}, {}, RegisterBody>, res: Response) => {
     try {
         const { value, error } = registerSchema.validate(req.body, {
             stripUnknown: true,
         });
         if (error) {
-            return res
-                .status(400)
-                .json({ errMsg: "invalid input", details: error.details });
+            const errors: Record<string, string> = {};
+            error.details.forEach((detail) => {
+                const field = detail.path.join(".");
+                errors[field] = detail.message;
+            });
+            return sendValidationError(res, "Validation failed", errors);
         }
+
         const { name, email, password, role } = value as RegisterBody;
+
+        // Check if user exists
         const exists = await User.findOne({ email });
         if (exists) {
-            return res.status(400).json({ errMsg: "email is already used" });
+            return sendConflict(res, "Email is already registered");
         }
+
+        // Create user
         const user = await User.create({ email, name, password, role });
 
+        // Generate tokens
+        const token = await user.createToken();
+        const refreshToken = await user.createRefreshToken();
+
+        // Update login stats
+        await user.updateLoginStats();
+
+        // Log activity
         try {
             await logActivity({
                 userId: user._id.toString(),
@@ -50,48 +83,54 @@ const register = async (req: Request<{}, {}, RegisterBody>, res: Response) => {
             console.error("Failed to log user creation activity:", logErr);
         }
 
-        const token = await user.createToken();
-        return res.status(201).json({
-            success: true,
+        return sendCreated(res, {
             token,
+            refreshToken,
             user: {
                 name: user.name,
                 email: user.email,
                 role: user.role,
                 id: user._id,
             },
-        });
+        }, "Registration successful");
     } catch (error) {
         console.error(
             "Register error:",
             error instanceof Error ? error.message : error,
         );
-        return res.status(500).json({ errMsg: "An error has occurred" });
+        return sendError(res, "Registration failed", 500);
     }
 };
 
-const loginSchema = joi.object({
-    email: joi.string().email().required(),
-    password: joi.string().required(),
-});
-
-const login = async (req: Request<{}, {}, loginBody>, res: Response) => {
+const login = async (req: Request<{}, {}, LoginBody>, res: Response) => {
     try {
         const { value, error } = loginSchema.validate(req.body);
         if (error) {
-            return res.status(400).json({ errMsg: "invalid request" });
+            return sendValidationError(res, "Invalid request format");
         }
-        const { email, password } = value as loginBody;
+
+        const { email, password } = value as LoginBody;
+
+        // Find user
         const user = await User.findOne({ email });
         if (!user) {
-            return res.status(400).json({ errMsg: "email is not registered" });
+            return sendUnauthorized(res, "Email is not registered");
         }
+
+        // Check password
         const checkPassword = await user.comparePassword(password);
         if (!checkPassword) {
-            return res.status(401).json({ errMsg: "wrong password" });
+            return sendUnauthorized(res, "Incorrect password");
         }
-        const token = await user.createToken();
 
+        // Generate tokens
+        const token = await user.createToken();
+        const refreshToken = await user.createRefreshToken();
+
+        // Update login stats
+        await user.updateLoginStats();
+
+        // Log activity
         try {
             await logActivity({
                 userId: user._id.toString(),
@@ -104,9 +143,9 @@ const login = async (req: Request<{}, {}, loginBody>, res: Response) => {
             console.error("Failed to log user login activity:", logErr);
         }
 
-        return res.status(200).json({
-            success: true,
+        return sendSuccess(res, {
             token,
+            refreshToken,
             user: {
                 id: user._id,
                 _id: user._id,
@@ -114,13 +153,13 @@ const login = async (req: Request<{}, {}, loginBody>, res: Response) => {
                 email: user.email,
                 role: user.role,
             },
-        });
+        }, "Login successful");
     } catch (error) {
         console.error(
             "Login error:",
             error instanceof Error ? error.message : error,
         );
-        return res.status(500).json({ errMsg: "internal server error" });
+        return sendError(res, "Login failed", 500);
     }
 };
 
@@ -131,30 +170,41 @@ interface AuthRequest extends Request {
 const me = async (req: AuthRequest, res: Response) => {
     try {
         const userId = req.user?._id;
-        if (!userId) return res.status(401).json({ errMsg: "unauthorized" });
+        if (!userId) {
+            return sendUnauthorized(res);
+        }
+
         const user = await User.findById(userId).select("-password");
-        if (!user) return res.status(404).json({ errMsg: "user not found" });
-        return res.status(200).json({
+        if (!user) {
+            return sendNotFound(res, "User");
+        }
+
+        return sendSuccess(res, {
             _id: user._id,
             name: user.name,
             email: user.email,
             role: user.role,
+            lastLogin: user.lastLogin,
+            loginCount: user.loginCount,
         });
     } catch (error) {
-        return res.status(500).json({ errMsg: "failed to fetch user data" });
+        return sendError(res, "Failed to fetch user data", 500);
     }
 };
 
-const logout = async (req: Request, res: Response) => {
+const logout = async (req: AuthRequest, res: Response) => {
     try {
-        res.clearCookie("token", {
-            httpOnly: true,
-            sameSite: "strict",
-            secure: process.env.NODE_ENV === "production",
-        });
-        return res.status(200).json({ msg: "logged out" });
-    } catch {
-        return res.status(500).json({ errMsg: "failed to logout" });
+        const userId = req.user?._id;
+        if (userId) {
+            const user = await User.findById(userId);
+            if (user) {
+                await user.clearRefreshToken();
+            }
+        }
+
+        return sendSuccess(res, null, "Logged out successfully");
+    } catch (error) {
+        return sendError(res, "Failed to logout", 500);
     }
 };
 

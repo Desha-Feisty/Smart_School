@@ -2,16 +2,18 @@ import { useState, useEffect } from "react";
 import useAuthStore from "../stores/Authstore";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { BookOpen, LogIn, Mail, Lock } from "lucide-react";
+import { BookOpen, LogIn, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import PageWrapper from "../components/layout/PageWrapper";
 import useThemeStore from "../stores/ThemeStore";
+import { LoadingButton } from "../components/common/Loading";
 
 function LoginPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [errors, setErrors] = useState({});
     const navigate = useNavigate();
-    const { token, role } = useAuthStore();
+    const { token, role, isLoggingIn, errMsg, clearErrMsg } = useAuthStore();
 
     // Initialize theme store here just so it's loaded early if not in App
     useThemeStore();
@@ -28,13 +30,26 @@ function LoginPage() {
         }
     }, [token, role, navigate]);
 
+    function validateForm() {
+        const newErrors = {};
+        if (!email.trim()) {
+            newErrors.email = "Email is required";
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            newErrors.email = "Please enter a valid email";
+        }
+        if (!password) {
+            newErrors.password = "Password is required";
+        }
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    }
+
     async function handleLogin() {
-        if (!email || !password) {
-            toast.error("Please enter email and password");
+        clearErrMsg();
+        if (!validateForm()) {
             return;
         }
 
-        setLoading(true);
         try {
             const response = await useAuthStore
                 .getState()
@@ -54,8 +69,8 @@ function LoginPage() {
             } else {
                 toast.error(response.errMsg || "Login failed");
             }
-        } finally {
-            setLoading(false);
+        } catch (error) {
+            toast.error("An unexpected error occurred");
         }
     }
 
@@ -155,15 +170,21 @@ function LoginPage() {
                                         <input
                                             type="email"
                                             placeholder="you@example.com"
-                                            className="input input-lg w-full pl-12 bg-slate-50/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all rounded-xl"
+                                            className={`input input-lg w-full pl-12 bg-slate-50/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all rounded-xl ${errors.email ? "input-error" : ""}`}
                                             value={email}
-                                            onChange={(e) =>
-                                                setEmail(e.target.value)
-                                            }
+                                            onChange={(e) => {
+                                                setEmail(e.target.value);
+                                                if (errors.email) setErrors({ ...errors, email: null });
+                                            }}
                                             onKeyPress={handleKeyPress}
-                                            disabled={loading}
+                                            disabled={isLoggingIn}
                                         />
                                     </div>
+                                    {errors.email && (
+                                        <label className="label">
+                                            <span className="label-text-alt text-red-500">{errors.email}</span>
+                                        </label>
+                                    )}
                                 </div>
 
                                 <div className="form-control mt-4">
@@ -177,25 +198,44 @@ function LoginPage() {
                                             <Lock className="w-5 h-5" />
                                         </div>
                                         <input
-                                            type="password"
+                                            type={showPassword ? "text" : "password"}
                                             placeholder="••••••••"
-                                            className="input input-lg w-full pl-12 bg-slate-50/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all rounded-xl"
+                                            className={`input input-lg w-full pl-12 pr-12 bg-slate-50/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all rounded-xl ${errors.password ? "input-error" : ""}`}
                                             value={password}
-                                            onChange={(e) =>
-                                                setPassword(e.target.value)
-                                            }
+                                            onChange={(e) => {
+                                                setPassword(e.target.value);
+                                                if (errors.password) setErrors({ ...errors, password: null });
+                                            }}
                                             onKeyPress={handleKeyPress}
-                                            disabled={loading}
+                                            disabled={isLoggingIn}
                                         />
+                                        <button
+                                            type="button"
+                                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                        >
+                                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                        </button>
                                     </div>
+                                    {errors.password && (
+                                        <label className="label">
+                                            <span className="label-text-alt text-red-500">{errors.password}</span>
+                                        </label>
+                                    )}
                                 </div>
 
+                                {errMsg && (
+                                    <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                                        <p className="text-sm text-red-600 dark:text-red-400 text-center">{errMsg}</p>
+                                    </div>
+                                )}
+
                                 <button
-                                    className={`btn btn-primary btn-lg w-full rounded-xl mt-6 font-semibold shadow-lg shadow-blue-500/30 ${loading ? "loading" : ""}`}
+                                    className={`btn btn-primary btn-lg w-full rounded-xl mt-4 font-semibold shadow-lg shadow-blue-500/30 ${isLoggingIn ? "loading" : ""}`}
                                     onClick={handleLogin}
-                                    disabled={loading}
+                                    disabled={isLoggingIn}
                                 >
-                                    {loading ? (
+                                    {isLoggingIn ? (
                                         <>
                                             <span className="loading loading-spinner loading-sm"></span>
                                             Signing In...
