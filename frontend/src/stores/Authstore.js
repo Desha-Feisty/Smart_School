@@ -4,7 +4,7 @@ import axios from "axios";
 
 const useAuthStore = create(
     persist(
-        (set) => ({
+        (set, get) => ({
             user: null,
             setUser: (user) => set({ user }),
             clearUser: () => set({ user: null }),
@@ -112,27 +112,34 @@ const useAuthStore = create(
     ),
 );
 
-// Interceptor to handle token expiry (401 errors)
-axios.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        const isExplicitLogout = useAuthStore.getState().isExplicitLogout;
-        if (
-            error.response?.status === 401 &&
-            !isExplicitLogout &&
-            (error.response?.data?.details === "jwt expired" ||
-                error.response?.data?.errMsg === "unable to verify user")
-        ) {
-            useAuthStore.getState().logout();
+// Set up interceptor after store is created to avoid issues
+let interceptorSetup = false;
+export function setupAuthInterceptor() {
+    if (interceptorSetup) return;
+    interceptorSetup = true;
+    
+    axios.interceptors.response.use(
+        (response) => response,
+        (error) => {
+            const state = useAuthStore.getState();
+            const isExplicitLogout = state.isExplicitLogout;
             if (
-                typeof window !== "undefined" &&
-                !window.location.pathname.includes("/login")
+                error.response?.status === 401 &&
+                !isExplicitLogout &&
+                (error.response?.data?.details === "jwt expired" ||
+                    error.response?.data?.errMsg === "unable to verify user")
             ) {
-                window.location.href = "/login";
+                state.logout();
+                if (
+                    typeof window !== "undefined" &&
+                    !window.location.pathname.includes("/login")
+                ) {
+                    window.location.href = "/login";
+                }
             }
-        }
-        return Promise.reject(error);
-    },
-);
+            return Promise.reject(error);
+        },
+    );
+}
 
 export default useAuthStore;

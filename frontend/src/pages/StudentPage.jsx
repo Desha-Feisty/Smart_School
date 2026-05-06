@@ -7,7 +7,6 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import ChatWindow from "../components/ChatWindow";
 import PageWrapper from "../components/layout/PageWrapper";
-import Navbar from "../components/layout/Navbar";
 import Leaderboard from "../components/Leaderboard";
 import {
     BookOpen,
@@ -181,8 +180,6 @@ function StudentPage() {
 
     return (
         <PageWrapper>
-            <Navbar />
-
             <main className="max-w-7xl mx-auto px-6 py-8 animate-in fade-in duration-500 w-full relative z-10">
                 <StudentStatsCards
                     allCourses={allCourses}

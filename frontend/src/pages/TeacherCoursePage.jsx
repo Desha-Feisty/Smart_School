@@ -14,7 +14,6 @@ import {
     TrendingUp,
 } from "lucide-react";
 import PageWrapper from "../components/layout/PageWrapper";
-import Navbar from "../components/layout/Navbar";
 import AnalyticsDashboard from "../components/AnalyticsDashboard";
 import Leaderboard from "../components/Leaderboard";
 
@@ -319,8 +318,6 @@ function TeacherCoursePage() {
 
     return (
         <PageWrapper>
-            <Navbar />
-
             <main className="max-w-7xl mx-auto px-6 py-8 animate-in fade-in duration-500 w-full relative z-10">
                 <CourseHeader
                     course={course}

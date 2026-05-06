@@ -2,7 +2,7 @@ import { create } from "zustand";
 import axios from "axios";
 import useAuthStore from "./Authstore";
 
-const useTeacherStore = create((set) => ({
+const useTeacherStore = create((set, get) => ({
     errMsg: null,
     setErrMsg: (errMsg) => set({ errMsg: errMsg }),
     clearErrMsg: () => set({ errMsg: null }),
@@ -442,6 +442,9 @@ while (!token && retries > 0) {
     },
 
 listRecentChats: async (silent = false) => {
+        // Prevent overlapping requests
+        if (get().recentChatsLoading) return;
+        
         if (!silent) set({ recentChatsLoading: true });
         
         // Get current user ID and token

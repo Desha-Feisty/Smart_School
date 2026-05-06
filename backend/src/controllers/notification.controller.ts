@@ -67,4 +67,28 @@ const markAllAsRead = async (req: AuthRequest, res: Response) => {
     }
 };
 
-export { getNotifications, markAsRead, markAllAsRead };
+const deleteNotification = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user?._id;
+        const { id } = req.params;
+
+        if (!userId || !id) {
+            return res.status(400).json({ error: "Missing user ID or notification ID" });
+        }
+
+        const notification = await Notification.findOneAndDelete(
+            { _id: new Types.ObjectId(id), user: new Types.ObjectId(userId) }
+        );
+
+        if (!notification) {
+            return res.status(404).json({ error: "Notification not found" });
+        }
+
+        return res.json({ success: true });
+    } catch (err) {
+        console.error("Delete notification error:", err);
+        return res.status(500).json({ error: "Failed to delete notification" });
+    }
+};
+
+export { getNotifications, markAsRead, markAllAsRead, deleteNotification };

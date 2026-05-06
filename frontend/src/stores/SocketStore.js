@@ -4,11 +4,7 @@ import { io } from "socket.io-client";
 const useSocketStore = create((set) => {
     let socket = null;
 
-    const backendUrl =
-        import.meta.env.VITE_BACKEND_URL ||
-        (window.location.hostname === "localhost"
-            ? "http://localhost:3000"
-            : window.location.origin);
+    const backendUrl = "http://localhost:3000";
 
     return {
         isConnected: false,
@@ -17,9 +13,11 @@ const useSocketStore = create((set) => {
         connect: (token) => {
             if (socket?.connected) return;
 
-            socket = io(backendUrl, {
+            socket = io({
                 auth: { token },
-                transports: ["websocket"],
+                transports: ["websocket", "polling"],
+                forceNew: true,
+                reconnection: true,
             });
 
             socket.on("connect", () => {

@@ -15,7 +15,6 @@ import {
     Sparkles,
 } from "lucide-react";
 import PageWrapper from "../components/layout/PageWrapper";
-import Navbar from "../components/layout/Navbar";
 
 function QuizQuestionsPage() {
     const { id: quizId } = useParams();
@@ -194,8 +193,6 @@ function QuizQuestionsPage() {
 
     return (
         <PageWrapper>
-            <Navbar />
-
             <main className="max-w-5xl mx-auto px-6 py-8 animate-in fade-in duration-500 relative z-10">
                 {/* Error Alert */}
                 {errMsg && (

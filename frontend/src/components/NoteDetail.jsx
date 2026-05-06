@@ -17,7 +17,6 @@ import {
 import CommentForm from "./CommentForm";
 import CommentItem from "./CommentItem";
 import PageWrapper from "./layout/PageWrapper";
-import Navbar from "./layout/Navbar";
 
 export default function NoteDetail() {
     const { noteId } = useParams();
@@ -106,7 +105,6 @@ export default function NoteDetail() {
     if (!note) {
         return (
             <PageWrapper>
-                <Navbar />
                 <div className="min-h-screen flex flex-col items-center justify-center px-6 relative z-10">
                     <div className="glass-panel max-w-md w-full border border-white/40 dark:border-slate-700/50 shadow-xl rounded-3xl p-8 text-center bg-white/50 dark:bg-base-300/50">
                         <p className="text-slate-600 dark:text-slate-400 text-lg font-bold mb-6">Note not found</p>
@@ -135,9 +133,6 @@ export default function NoteDetail() {
 
     return (
         <PageWrapper>
-            {/* Header */}
-            <Navbar />
-
             {/* Main Content */}
             <main className="max-w-4xl mx-auto px-6 py-8 animate-in fade-in duration-500 relative z-10">
                 {/* Note Card */}

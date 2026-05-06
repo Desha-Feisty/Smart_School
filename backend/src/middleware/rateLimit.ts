@@ -7,7 +7,7 @@ const isTest = process.env.NODE_ENV === "test";
 // General API rate limit
 export const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: isTest ? 1000 : 100, // Limit each IP to 100 requests per windowMs
+    max: isTest ? 1000 : 500, // Increased from 100
     message: {
         success: false,
         error: "Too Many Requests",
@@ -23,7 +23,7 @@ export const apiLimiter = rateLimit({
 // Strict rate limit for auth endpoints (login, register)
 export const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: isTest ? 100 : 10, // 10 attempts per 15 minutes (100 for tests)
+    max: isTest ? 100 : 20, // Increased from 10
     message: {
         success: false,
         error: "Too Many Attempts",
@@ -43,7 +43,7 @@ export const authLimiter = rateLimit({
 // Rate limit for quiz submissions
 export const quizSubmissionLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: 5, // 5 submissions per minute
+    max: 10, // Increased from 5
     message: {
         success: false,
         error: "Too Many Submissions",
@@ -59,7 +59,7 @@ export const quizSubmissionLimiter = rateLimit({
 // Stricter rate limit for create operations
 export const createLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: 20, // 20 creates per minute
+    max: 50, // Increased from 20
     message: {
         success: false,
         error: "Too Many Requests",
@@ -75,7 +75,7 @@ export const createLimiter = rateLimit({
 // Rate limit for chat messages
 export const chatLimiter = rateLimit({
     windowMs: 10 * 1000, // 10 seconds
-    max: 10, // 10 messages per 10 seconds
+    max: 30, // Increased from 10
     message: {
         success: false,
         error: "Too Many Messages",

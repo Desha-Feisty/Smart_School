@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import PageWrapper from "../components/layout/PageWrapper";
-import Navbar from "../components/layout/Navbar";
 import toast from "react-hot-toast";
 
 function AdminDashboard() {
@@ -279,7 +278,6 @@ function AdminDashboard() {
     if (loading) {
         return (
             <PageWrapper>
-                <Navbar />
                 <div className="flex flex-col items-center justify-center min-h-[60vh]">
                     <span className="loading loading-spinner loading-lg text-blue-600"></span>
                     <p className="mt-4 text-slate-500 font-medium">Initializing Management Portal...</p>
@@ -290,7 +288,6 @@ function AdminDashboard() {
 
     return (
         <PageWrapper>
-            <Navbar />
             <main className="max-w-7xl mx-auto px-6 py-8 w-full animate-in fade-in duration-500">
                 
                 {/* Header Area */}
@@ -492,7 +489,7 @@ function AdminDashboard() {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-sm text-slate-500">
-                                                    {new Date(user.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+                                                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "N/A"}
                                                 </td>
                                                 <td className="px-6 py-4 text-right opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button 
@@ -535,7 +532,7 @@ function AdminDashboard() {
                                     <div className="grid grid-cols-3 gap-4 border-t border-slate-100 dark:border-slate-800 pt-5 mt-4">
                                         <div>
                                             <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Students</div>
-                                            <div className="font-bold text-slate-900 dark:text-white">{course.studentCount}</div>
+                                            <div className="font-bold text-slate-900 dark:text-white">{course.enrollmentCount}</div>
                                         </div>
                                         <div>
                                             <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Quizzes</div>
@@ -705,7 +702,7 @@ function AdminDashboard() {
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center gap-2 text-slate-500 text-sm">
                                                             <Clock className="w-3.5 h-3.5" />
-                                                            {new Date(log.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                                            {log.createdAt ? new Date(log.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "N/A"}
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-3">

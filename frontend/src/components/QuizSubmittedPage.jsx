@@ -41,7 +41,6 @@ function QuizSubmittedPage() {
 
     return (
         <PageWrapper>
-            <Navbar />
             <div className="min-h-[80vh] flex items-center justify-center px-6 relative z-10">
                 <div className="glass-panel max-w-md w-full border border-white/40 dark:border-slate-700/50 shadow-xl rounded-3xl p-8 text-center">
                     <div className="flex justify-center mb-6">

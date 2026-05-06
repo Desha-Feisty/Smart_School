@@ -1,11 +1,12 @@
 import { Router } from "express";
 import { authMiddleware } from "../middleware/auth.js";
-import { getNotifications, markAsRead, markAllAsRead } from "../controllers/notification.controller.js";
+import { getNotifications, markAsRead, markAllAsRead, deleteNotification } from "../controllers/notification.controller.js";
 
 const router = Router();
 
 router.get("/", authMiddleware, getNotifications);
 router.patch("/:id/read", authMiddleware, markAsRead);
 router.post("/read-all", authMiddleware, markAllAsRead);
+router.delete("/:id", authMiddleware, deleteNotification);
 
 export default router;

@@ -6,8 +6,16 @@ const useNotificationStore = create((set, get) => ({
     notifications: [],
     unreadCount: 0,
     loading: false,
+    isOpen: false,
+    
+    setOpen: (open) => set({ isOpen: open }),
+    onOpen: () => set({ isOpen: true }),
+    onClose: () => set({ isOpen: false }),
 
     fetchNotifications: async () => {
+        // Prevent overlapping requests
+        if (get().loading) return;
+        
         const token = useAuthStore.getState().token;
         if (!token) return;
         
@@ -73,6 +81,29 @@ const useNotificationStore = create((set, get) => ({
             notifications: [notification, ...state.notifications].slice(0, 20),
             unreadCount: state.unreadCount + 1,
         }));
+    },
+
+    deleteNotification: async (id) => {
+        try {
+            const token = useAuthStore.getState().token;
+            if (!token) return;
+
+            await axios.delete(`/api/notifications/${id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            const current = get().notifications;
+            const deleted = current.find((n) => String(n._id) === String(id));
+            const updated = current.filter((n) => String(n._id) !== String(id));
+            const newUnreadCount = updated.filter((n) => !n.read).length;
+
+            set({ 
+                notifications: updated, 
+                unreadCount: deleted && !deleted.read ? newUnreadCount : get().unreadCount 
+            });
+        } catch (error) {
+            console.error("Delete notification error:", error.response?.data || error.message);
+        }
     },
 }));
 

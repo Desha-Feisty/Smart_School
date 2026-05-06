@@ -14,7 +14,6 @@ import {
     ArrowLeft,
 } from "lucide-react";
 import PageWrapper from "./layout/PageWrapper";
-import Navbar from "./layout/Navbar";
 
 function QuizResultsPage() {
     const { attemptId } = useParams();
@@ -68,7 +67,6 @@ function QuizResultsPage() {
     if (error) {
         return (
             <PageWrapper>
-                <Navbar />
                 <div className="min-h-[80vh] flex items-center justify-center px-6 relative z-10">
                     <div className="glass-panel max-w-md w-full border border-white/40 dark:border-slate-700/50 shadow-xl rounded-3xl p-8 text-center text-red-600 dark:text-red-400">
                         <p className="text-xl font-bold mb-6">{error}</p>
@@ -88,7 +86,6 @@ function QuizResultsPage() {
     if (!attempt) {
         return (
             <PageWrapper>
-                <Navbar />
                 <div className="min-h-[80vh] flex items-center justify-center px-6 relative z-10">
                     <div className="glass-panel max-w-md w-full border border-white/40 dark:border-slate-700/50 shadow-xl rounded-3xl p-8 text-center">
                         <p className="text-slate-600 dark:text-slate-400 text-lg font-bold mb-6">
@@ -198,7 +195,6 @@ function QuizResultsPage() {
 
     return (
         <PageWrapper>
-            <Navbar />
             <main className="min-h-screen py-12 px-6 animate-in fade-in duration-500 relative z-10">
                 <div className="max-w-4xl mx-auto space-y-8">
                     {/* Main Results Card */}

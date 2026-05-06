@@ -20,6 +20,7 @@ import analyticsRoutes from "../routes/analytics.routes.js";
 import adminRoutes from "../routes/admin.routes.js";
 import leaderboardRoutes from "../routes/leaderboard.routes.js";
 import notificationRoutes from "../routes/notification.routes.js";
+import searchRoutes from "../routes/search.routes.js";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { authMiddleware, requireRole } from "../middleware/auth.js";
@@ -40,7 +41,7 @@ const isTest = process.env.NODE_ENV === "test";
 // Security: Rate limiting - increased for normal use
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: isTest ? 10000 : 500, // Much higher for tests
+    max: isTest ? 10000 : 1000, // Increased from 500
     message: { error: "Too many requests, please try again later." },
     standardHeaders: true,
     legacyHeaders: false,
@@ -49,7 +50,7 @@ const limiter = rateLimit({
 // Strict rate limit for autosave (frequent endpoint)
 const autosaveLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: isTest ? 1000 : 30, // Much higher for tests
+    max: isTest ? 1000 : 60, // Increased from 30
     message: { error: "Too many autosave requests, please try again later." },
     standardHeaders: true,
     legacyHeaders: false,
@@ -58,7 +59,7 @@ const autosaveLimiter = rateLimit({
 // More lenient limiter for read operations (GET requests)
 const readLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: isTest ? 10000 : 200, // Much higher for tests
+    max: isTest ? 10000 : 500, // Increased from 200
     message: { error: "Too many read requests, please try again later." },
     standardHeaders: true,
     legacyHeaders: false,
@@ -97,6 +98,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/search", searchRoutes);
 app.use("/api/admin", adminRoutes);
 
 // Question management root-level endpoints

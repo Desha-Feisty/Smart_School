@@ -101,5 +101,12 @@ router.get(
     requireRole("teacher"),
     attemptController.getBatchStudentGrades,
 );
+// Review endpoint - allows students to review their quiz attempt
+router.get(
+    "/:attemptId/review",
+    authMiddleware,
+    requireRole("student"),
+    attemptController.getAttemptDetails,
+);
 
 export default router;

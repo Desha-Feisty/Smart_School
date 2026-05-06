@@ -5,7 +5,6 @@ import toast from "react-hot-toast";
 import { BookOpen, LogIn, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import PageWrapper from "../components/layout/PageWrapper";
 import useThemeStore from "../stores/ThemeStore";
-import { LoadingButton } from "../components/common/Loading";
 
 function LoginPage() {
     const [email, setEmail] = useState("");
@@ -91,12 +90,12 @@ function LoginPage() {
                     {/* Left Side - Welcome & Branding */}
                     <div className="text-center lg:text-left space-y-8">
                         <div className="join gap-4 items-center justify-center lg:justify-start inline-flex">
-                            <div className="bg-linear-to-br from-blue-600 to-purple-600 rounded-2xl p-4 shadow-lg shadow-blue-500/30">
+                            <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl p-4 shadow-lg shadow-blue-500/30">
                                 <BookOpen className="w-10 h-10 text-white" />
                             </div>
                             <h1 className="text-5xl font-black tracking-tight text-slate-900 dark:text-white">
                                 Class
-                                <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-purple-600">
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
                                     Box
                                 </span>
                             </h1>
@@ -145,7 +144,7 @@ function LoginPage() {
                     <div className="w-full max-w-md mx-auto lg:mx-0">
                         <div className="glass-panel rounded-3xl p-8 sm:p-10 relative overflow-hidden">
                             {/* Subtle highlight */}
-                            <div className="absolute top-0 inset-x-0 h-1 bg-linear-to-r from-blue-500 to-purple-500"></div>
+                            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
 
                             <div className="mb-8 pl-1">
                                 <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">

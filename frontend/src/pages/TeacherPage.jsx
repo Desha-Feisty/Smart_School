@@ -11,7 +11,6 @@ import {
     MessageSquare,
 } from "lucide-react";
 import PageWrapper from "../components/layout/PageWrapper";
-import Navbar from "../components/layout/Navbar";
 import ChatWindow from "../components/ChatWindow";
 
 function TeacherPage() {
@@ -82,8 +81,6 @@ function TeacherPage() {
 
     return (
         <PageWrapper>
-            <Navbar />
-
             {/* Main Content */}
             <main className="max-w-7xl mx-auto px-6 py-12 animate-in fade-in duration-500 w-full relative z-10">
                 {/* Header Section */}
@@ -286,7 +283,7 @@ function TeacherPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {recentChats.map((chat) => (
                                 <div
-                                    key={chat._id || Math.random()}
+                                    key={chat._id || `${chat.courseId}-${chat.peerId}`}
                                     className="glass-card hover:-translate-y-1 cursor-pointer"
                                     onClick={() => {
                                         setChatCourseId(chat.courseId);
@@ -303,9 +300,7 @@ function TeacherPage() {
                                                 {chat.peer?.name || "Unknown"}
                                             </h4>
                                             <span className="text-xs text-slate-400 dark:text-slate-500 font-medium bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">
-                                                {new Date(
-                                                    chat.createdAt,
-                                                ).toLocaleDateString()}
+                                                {chat.createdAt ? new Date(chat.createdAt).toLocaleDateString() : "N/A"}
                                             </span>
                                         </div>
                                         <div className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-3">

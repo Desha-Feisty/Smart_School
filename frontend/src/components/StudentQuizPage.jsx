@@ -177,7 +177,7 @@ function StudentQuizPage() {
 
     if (!currentAttempt || !attemptQuestions.length) {
         return (
-            <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
                 <span className="loading loading-spinner loading-lg text-blue-600"></span>
             </div>
         );

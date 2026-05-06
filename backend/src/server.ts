@@ -21,8 +21,8 @@ async function start() {
         startQuizScheduler();
         startSystemScheduler();
 
-        server.listen(PORT, () => {
-            console.log(`API server listening on http://localhost:${PORT}`);
+        server.listen(Number(PORT), "0.0.0.0", () => {
+            console.log(`API server listening on http://0.0.0.0:${PORT}`);
         });
     } catch (err) {
         console.error("Failed to start server:", err);

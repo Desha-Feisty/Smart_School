@@ -48,6 +48,7 @@ const listMyCourses = async (req: AuthRequest, res: Response) => {
             const courses = await Course.aggregate([
                 { $match: { teacher: new Types.ObjectId(req.user._id) } },
                 { $sort: { createdAt: -1 } },
+                // Lookup enrollments for enrollmentCount
                 {
                     $lookup: {
                         from: "enrollments",
@@ -66,7 +67,61 @@ const listMyCourses = async (req: AuthRequest, res: Response) => {
                 },
                 { $unwind: { path: "$enrollmentMeta", preserveNullAndEmptyArrays: true } },
                 { $addFields: { enrollmentCount: { $ifNull: ["$enrollmentMeta.count", 0] } } },
-                { $project: { enrollmentMeta: 0 } }
+                
+                // Lookup quizzes for this course to get quizCount
+                {
+                    $lookup: {
+                        from: "quizzes",
+                        let: { courseId: "$_id" },
+                        pipeline: [
+                            { $match: { $expr: { $eq: ["$course", "$$courseId"] } } },
+                            { $project: { _id: 1 } }
+                        ],
+                        as: "quizzes"
+                    }
+                },
+                { $addFields: { quizCount: { $size: "$quizzes" } } },
+                
+                // Lookup attempts for quizzes in this course to calculate avgScore
+                {
+                    $lookup: {
+                        from: "attempts",
+                        let: { quizIds: "$quizzes._id" },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: {
+                                        $and: [
+                                            { $in: ["$quiz", "$$quizIds"] },
+                                            { $eq: ["$status", "graded"] }
+                                        ]
+                                    }
+                                }
+                            },
+                            {
+                                $group: {
+                                    _id: null,
+                                    avgScore: {
+                                        $avg: {
+                                            $cond: {
+                                                if: { $eq: ["$maxScore", 0] },
+                                                then: 0,
+                                                else: { $multiply: [{ $divide: ["$score", "$maxScore"] }, 100] }
+                                            }
+                                        }
+                                    },
+                                    count: { $sum: 1 }
+                                }
+                            }
+                        ],
+                        as: "attemptStats"
+                    }
+                },
+                { $unwind: { path: "$attemptStats", preserveNullAndEmptyArrays: true } },
+                { $addFields: { avgScore: { $ifNull: ["$attemptStats.avgScore", 0] } } },
+                
+                // Clean up temporary fields
+                { $project: { enrollmentMeta: 0, quizzes: 0, attemptStats: 0 } }
             ]);
             
             return res.json({ courses });

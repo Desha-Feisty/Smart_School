@@ -1,26 +1,41 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Route, Routes, Navigate } from "react-router-dom";
 import { Toaster, toast } from "react-hot-toast";
-import { useEffect } from "react";
-import useAuthStore from "./stores/Authstore";
+import useAuthStore, { setupAuthInterceptor } from "./stores/Authstore";
+import useThemeStore from "./stores/ThemeStore";
 import useSocketStore from "./stores/SocketStore";
 import useNotificationStore from "./stores/NotificationStore";
 import useQuizStore from "./stores/Quizstore";
 import useTeacherStore from "./stores/Teacherstore";
 import { LoadingPage } from "./components/common/Loading";
 import ErrorBoundary from "./components/common/ErrorBoundary";
+import AppLayout from "./components/layout/AppLayout";
+import { useDebouncedCallback } from "./hooks/useDebounce";
+
+// Regular imports (non-lazy)
+import LoginPage from "./pages/LoginPage.jsx";
+import AnalyticsPage from "./pages/AnalyticsPage.jsx";
 
 // Lazy load pages for code splitting
-const LoginPage = lazy(() => import("./pages/LoginPage"));
-const StudentPage = lazy(() => import("./pages/StudentPage"));
-const TeacherPage = lazy(() => import("./pages/TeacherPage"));
-const TeacherCoursePage = lazy(() => import("./pages/TeacherCoursePage"));
-const QuizQuestionsPage = lazy(() => import("./pages/QuizQuestionsPage"));
-const StudentQuizPage = lazy(() => import("./components/StudentQuizPage"));
-const QuizResultsPage = lazy(() => import("./components/QuizResultsPage"));
-const QuizSubmittedPage = lazy(() => import("./components/QuizSubmittedPage"));
-const NoteDetail = lazy(() => import("./components/NoteDetail"));
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const StudentPage = lazy(() => import("./pages/StudentPage.jsx"));
+const TeacherPage = lazy(() => import("./pages/TeacherPage.jsx"));
+const TeacherCoursePage = lazy(() => import("./pages/TeacherCoursePage.jsx"));
+const QuizQuestionsPage = lazy(() => import("./pages/QuizQuestionsPage.jsx"));
+const StudentQuizPage = lazy(() => import("./components/StudentQuizPage.jsx"));
+const QuizResultsPage = lazy(() => import("./components/QuizResultsPage.jsx"));
+const QuizSubmittedPage = lazy(() => import("./components/QuizSubmittedPage.jsx"));
+const NoteDetail = lazy(() => import("./components/NoteDetail.jsx"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard.jsx"));
+
+// New pages - lazy loaded
+const DashboardPage = lazy(() => import("./pages/DashboardPage.jsx"));
+const StudentCoursesPage = lazy(() => import("./pages/StudentCoursesPage.jsx"));
+const StudentQuizzesPage = lazy(() => import("./pages/StudentQuizzesPage.jsx"));
+const StudentGradesPage = lazy(() => import("./pages/StudentGradesPage.jsx"));
+const StudentCalendarPage = lazy(() => import("./pages/StudentCalendarPage.jsx"));
+const TeacherCoursesPage = lazy(() => import("./pages/TeacherCoursesPage.jsx"));
+const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage.jsx"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage.jsx"));
 
 const processedMessages = new Set();
 
@@ -32,6 +47,10 @@ function SocketListener() {
         (state) => state.fetchNotifications,
     );
     const listRecentChats = useTeacherStore((state) => state.listRecentChats);
+
+    // Debounce updates to avoid 429 errors during message bursts
+    const debouncedFetchNotifications = useDebouncedCallback(fetchNotifications, 1000);
+    const debouncedListRecentChats = useDebouncedCallback(() => listRecentChats(true), 1000);
 
     useEffect(() => {
         if (token) {
@@ -45,7 +64,7 @@ function SocketListener() {
         socket.on("new-quiz", (data) => {
             const token = useAuthStore.getState().token;
             if (!token) return;
-            fetchNotifications();
+            debouncedFetchNotifications();
             useQuizStore.getState().fetchAvailableQuizzes();
             toast.success(`New Quiz: ${data.title} in ${data.courseTitle}`, {
                 duration: 5000,
@@ -56,7 +75,7 @@ function SocketListener() {
         socket.on("new-note", (data) => {
             const token = useAuthStore.getState().token;
             if (!token) return;
-            fetchNotifications();
+            debouncedFetchNotifications();
             toast.success(`New Note: ${data.title} was posted`, {
                 duration: 4000,
                 icon: "📖",
@@ -81,10 +100,10 @@ function SocketListener() {
                 processedMessages.delete(first);
             }
 
-            fetchNotifications();
+            debouncedFetchNotifications();
 
             if (currentUser.role === "teacher") {
-                listRecentChats(true);
+                debouncedListRecentChats();
             }
 
             const myId = currentUser?.id || currentUser?._id;
@@ -107,44 +126,98 @@ function SocketListener() {
             socket.off("new-note");
             socket.off("chat-message");
         };
-    }, [socket]);
+    }, [socket, debouncedFetchNotifications, debouncedListRecentChats]);
 
     return null;
 }
 
 function App() {
+    // Set up auth interceptor after React is initialized
+    useEffect(() => {
+        setupAuthInterceptor();
+        
+        // Initialize theme store after React mounts
+        try {
+            const { initTheme } = useThemeStore.getState();
+            if (initTheme) initTheme();
+        } catch (e) {
+            console.error("Theme init error in App:", e);
+        }
+    }, []);
+
     return (
         <ErrorBoundary>
             <Toaster position="top-right" />
             <SocketListener />
             <Suspense fallback={<LoadingPage />}>
                 <Routes>
+                    {/* Public Routes */}
                     <Route path="/" element={<Navigate to="/login" />} />
                     <Route path="/login" element={<LoginPage />} />
-                    <Route path="/student" element={<StudentPage />} />
-                    <Route
-                        path="/student/quiz/:attemptId"
-                        element={<StudentQuizPage />}
-                    />
-                    <Route
-                        path="/student/quiz/:attemptId/results"
-                        element={<QuizResultsPage />}
-                    />
-                    <Route
-                        path="/student/quiz/:attemptId/submitted"
-                        element={<QuizSubmittedPage />}
-                    />
-                    <Route path="/teacher" element={<TeacherPage />} />
-                    <Route
-                        path="/teacher/course/:id"
-                        element={<TeacherCoursePage />}
-                    />
-                    <Route
-                        path="/teacher/quiz/:id/questions"
-                        element={<QuizQuestionsPage />}
-                    />
-                    <Route path="/note/:noteId" element={<NoteDetail />} />
-                    <Route path="/admin" element={<AdminDashboard />} />
+
+                    {/* Student Routes with App Layout */}
+                    <Route element={<AppLayout />}>
+                        {/* New Dashboard Routes */}
+                        <Route path="/student/dashboard" element={<DashboardPage />} />
+                        <Route path="/student/analytics" element={<AnalyticsPage />} />
+
+                        {/* New Standalone Pages */}
+                        <Route path="/student/courses" element={<StudentCoursesPage />} />
+                        <Route path="/student/quizzes" element={<StudentQuizzesPage />} />
+                        <Route path="/student/grades" element={<StudentGradesPage />} />
+                        <Route path="/student/calendar" element={<StudentCalendarPage />} />
+
+                        {/* Existing Student Routes */}
+                        <Route path="/student" element={<StudentPage />} />
+                        <Route
+                            path="/student/quiz/:attemptId"
+                            element={<StudentQuizPage />}
+                        />
+                        <Route
+                            path="/student/quiz/:attemptId/results"
+                            element={<QuizResultsPage />}
+                        />
+                        <Route
+                            path="/student/quiz/:attemptId/submitted"
+                            element={<QuizSubmittedPage />}
+                        />
+                        <Route path="/note/:noteId" element={<NoteDetail />} />
+                    </Route>
+
+                    {/* Teacher Routes with App Layout */}
+                    <Route element={<AppLayout />}>
+                        {/* New Dashboard Routes */}
+                        <Route path="/teacher/dashboard" element={<DashboardPage />} />
+                        <Route path="/teacher/analytics" element={<AnalyticsPage />} />
+
+                        {/* New Standalone Pages */}
+                        <Route path="/teacher/courses" element={<TeacherCoursesPage />} />
+
+                        {/* Existing Teacher Routes */}
+                        <Route path="/teacher" element={<TeacherPage />} />
+                        <Route
+                            path="/teacher/course/:id"
+                            element={<TeacherCoursePage />}
+                        />
+                        <Route
+                            path="/teacher/quiz/:id/questions"
+                            element={<QuizQuestionsPage />}
+                        />
+                    </Route>
+
+                    {/* Admin Routes */}
+                    <Route element={<AppLayout />}>
+                        <Route path="/admin" element={<AdminDashboard />} />
+                        <Route path="/admin/users" element={<AdminDashboard />} />
+                        <Route path="/admin/analytics" element={<AdminDashboard />} />
+                        <Route path="/admin/logs" element={<AdminDashboard />} />
+                    </Route>
+
+                    {/* Shared Routes */}
+                    <Route element={<AppLayout />}>
+                        <Route path="/leaderboard" element={<LeaderboardPage />} />
+                        <Route path="/settings" element={<SettingsPage />} />
+                    </Route>
                 </Routes>
             </Suspense>
         </ErrorBoundary>
