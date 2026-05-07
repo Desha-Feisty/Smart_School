@@ -4,10 +4,10 @@ import useAuthStore from "../stores/Authstore";
 import useTeacherStore from "../stores/Teacherstore";
 import useQuizStore from "../stores/Quizstore";
 import PageWrapper from "../components/layout/PageWrapper";
-import { Calendar, Clock, BookOpen, Zap } from "lucide-react";
+import { Calendar, Clock, BookOpen, Zap, Calendar as CalendarIcon } from "lucide-react";
 
 function StudentCalendarPage() {
-    const { token } = useAuthStore();
+    const { token, listEnrolledCalendarEvents, calendarEvents } = useAuthStore();
     const { allCourses, listMyCourses } = useTeacherStore();
     const { availableQuizzes, fetchAvailableQuizzes } = useQuizStore();
     const navigate = useNavigate();
@@ -22,6 +22,16 @@ function StudentCalendarPage() {
         listMyCourses();
         fetchAvailableQuizzes();
     }, [token, navigate, listMyCourses, fetchAvailableQuizzes]);
+
+    // Fetch calendar events when courses are loaded
+    useEffect(() => {
+        if (allCourses.length > 0 && token) {
+            const courseIds = allCourses.map((c) => c._id || c.id).filter(Boolean);
+            if (courseIds.length > 0) {
+                listEnrolledCalendarEvents(courseIds);
+            }
+        }
+    }, [allCourses, token, listEnrolledCalendarEvents]);
 
     const getDaysInMonth = (date) => {
         const year = date.getFullYear();
@@ -45,6 +55,7 @@ function StudentCalendarPage() {
         if (!day) return [];
         const events = [];
 
+        // Add quiz events
         availableQuizzes.forEach((quiz) => {
             if (quiz.startAt && new Date(quiz.startAt).toDateString() === day.toDateString()) {
                 events.push({
@@ -65,6 +76,26 @@ function StudentCalendarPage() {
                 });
             }
         });
+
+        // Add calendar events
+        if (calendarEvents && calendarEvents.length > 0) {
+            calendarEvents.forEach((event) => {
+                if (event.startAt && new Date(event.startAt).toDateString() === day.toDateString()) {
+                    let eventColor = "blue";
+                    if (event.eventType === "deadline") eventColor = "red";
+                    else if (event.eventType === "meeting") eventColor = "blue";
+                    else if (event.eventType === "announcement") eventColor = "purple";
+                    
+                    events.push({
+                        type: "calendar-event",
+                        title: event.title,
+                        time: new Date(event.startAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                        icon: CalendarIcon,
+                        color: eventColor,
+                    });
+                }
+            });
+        }
 
         return events;
     };

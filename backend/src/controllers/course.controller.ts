@@ -75,12 +75,16 @@ const listMyCourses = async (req: AuthRequest, res: Response) => {
                         let: { courseId: "$_id" },
                         pipeline: [
                             { $match: { $expr: { $eq: ["$course", "$$courseId"] } } },
-                            { $project: { _id: 1 } }
+                            { $project: { _id: 1, published: 1 } }
                         ],
                         as: "quizzes"
                     }
                 },
                 { $addFields: { quizCount: { $size: "$quizzes" } } },
+                
+                // Count published quizzes
+                { $addFields: { publishedQuizCount: { $size: { $filter: { input: "$quizzes", as: "q", cond: { $eq: ["$$q.published", true] } } } } } },
+                { $addFields: { debugQuizzes: "$quizzes" } },
                 
                 // Lookup attempts for quizzes in this course to calculate avgScore
                 {
@@ -120,8 +124,8 @@ const listMyCourses = async (req: AuthRequest, res: Response) => {
                 { $unwind: { path: "$attemptStats", preserveNullAndEmptyArrays: true } },
                 { $addFields: { avgScore: { $ifNull: ["$attemptStats.avgScore", 0] } } },
                 
-                // Clean up temporary fields
-                { $project: { enrollmentMeta: 0, quizzes: 0, attemptStats: 0 } }
+                // Clean up temporary fields (keep publishedQuizCount)
+                { $project: { enrollmentMeta: 0, quizzes: 0, attemptStats: 0, quizCount: 0, debugQuizzes: 0 } }
             ]);
             
             return res.json({ courses });
@@ -136,7 +140,25 @@ const listMyCourses = async (req: AuthRequest, res: Response) => {
         const courses = enrollments
             .map((e) => e.course)
             .filter((c) => c !== null);
-        return res.json({ courses });
+        
+        // For each course, count published quizzes asynchronously
+        const { default: Quiz } = await import("../models/quiz.js");
+        const coursesWithQuizCount = await Promise.all(
+            courses.map(async (course: any) => {
+                const publishedCount = await Quiz.countDocuments({
+                    course: course._id,
+                    published: true,
+                });
+                return { 
+                    _id: course._id, 
+                    title: course.title, 
+                    description: course.description,
+                    publishedQuizCount: publishedCount 
+                };
+            })
+        );
+        
+        return res.json({ courses: coursesWithQuizCount });
     } catch (error) {
         console.error("Failed to list my courses:", error);
         return res.status(500).json({ errMsg: "failed to fetch courses" });

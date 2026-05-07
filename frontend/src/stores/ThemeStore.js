@@ -1,29 +1,44 @@
 import { create } from "zustand";
 
-// No module-level side effects - completely safe
+// Initialize theme synchronously at module load - safe, no DOM manipulation yet
+const getInitialTheme = () => {
+    try {
+        if (typeof window !== "undefined" && window.localStorage) {
+            const saved = window.localStorage.getItem("theme");
+            if (saved === "night" || saved === "winter") {
+                return saved;
+            }
+        }
+    } catch (e) {
+        // Ignore errors during init
+    }
+    return "winter";
+};
+
+// Apply theme to document synchronously - called immediately so CSS variants work
+const applyThemeToDocument = (theme) => {
+    try {
+        if (typeof document !== "undefined") {
+            document.documentElement.setAttribute("data-theme", theme);
+            document.documentElement.classList.toggle("dark", theme === "night");
+        }
+    } catch (e) {
+        // Ignore errors
+    }
+};
+
+// Initialize immediately at module load
+const initialTheme = getInitialTheme();
+applyThemeToDocument(initialTheme);
+
 const useThemeStore = create((set, get) => ({
-    theme: "winter", // default only, no initialization here
+    theme: initialTheme, // Use the pre-initialized value
     
     initTheme: () => {
-        try {
-            if (typeof window === "undefined" || !window.localStorage) return;
-            
-            const saved = window.localStorage.getItem("theme");
-            const theme = (saved === "night" || saved === "winter") ? saved : "winter";
-            
-            // Save to localStorage to persist
-            window.localStorage.setItem("theme", theme);
-            
-            if (typeof document !== "undefined") {
-                document.documentElement.setAttribute("data-theme", theme);
-                document.documentElement.classList.toggle("dark", theme === "night");
-            }
-            
-            set({ theme });
-            console.log("Theme initialized:", theme);
-        } catch (e) {
-            console.error("Theme init error:", e);
-        }
+        // Already initialized at module load, but ensure consistency
+        const saved = get().theme;
+        applyThemeToDocument(saved);
+        console.log("Theme initialized:", saved);
     },
     
     toggleTheme: () => {
@@ -37,10 +52,7 @@ const useThemeStore = create((set, get) => ({
             }
             
             // Apply
-            if (typeof document !== "undefined") {
-                document.documentElement.setAttribute("data-theme", newTheme);
-                document.documentElement.classList.toggle("dark", newTheme === "night");
-            }
+            applyThemeToDocument(newTheme);
             
             console.log("Theme toggled to:", newTheme);
             set({ theme: newTheme });

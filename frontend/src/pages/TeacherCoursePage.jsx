@@ -12,6 +12,7 @@ import {
     MessageSquare,
     Trophy,
     TrendingUp,
+    Calendar,
 } from "lucide-react";
 import PageWrapper from "../components/layout/PageWrapper";
 import AnalyticsDashboard from "../components/AnalyticsDashboard";
@@ -22,6 +23,7 @@ import CourseQuizzesTab from "../components/teacher/CourseQuizzesTab";
 import CourseStudentsTab from "../components/teacher/CourseStudentsTab";
 import CourseGradesTab from "../components/teacher/CourseGradesTab";
 import CourseCommunityTab from "../components/teacher/CourseCommunityTab";
+import CourseEventsTab from "../components/teacher/CourseEventsTab";
 
 function TeacherCoursePage() {
     const { id } = useParams();
@@ -37,7 +39,6 @@ function TeacherCoursePage() {
     } = useTeacherStore();
     const {
         quizzes,
-        createQuiz,
         listCourseQuizzes,
         deleteQuiz,
         publishQuiz,
@@ -53,16 +54,6 @@ function TeacherCoursePage() {
     const [course, setCourse] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editData, setEditData] = useState({ title: "", description: "" });
-    const [newQuiz, setNewQuiz] = useState({
-        title: "",
-        description: "",
-        openAt: "",
-        closeAt: "",
-        durationMinutes: 30,
-        attemptsAllowed: 1,
-        gradingMode: "onSubmit",
-        questionsPerAttempt: "",
-    });
     const [chatOpen, setChatOpen] = useState(false);
     const [chatCourseId, setChatCourseId] = useState(null);
     const [chatPeerId, setChatPeerId] = useState(null);
@@ -72,7 +63,6 @@ function TeacherCoursePage() {
     const [activeTab, setActiveTab] = useState("quizzes");
     const [courseNotes, setCourseNotes] = useState([]);
     const [notesLoading, setNotesLoading] = useState(false);
-    const [isCreatingQuiz, setIsCreatingQuiz] = useState(false);
     const [isUpdatingCourse, setIsUpdatingCourse] = useState(false);
     const [enrolledStudents, setEnrolledStudents] = useState([]);
     const [studentsLoading, setStudentsLoading] = useState(false);
@@ -221,52 +211,6 @@ function TeacherCoursePage() {
         }
     };
 
-    const handleCreateQuiz = async (e) => {
-        e.preventDefault();
-        if (!newQuiz.title.trim()) {
-            toast.error("Quiz title is required");
-            return;
-        }
-
-        const openAtDate = new Date(newQuiz.openAt);
-        const closeAtDate = new Date(newQuiz.closeAt);
-        if (
-            Number.isNaN(openAtDate.getTime()) ||
-            Number.isNaN(closeAtDate.getTime())
-        ) {
-            toast.error("Please provide valid open and close dates");
-            return;
-        }
-        if (openAtDate >= closeAtDate) {
-            toast.error("Close date must be later than open date");
-            return;
-        }
-
-        setIsCreatingQuiz(true);
-        try {
-            await createQuiz(id, newQuiz);
-            setNewQuiz({
-                title: "",
-                description: "",
-                openAt: "",
-                closeAt: "",
-                durationMinutes: 30,
-                attemptsAllowed: 1,
-                gradingMode: "onSubmit",
-                questionsPerAttempt: "",
-            });
-            toast.success("Quiz created successfully");
-        } catch (err) {
-            toast.error(
-                err.response?.data?.errMsg ||
-                    err.message ||
-                    "Failed to create quiz",
-            );
-        } finally {
-            setIsCreatingQuiz(false);
-        }
-    };
-
     const handlePublishQuiz = async (quizId) => {
         try {
             await publishQuiz(quizId);
@@ -364,6 +308,7 @@ function TeacherCoursePage() {
                 <div className="flex overflow-x-auto hide-scrollbar gap-2 mb-8 bg-slate-200/50 dark:bg-base-300/50 p-1.5 rounded-2xl w-max border border-slate-200 dark:border-slate-700/50">
                     {[
                         { id: "quizzes", label: "Quizzes", icon: BookOpen },
+                        { id: "events", label: "Events", icon: Calendar },
                         {
                             id: "analytics",
                             label: "Analytics",
@@ -406,10 +351,14 @@ function TeacherCoursePage() {
                         handlePublishQuiz={handlePublishQuiz}
                         handleUnpublishQuiz={handleUnpublishQuiz}
                         handleDeleteQuiz={handleDeleteQuiz}
-                        handleCreateQuiz={handleCreateQuiz}
-                        newQuiz={newQuiz}
-                        setNewQuiz={setNewQuiz}
-                        isCreatingQuiz={isCreatingQuiz}
+                        courseId={id}
+                    />
+                )}
+
+                {activeTab === "events" && (
+                    <CourseEventsTab
+                        courseId={id}
+                        course={course}
                     />
                 )}
 

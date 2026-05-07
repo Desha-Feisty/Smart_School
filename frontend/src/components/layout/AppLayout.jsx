@@ -1,31 +1,48 @@
+import { useState } from "react";
 import { Outlet, Navigate } from "react-router-dom";
 import useAuthStore from "../../stores/Authstore";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
+import NotificationCenter from "../notifications/NotificationCenter";
 
 function AppLayout() {
     const { token } = useAuthStore();
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
     if (!token) {
         return <Navigate to="/login" replace />;
     }
 
     return (
-        <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-base-100">
-            {/* Full-width Top Navbar */}
-            <Navbar />
+        <div className="page-bg">
+            {/* Fixed Navbar */}
+            <Navbar 
+                isSidebarOpen={isSidebarOpen}
+                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                onOpenNotifications={() => setIsNotificationsOpen(true)}
+            />
 
-            <div className="flex flex-1 overflow-hidden">
-                {/* Collapsible Sidebar below Navbar */}
-                <Sidebar />
+            {/* Slide-out Sidebar */}
+            <Sidebar 
+                isOpen={isSidebarOpen}
+                onClose={() => setIsSidebarOpen(false)}
+            />
 
-                {/* Main Content Area */}
-                <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                    <div className="max-w-7xl mx-auto">
-                        <Outlet />
-                    </div>
-                </main>
-            </div>
+            {/* Page Content - with top padding for fixed navbar */}
+            <main style={{ 
+                padding: "96px 24px 24px 24px", 
+                maxWidth: "100%",
+                overflow: "hidden",
+            }}>
+                <Outlet />
+            </main>
+
+            {/* Notification Side Panel */}
+            <NotificationCenter 
+                isOpen={isNotificationsOpen}
+                onClose={() => setIsNotificationsOpen(false)}
+            />
         </div>
     );
 }

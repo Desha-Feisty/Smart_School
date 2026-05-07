@@ -34,7 +34,6 @@ const useAuthStore = create(
                         });
                         return response.data;
                     }
-                    // Handle new response format: { success, data: { token, refreshToken, user }, message }
                     const userData = response.data.data?.user || response.data.user;
                     const loginUser = {
                         ...userData,
@@ -65,81 +64,147 @@ const useAuthStore = create(
                         password,
                         role,
                     });
-                    if (!response.data.success) {
-                        set({ errMsg: response.data.errMsg });
-                        return response.data;
-                    }
-                    // Handle new response format: { success, data: { token, refreshToken, user }, message }
-                    const userData = response.data.data?.user || response.data.user;
-                    const registerUser = {
-                        ...userData,
-                        id: userData?.id || userData?._id?.toString(),
-                    };
-                    set({ user: registerUser });
-                    set({ token: response.data.data?.token || response.data.token });
-                    set({ role: registerUser.role });
-                    set({ errMsg: null });
                     return response.data;
                 } catch (error) {
                     const errMsg =
                         error.response?.data?.errMsg ||
                         error.message ||
                         "Registration failed";
-                    console.error("Register error:", errMsg);
                     set({ errMsg });
                     return { success: false, errMsg };
                 }
             },
-            logout: () => {
+            logout: async () => {
+                try {
+                    await axios.post(
+                        "/api/auth/logout",
+                        {},
+                        {
+                            headers: {
+                                Authorization: `Bearer ${get().token}`,
+                            },
+                        }
+                    );
+                } catch (error) {
+                    console.error("Logout error:", error);
+                }
                 set({
                     user: null,
                     token: null,
                     role: null,
-                    errMsg: null,
-                    isLoggingIn: false,
                     isExplicitLogout: true,
+                    errMsg: null,
                 });
+            },
+            // Calendar Events for Students
+            calendarEvents: [],
+            setCalendarEvents: (events) => set({ calendarEvents: events }),
+            listCourseCalendarEvents: async (courseId) => {
+                try {
+                    const response = await axios.get(`/api/courses/${courseId}/events`, {
+                        headers: { Authorization: `Bearer ${get().token}` },
+                    });
+                    if (response.status === 200) {
+                        return response.data.events || [];
+                    }
+                    return [];
+                } catch (error) {
+                    console.error("Failed to fetch calendar events:", error);
+                    return [];
+                }
+            },
+            listEnrolledCalendarEvents: async (courseIds) => {
+                try {
+                    const allEvents = [];
+                    for (const courseId of courseIds) {
+                        const events = await get().listCourseCalendarEvents(courseId);
+                        if (events && events.length > 0) {
+                            allEvents.push(...events);
+                        }
+                    }
+                    set({ calendarEvents: allEvents });
+                    return allEvents;
+                } catch (error) {
+                    console.error("Failed to fetch enrolled calendar events:", error);
+                    return [];
+                }
             },
         }),
         {
             name: "auth-storage",
             partialize: (state) => ({
-                user: state.user,
                 token: state.token,
+                user: state.user,
                 role: state.role,
             }),
-        },
-    ),
+        }
+    )
 );
 
-// Set up interceptor after store is created to avoid issues
-let interceptorSetup = false;
-export function setupAuthInterceptor() {
-    if (interceptorSetup) return;
-    interceptorSetup = true;
-    
-    axios.interceptors.response.use(
-        (response) => response,
-        (error) => {
-            const state = useAuthStore.getState();
-            const isExplicitLogout = state.isExplicitLogout;
-            if (
-                error.response?.status === 401 &&
-                !isExplicitLogout &&
-                (error.response?.data?.details === "jwt expired" ||
-                    error.response?.data?.errMsg === "unable to verify user")
-            ) {
-                state.logout();
-                if (
-                    typeof window !== "undefined" &&
-                    !window.location.pathname.includes("/login")
-                ) {
-                    window.location.href = "/login";
-                }
+// Calendar Events for Students
+useAuthStore.setState((s) => ({
+    calendarEvents: s?.calendarEvents || [],
+}));
+useAuthStore.setCalendarEvents = (events) => useAuthStore.setState({ calendarEvents: events });
+useAuthStore.listCourseCalendarEvents = async (courseId) => {
+    try {
+        const response = await axios.get(`/api/courses/${courseId}/events`, {
+            headers: { Authorization: `Bearer ${useAuthStore.getState().token}` },
+        });
+        if (response.status === 200) {
+            return response.data.events || [];
+        }
+        return [];
+    } catch (error) {
+        console.error("Failed to fetch calendar events:", error);
+        return [];
+    }
+};
+useAuthStore.listEnrolledCalendarEvents = async (courseIds) => {
+    try {
+        const allEvents = [];
+        for (const courseId of courseIds) {
+            const events = await useAuthStore.listCourseCalendarEvents(courseId);
+            if (events && events.length > 0) {
+                allEvents.push(...events);
             }
-            return Promise.reject(error);
-        },
-    );
-}
+        }
+        useAuthStore.setState({ calendarEvents: allEvents });
+        return allEvents;
+    } catch (error) {
+        console.error("Failed to fetch enrolled calendar events:", error);
+        return [];
+    }
+};
+
+// Setup function for axios interceptor (called from App.jsx)
+export const setupAuthInterceptor = () => {
+    let interceptorSetup = false;
+    if (typeof window !== "undefined" && !interceptorSetup) {
+        interceptorSetup = true;
+        axios.interceptors.response.use(
+            (response) => response,
+            (error) => {
+                const state = useAuthStore.getState();
+                const isExplicitLogout = state.isExplicitLogout;
+                if (
+                    error.response?.status === 401 &&
+                    !isExplicitLogout &&
+                    (error.response?.data?.details === "jwt expired" ||
+                        error.response?.data?.errMsg === "unable to verify user")
+                ) {
+                    state.logout();
+                    if (
+                        typeof window !== "undefined" &&
+                        !window.location.pathname.includes("/login")
+                    ) {
+                        window.location.href = "/login";
+                    }
+                }
+                return Promise.reject(error);
+            }
+        );
+    }
+};
 
 export default useAuthStore;

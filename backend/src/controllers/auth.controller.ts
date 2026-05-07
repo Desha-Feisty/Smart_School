@@ -208,4 +208,40 @@ const logout = async (req: AuthRequest, res: Response) => {
     }
 };
 
-export { register, login, me, logout };
+const changePassword = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user?._id;
+        if (!userId) {
+            return sendUnauthorized(res, "unauthenticated");
+        }
+
+        const { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) {
+            return sendValidationError(res, "currentPassword and newPassword are required");
+        }
+
+        if (newPassword.length < 6) {
+            return sendValidationError(res, "newPassword must be at least 6 characters");
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return sendNotFound(res, "user not found");
+        }
+
+        const isMatch = await user.comparePassword(currentPassword);
+        if (!isMatch) {
+            return sendUnauthorized(res, "current password is incorrect");
+        }
+
+        user.password = newPassword;
+        await user.save();
+
+        return sendSuccess(res, null, "Password changed successfully");
+    } catch (error) {
+        console.error("Change password error:", error);
+        return sendError(res, "Failed to change password", 500);
+    }
+};
+
+export { register, login, me, logout, changePassword };

@@ -1,32 +1,48 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import useNotificationStore from "../../stores/NotificationStore";
+import useThemeStore from "../../stores/ThemeStore";
 import {
     Bell,
     X,
     Check,
-    CheckCheck,
-    ChevronRight,
     FileText,
-    ClipboardList,
     MessageSquare,
     AlertCircle,
     Calendar,
-    Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
+import useAuthStore from "../../stores/Authstore";
+
+// Glassmorphism styles - dark mode aware
+const glassStyle = (isDark) => ({
+    backgroundColor: isDark ? "rgba(15, 23, 42, 0.85)" : "rgba(255, 255, 255, 0.65)",
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+    borderLeft: isDark ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(255, 255, 255, 0.4)",
+    boxShadow: isDark ? "0 25px 50px -12px rgba(0, 0, 0, 0.5)" : "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+});
+
+const backdropStyle = (isDark) => ({
+    backgroundColor: isDark ? "rgba(0, 0, 0, 0.6)" : "rgba(0, 0, 0, 0.35)",
+    backdropFilter: "blur(8px)",
+});
+
+const iconColors = {
+    quiz: { bg: "rgba(59, 130, 246, 0.15)", color: "#3b82f6" },
+    "quiz-graded": { bg: "rgba(34, 197, 94, 0.15)", color: "#22c55e" },
+    "quiz-missed": { bg: "rgba(239, 68, 68, 0.15)", color: "#ef4444" },
+    note: { bg: "rgba(245, 158, 11, 0.15)", color: "#f59e0b" },
+    chat: { bg: "rgba(168, 85, 247, 0.15)", color: "#a855f7" },
+    system: { bg: "rgba(100, 116, 139, 0.15)", color: "#64748b" },
+};
 
 function NotificationCenter({ isOpen, onClose }) {
-    const {
-        notifications,
-        unreadCount,
-        isLoading,
-        fetchNotifications,
-        markAsRead,
-        markAllAsRead,
-        deleteNotification,
-    } = useNotificationStore();
-
+    const { notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead } = useNotificationStore();
+    const { user, logout } = useAuthStore();
+    const { theme } = useThemeStore();
+    const isDark = theme === "night";
+    
     useEffect(() => {
         if (isOpen) {
             fetchNotifications();
@@ -35,7 +51,7 @@ function NotificationCenter({ isOpen, onClose }) {
 
     const getIcon = (type) => {
         const icons = {
-            quiz: ClipboardList,
+            quiz: FileText,
             "quiz-graded": FileText,
             "quiz-missed": AlertCircle,
             note: FileText,
@@ -43,20 +59,10 @@ function NotificationCenter({ isOpen, onClose }) {
             system: Bell,
         };
         const Icon = icons[type] || Bell;
-        return <Icon className="w-5 h-5" />;
+        return <Icon style={{ width: 20, height: 20 }} />;
     };
 
-    const getColors = (type) => {
-        const colors = {
-            quiz: "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400",
-            "quiz-graded": "bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400",
-            "quiz-missed": "bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400",
-            note: "bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400",
-            chat: "bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400",
-            system: "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400",
-        };
-        return colors[type] || colors.system;
-    };
+    const getColors = (type) => iconColors[type] || iconColors.system;
 
     const handleMarkAllRead = async () => {
         try {
@@ -85,159 +91,254 @@ function NotificationCenter({ isOpen, onClose }) {
         }
     };
 
-    const groupedNotifications = notifications.reduce((acc, notification) => {
-        const date = format(new Date(notification.createdAt), "yyyy-MM-dd");
-        if (!acc[date]) {
-            acc[date] = [];
-        }
-        acc[date].push(notification);
-        return acc;
-    }, {});
+    const handleNotificationClick = (notification) => {
+        if (!notification.read) markAsRead(notification._id);
+    };
 
     return (
         <AnimatePresence>
             {isOpen && (
                 <>
-                    {/* Backdrop */}
+                    {/* Glassmorphism Backdrop */}
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40"
                         onClick={onClose}
+                        style={{
+                            position: "fixed",
+                            inset: 0,
+                            ...backdropStyle(isDark),
+                            zIndex: 200,
+                        }}
                     />
 
-                    {/* Panel */}
+                    {/* Glassmorphism Side Panel */}
                     <motion.div
                         initial={{ opacity: 0, x: "100%" }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: "100%" }}
                         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                        className="fixed right-0 top-0 h-full w-full max-w-md bg-white dark:bg-base-200 shadow-2xl z-50 flex flex-col"
+                        style={{
+                            position: "fixed",
+                            right: 0,
+                            top: 0,
+                            height: "100%",
+                            width: "100%",
+                            maxWidth: 420,
+                            ...glassStyle(isDark),
+                            display: "flex",
+                            flexDirection: "column",
+                            zIndex: 250,
+                        }}
                     >
-                        {/* Header */}
-                        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-200 dark:border-slate-700/50">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center">
-                                    <Bell className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                        {/* Glass Header */}
+                        <div style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            padding: "24px",
+                            borderBottom: isDark ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(0, 0, 0, 0.06)",
+                        }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                                <div style={{
+                                    width: 48,
+                                    height: 48,
+                                    borderRadius: 16,
+                                    background: "linear-gradient(135deg, #8b5cf6, #a855f7)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    boxShadow: "0 4px 16px rgba(139, 92, 246, 0.35)",
+                                }}>
+                                    <Bell style={{ width: 24, height: 24, color: "white" }} />
                                 </div>
                                 <div>
-                                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                                    <h2 style={{ fontSize: 20, fontWeight: 700, color: isDark ? "#f1f5f9" : "#1e293b", margin: 0 }}>
                                         Notifications
                                     </h2>
                                     {unreadCount > 0 && (
-                                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                                        <p style={{ fontSize: 14, color: isDark ? "#94a3b8" : "#64748b", margin: 0 }}>
                                             {unreadCount} unread
                                         </p>
                                     )}
                                 </div>
                             </div>
-                            <button
-                                onClick={onClose}
-                                className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/50 text-slate-500 dark:text-slate-400"
+                            <button 
+                                onClick={onClose} 
+                                style={{
+                                    padding: 10,
+                                    borderRadius: 14,
+                                    background: isDark ? "rgba(30, 41, 59, 0.6)" : "rgba(255, 255, 255, 0.5)",
+                                    border: isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(255, 255, 255, 0.5)",
+                                    cursor: "pointer",
+                                }}
                             >
-                                <X className="w-5 h-5" />
+                                <X style={{ width: 20, height: 20, color: isDark ? "#94a3b8" : "#64748b" }} />
                             </button>
                         </div>
 
-                        {/* Actions */}
+                        {/* Mark all read button - glass style */}
                         {unreadCount > 0 && (
-                            <div className="flex items-center gap-2 px-6 py-3 border-b border-slate-200 dark:border-slate-700/50">
+                            <div style={{ 
+                                padding: "16px 24px", 
+                                borderBottom: isDark ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(0, 0, 0, 0.06)",
+                                background: isDark ? "rgba(139, 92, 246, 0.08)" : "rgba(139, 92, 246, 0.04)",
+                            }}>
                                 <button
                                     onClick={handleMarkAllRead}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-colors"
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 8,
+                                        padding: "10px 18px",
+                                        borderRadius: 12,
+                                        fontSize: 14,
+                                        fontWeight: 600,
+                                        color: isDark ? "#c084fc" : "#8b5cf6",
+                                        background: isDark ? "rgba(139, 92, 246, 0.15)" : "rgba(139, 92, 246, 0.1)",
+                                        border: isDark ? "1px solid rgba(139, 92, 246, 0.25)" : "1px solid rgba(139, 92, 246, 0.2)",
+                                        cursor: "pointer",
+                                    }}
                                 >
-                                    <CheckCheck className="w-4 h-4" />
-                                    Mark all read
+                                    <Check style={{ width: 18, height: 18 }} />
+                                    Mark all as read
                                 </button>
                             </div>
                         )}
 
-                        {/* Notifications List */}
-                        <div className="flex-1 overflow-y-auto">
-                            {isLoading ? (
-                                <div className="flex items-center justify-center py-12">
-                                    <div className="w-8 h-8 border-4 border-violet-200 dark:border-violet-700 border-t-violet-600 rounded-full animate-spin" />
-                                </div>
-                            ) : notifications.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-16 text-slate-500 dark:text-slate-400">
-                                    <Bell className="w-16 h-16 mb-4 opacity-30" />
-                                    <p className="text-lg font-medium">No notifications</p>
-                                    <p className="text-sm">You're all caught up!</p>
+                        {/* Notifications List - glass style */}
+                        <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px" }}>
+                            {notifications.length === 0 ? (
+                                <div style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    padding: "64px 24px",
+                                    gap: 16,
+                                }}>
+                                    <div style={{
+                                        width: 72,
+                                        height: 72,
+                                        borderRadius: "50%",
+                                        background: isDark ? "rgba(139, 92, 246, 0.15)" : "rgba(139, 92, 246, 0.1)",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                    }}>
+                                        <Bell style={{ width: 36, height: 36, color: isDark ? "#a855f7" : "#a855f7" }} />
+                                    </div>
+                                    <p style={{ color: isDark ? "#94a3b8" : "#64748b", fontSize: 15 }}>Your inbox is empty!</p>
+                                    <p style={{ color: isDark ? "#64748b" : "#94a3b8", fontSize: 13 }}>You're all caught up</p>
                                 </div>
                             ) : (
-                                <div className="py-2">
-                                    {Object.entries(groupedNotifications).map(([date, items]) => (
-                                        <div key={date}>
-                                            {/* Date Header */}
-                                            <div className="px-6 py-2">
-                                                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">
-                                                    {format(new Date(date), "EEEE, MMMM d")}
-                                                </p>
-                                            </div>
-
-                                            {/* Notifications */}
-                                            {items.map((notification) => (
-                                                <motion.div
-                                                    key={notification._id}
-                                                    initial={{ opacity: 0, y: 10 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    className={`relative px-6 py-4 border-b border-slate-100 dark:border-slate-700/30 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer ${
-                                                        !notification.read
-                                                            ? "bg-violet-50/50 dark:bg-violet-500/5"
-                                                            : ""
-                                                    }`}
-                                                    onClick={() => markAsRead(notification._id)}
-                                                >
-                                                    {!notification.read && (
-                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-violet-500" />
-                                                    )}
-
-                                                    <div className="flex items-start gap-4">
-                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${getColors(notification.type)}`}>
-                                                            {getIcon(notification.type)}
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className={`font-medium text-slate-900 dark:text-white ${
-                                                                !notification.read ? "font-semibold" : ""
-                                                            }`}>
-                                                                {notification.title}
-                                                            </p>
-                                                            <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mt-1">
-                                                                {notification.message}
-                                                            </p>
-                                                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
-                                                                {formatTime(notification.createdAt)}
-                                                            </p>
-                                                        </div>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                deleteNotification(notification._id);
-                                                            }}
-                                                            className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                    {notifications.map((notification) => {
+                                        const colors = getColors(notification.type);
+                                        return (
+                                            <div
+                                                key={notification._id}
+                                                onClick={() => handleNotificationClick(notification)}
+                                                style={{
+                                                    display: "flex",
+                                                    gap: 14,
+                                                    padding: 16,
+                                                    borderRadius: 16,
+                                                    backgroundColor: notification.read 
+                                                        ? (isDark ? "rgba(30, 41, 59, 0.3)" : "rgba(255, 255, 255, 0.4)") 
+                                                        : (isDark ? "rgba(139, 92, 246, 0.12)" : "rgba(139, 92, 246, 0.08)"),
+                                                    backdropFilter: "blur(8px)",
+                                                    border: notification.read 
+                                                        ? (isDark ? "1px solid rgba(255, 255, 255, 0.04)" : "1px solid rgba(255, 255, 255, 0.3)") 
+                                                        : (isDark ? "1px solid rgba(139, 92, 246, 0.2)" : "1px solid rgba(139, 92, 246, 0.15)"),
+                                                    cursor: "pointer",
+                                                    transition: "all 0.2s",
+                                                }}
+                                            >
+                                                {/* Icon with glass effect */}
+                                                <div style={{
+                                                    width: 44,
+                                                    height: 44,
+                                                    borderRadius: 14,
+                                                    background: colors.bg,
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    flexShrink: 0,
+                                                    color: colors.color,
+                                                }}>
+                                                    {getIcon(notification.type)}
+                                                </div>
+                                                
+                                                {/* Content */}
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{
+                                                        display: "flex",
+                                                        justifyContent: "space-between",
+                                                        alignItems: "flex-start",
+                                                        marginBottom: 4,
+                                                    }}>
+                                                        <p style={{
+                                                            fontSize: 15,
+                                                            fontWeight: notification.read ? 500 : 600,
+                                                            color: notification.read ? (isDark ? "#94a3b8" : "#475569") : (isDark ? "#f1f5f9" : "#1e293b"),
+                                                            margin: 0,
+                                                            overflow: "hidden",
+                                                            textOverflow: "ellipsis",
+                                                            whiteSpace: "nowrap",
+                                                            maxWidth: "85%",
+                                                        }}>
+                                                            {notification.title}
+                                                        </p>
+                                                        <span style={{
+                                                            fontSize: 12,
+                                                            color: isDark ? "#64748b" : "#94a3b8",
+                                                            fontWeight: 500,
+                                                            marginLeft: 8,
+                                                            flexShrink: 0,
+                                                        }}>
+                                                            {formatTime(notification.createdAt)}
+                                                        </span>
                                                     </div>
-                                                </motion.div>
-                                            ))}
-                                        </div>
-                                    ))}
+                                                    <p style={{
+                                                        fontSize: 14,
+                                                        color: isDark ? "#94a3b8" : "#64748b",
+                                                        margin: 0,
+                                                        lineHeight: 1.5,
+                                                        overflow: "hidden",
+                                                        textOverflow: "ellipsis",
+                                                        display: "-webkit-box",
+                                                        WebkitLineClamp: 2,
+                                                        WebkitBoxOrient: "vertical",
+                                                    }}>
+                                                        {notification.message}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
 
-                        {/* Empty State Action */}
+                        {/* Footer */}
                         {notifications.length > 0 && (
-                            <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700/50">
-                                <button
-                                    onClick={onClose}
-                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors"
-                                >
-                                    View all notifications
-                                    <ChevronRight className="w-4 h-4" />
-                                </button>
+                            <div style={{
+                                padding: "16px 24px",
+                                textAlign: "center",
+                                borderTop: isDark ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(0, 0, 0, 0.06)",
+                                background: isDark ? "rgba(139, 92, 246, 0.08)" : "rgba(139, 92, 246, 0.04)",
+                            }}>
+                                <p style={{
+                                    fontSize: 11,
+                                    color: isDark ? "#64748b" : "#94a3b8",
+                                    letterSpacing: "0.1em",
+                                    textTransform: "uppercase",
+                                    fontWeight: 600,
+                                }}>
+                                    End of notifications
+                                </p>
                             </div>
                         )}
                     </motion.div>

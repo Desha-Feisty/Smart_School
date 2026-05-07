@@ -70,6 +70,7 @@ while (!token && retries > 0) {
                 throw new Error("Failed to list courses");
             }
             const data = response.data.courses;
+            console.log("listMyCourses response:", data);
             set({ allCourses: data });
         } catch (error) {
             set({ errMsg: error.message });
@@ -500,6 +501,97 @@ listRecentChats: async (silent = false) => {
                 errMsg: error.response?.data?.errMsg || error.message,
                 recentChatsLoading: false,
             });
+        }
+    },
+
+    // Calendar Events
+    calendarEvents: [],
+    setCalendarEvents: (events) => set({ calendarEvents: events }),
+
+    createCalendarEvent: async (courseId, eventData) => {
+        try {
+            const response = await axios.post(
+                `/api/courses/${courseId}/events`,
+                eventData,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${useAuthStore.getState().token}`,
+                    },
+                }
+            );
+            if (response.status === 201) {
+                set((state) => ({
+                    calendarEvents: [...state.calendarEvents, response.data.calendarEvent],
+                }));
+                return response.data.calendarEvent;
+            }
+            throw new Error("Failed to create event");
+        } catch (error) {
+            set({ errMsg: error.response?.data?.errMsg || error.message });
+            throw error;
+        }
+    },
+
+    listCourseCalendarEvents: async (courseId) => {
+        try {
+            const response = await axios.get(`/api/courses/${courseId}/events`, {
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${useAuthStore.getState().token}`,
+                },
+            });
+            if (response.status === 200) {
+                set({ calendarEvents: response.data.events || [] });
+            }
+        } catch (error) {
+            set({ errMsg: error.response?.data?.errMsg || error.message });
+        }
+    },
+
+    updateCalendarEvent: async (courseId, eventId, eventData) => {
+        try {
+            const response = await axios.put(
+                `/api/courses/${courseId}/events/${eventId}`,
+                eventData,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${useAuthStore.getState().token}`,
+                    },
+                }
+            );
+            if (response.status === 200) {
+                set((state) => ({
+                    calendarEvents: state.calendarEvents.map((e) =>
+                        e._id === eventId ? response.data.calendarEvent : e
+                    ),
+                }));
+                return response.data.calendarEvent;
+            }
+            throw new Error("Failed to update event");
+        } catch (error) {
+            set({ errMsg: error.response?.data?.errMsg || error.message });
+            throw error;
+        }
+    },
+
+    deleteCalendarEvent: async (courseId, eventId) => {
+        try {
+            const response = await axios.delete(`/api/courses/${courseId}/events/${eventId}`, {
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${useAuthStore.getState().token}`,
+                },
+            });
+            if (response.status === 200) {
+                set((state) => ({
+                    calendarEvents: state.calendarEvents.filter((e) => e._id !== eventId),
+                }));
+            }
+        } catch (error) {
+            set({ errMsg: error.response?.data?.errMsg || error.message });
+            throw error;
         }
     },
 }));

@@ -70,6 +70,21 @@ const saveNotification = async (userId: string, event: string, data: any) => {
             title = "Quiz Closed";
             message = `Quiz "${data.quizTitle}" has closed. You did not complete it.`;
             link = "/student";
+        } else if (event === "new-ticket") {
+            type = "ticket";
+            title = "New Support Ticket";
+            message = `${data.userName} submitted: "${data.subject}"`;
+            link = "/admin/tickets";
+        } else if (event === "ticket-response") {
+            type = "ticket";
+            title = "Ticket Response";
+            message = `Admin responded to: "${data.subject}"`;
+            link = "/settings";
+        } else if (event === "calendar-event") {
+            type = "calendar-event";
+            title = `New Event: ${data.title}`;
+            message = `In ${data.courseTitle} - ${new Date(data.startAt).toLocaleString()}`;
+            link = "/student/calendar";
         }
 
         await Notification.create({

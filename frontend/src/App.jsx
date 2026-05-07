@@ -25,7 +25,14 @@ const StudentQuizPage = lazy(() => import("./components/StudentQuizPage.jsx"));
 const QuizResultsPage = lazy(() => import("./components/QuizResultsPage.jsx"));
 const QuizSubmittedPage = lazy(() => import("./components/QuizSubmittedPage.jsx"));
 const NoteDetail = lazy(() => import("./components/NoteDetail.jsx"));
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard.jsx"));
+
+// Admin pages - lazy loaded
+const AdminLayout = lazy(() => import("./pages/admin/AdminLayout.jsx"));
+const AdminOverview = lazy(() => import("./pages/admin/AdminOverview.jsx"));
+const AdminUsers = lazy(() => import("./pages/admin/AdminUsers.jsx"));
+const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics.jsx"));
+const AdminLogs = lazy(() => import("./pages/admin/AdminLogs.jsx"));
+const AdminTickets = lazy(() => import("./pages/admin/AdminTickets.jsx"));
 
 // New pages - lazy loaded
 const DashboardPage = lazy(() => import("./pages/DashboardPage.jsx"));
@@ -34,6 +41,7 @@ const StudentQuizzesPage = lazy(() => import("./pages/StudentQuizzesPage.jsx"));
 const StudentGradesPage = lazy(() => import("./pages/StudentGradesPage.jsx"));
 const StudentCalendarPage = lazy(() => import("./pages/StudentCalendarPage.jsx"));
 const TeacherCoursesPage = lazy(() => import("./pages/TeacherCoursesPage.jsx"));
+const TeacherQuizCreatePage = lazy(() => import("./pages/TeacherQuizCreatePage.jsx"));
 const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage.jsx"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage.jsx"));
 
@@ -121,10 +129,63 @@ function SocketListener() {
             }
         });
 
+        socket.on("new-ticket", (data) => {
+            const token = useAuthStore.getState().token;
+            if (!token) return;
+            debouncedFetchNotifications();
+            toast.success(`New Support Ticket from ${data.userName}: ${data.subject}`, {
+                duration: 5000,
+                icon: "🎫",
+            });
+        });
+
+        socket.on("ticket-response", (data) => {
+            const token = useAuthStore.getState().token;
+            if (!token) return;
+            debouncedFetchNotifications();
+            toast.success(`Ticket Response: ${data.subject}`, {
+                duration: 5000,
+                icon: "💬",
+            });
+        });
+
+        socket.on("calendar-event", (data) => {
+            const token = useAuthStore.getState().token;
+            if (!token) return;
+            debouncedFetchNotifications();
+            toast.success(`New Event: ${data.title} in ${data.courseTitle}`, {
+                duration: 5000,
+                icon: "📅",
+            });
+        });
+
+        socket.on("calendar-event-updated", (data) => {
+            const token = useAuthStore.getState().token;
+            if (!token) return;
+            toast.success(`Event Updated: ${data.title}`, {
+                duration: 5000,
+                icon: "📅",
+            });
+        });
+
+        socket.on("calendar-event-deleted", (data) => {
+            const token = useAuthStore.getState().token;
+            if (!token) return;
+            toast(`Event Deleted: ${data.title}`, {
+                duration: 5000,
+                icon: "📅",
+            });
+        });
+
         return () => {
             socket.off("new-quiz");
             socket.off("new-note");
             socket.off("chat-message");
+            socket.off("new-ticket");
+            socket.off("ticket-response");
+            socket.off("calendar-event");
+            socket.off("calendar-event-updated");
+            socket.off("calendar-event-deleted");
         };
     }, [socket, debouncedFetchNotifications, debouncedListRecentChats]);
 
@@ -157,60 +218,43 @@ function App() {
 
                     {/* Student Routes with App Layout */}
                     <Route element={<AppLayout />}>
-                        {/* New Dashboard Routes */}
-                        <Route path="/student/dashboard" element={<DashboardPage />} />
+                        {/* Dashboard - Rich widgets */}
+                        <Route path="/student" element={<DashboardPage />} />
                         <Route path="/student/analytics" element={<AnalyticsPage />} />
 
-                        {/* New Standalone Pages */}
+                        {/* Standalone Pages */}
                         <Route path="/student/courses" element={<StudentCoursesPage />} />
                         <Route path="/student/quizzes" element={<StudentQuizzesPage />} />
                         <Route path="/student/grades" element={<StudentGradesPage />} />
                         <Route path="/student/calendar" element={<StudentCalendarPage />} />
-
-                        {/* Existing Student Routes */}
-                        <Route path="/student" element={<StudentPage />} />
-                        <Route
-                            path="/student/quiz/:attemptId"
-                            element={<StudentQuizPage />}
-                        />
-                        <Route
-                            path="/student/quiz/:attemptId/results"
-                            element={<QuizResultsPage />}
-                        />
-                        <Route
-                            path="/student/quiz/:attemptId/submitted"
-                            element={<QuizSubmittedPage />}
-                        />
+                        <Route path="/student/quiz/:attemptId" element={<StudentQuizPage />} />
+                        <Route path="/student/quiz/:attemptId/results" element={<QuizResultsPage />} />
+                        <Route path="/student/quiz/:attemptId/submitted" element={<QuizSubmittedPage />} />
                         <Route path="/note/:noteId" element={<NoteDetail />} />
                     </Route>
 
                     {/* Teacher Routes with App Layout */}
                     <Route element={<AppLayout />}>
-                        {/* New Dashboard Routes */}
-                        <Route path="/teacher/dashboard" element={<DashboardPage />} />
+                        {/* Dashboard - Rich widgets */}
+                        <Route path="/teacher" element={<DashboardPage />} />
                         <Route path="/teacher/analytics" element={<AnalyticsPage />} />
 
-                        {/* New Standalone Pages */}
+                        {/* Standalone Pages */}
                         <Route path="/teacher/courses" element={<TeacherCoursesPage />} />
-
-                        {/* Existing Teacher Routes */}
-                        <Route path="/teacher" element={<TeacherPage />} />
-                        <Route
-                            path="/teacher/course/:id"
-                            element={<TeacherCoursePage />}
-                        />
-                        <Route
-                            path="/teacher/quiz/:id/questions"
-                            element={<QuizQuestionsPage />}
-                        />
+                        <Route path="/teacher/quiz/create" element={<TeacherQuizCreatePage />} />
+                        <Route path="/teacher/course/:id" element={<TeacherCoursePage />} />
+                        <Route path="/teacher/quiz/:id/questions" element={<QuizQuestionsPage />} />
                     </Route>
 
                     {/* Admin Routes */}
                     <Route element={<AppLayout />}>
-                        <Route path="/admin" element={<AdminDashboard />} />
-                        <Route path="/admin/users" element={<AdminDashboard />} />
-                        <Route path="/admin/analytics" element={<AdminDashboard />} />
-                        <Route path="/admin/logs" element={<AdminDashboard />} />
+                        <Route path="/admin" element={<AdminLayout />}>
+                            <Route index element={<AdminOverview />} />
+                            <Route path="users" element={<AdminUsers />} />
+                            <Route path="analytics" element={<AdminAnalytics />} />
+                            <Route path="logs" element={<AdminLogs />} />
+                            <Route path="tickets" element={<AdminTickets />} />
+                        </Route>
                     </Route>
 
                     {/* Shared Routes */}

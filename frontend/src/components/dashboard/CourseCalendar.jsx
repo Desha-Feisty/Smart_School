@@ -195,9 +195,6 @@ function CourseCalendar({ events = [], onEventClick, role = "student" }) {
                         month: "long",
                         year: "numeric",
                     }}
-                    columnHeaderFormat={{
-                        weekday: "short",
-                    }}
                     slotLabelFormat={{
                         hour: "numeric",
                         minute: "2-digit",
@@ -209,9 +206,6 @@ function CourseCalendar({ events = [], onEventClick, role = "student" }) {
                     slotMinTime="06:00:00"
                     slotMaxTime="22:00:00"
                     allDaySlot={true}
-                    listDayFormat={{
-                        weekday: "short",
-                    }}
                 />
             </div>
 

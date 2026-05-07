@@ -21,6 +21,8 @@ import adminRoutes from "../routes/admin.routes.js";
 import leaderboardRoutes from "../routes/leaderboard.routes.js";
 import notificationRoutes from "../routes/notification.routes.js";
 import searchRoutes from "../routes/search.routes.js";
+import ticketRoutes from "../routes/ticket.routes.js";
+import calendarEventRoutes from "../routes/calendarEvent.routes.js";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { authMiddleware, requireRole } from "../middleware/auth.js";
@@ -88,6 +90,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs, {
 // API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/courses", courseRoutes);
+app.use("/api/courses", calendarEventRoutes);
 app.use("/api/quizzes", quizRoutes);
 app.use("/api/attempts", attemptRoutes);
 app.use("/api/notes", noteRoutes);
@@ -99,6 +102,7 @@ app.use("/api/analytics", analyticsRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/search", searchRoutes);
+app.use("/api/tickets", ticketRoutes);
 app.use("/api/admin", adminRoutes);
 
 // Question management root-level endpoints

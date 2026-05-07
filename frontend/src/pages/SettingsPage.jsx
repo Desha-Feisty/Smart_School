@@ -7,12 +7,15 @@ import PageWrapper from "../components/layout/PageWrapper";
 import {
     User,
     Lock,
-    Bell,
-    Palette,
-    Shield,
+    MessageSquare,
     Save,
     Eye,
     EyeOff,
+    Send,
+    Clock,
+    CheckCircle,
+    AlertCircle,
+    Plus,
 } from "lucide-react";
 
 function SettingsPage() {
@@ -36,13 +39,11 @@ function SettingsPage() {
     });
     const [showPassword, setShowPassword] = useState(false);
 
-    // Notification preferences
-    const [notifications, setNotifications] = useState({
-        emailQuizResults: true,
-        emailCourseUpdates: true,
-        pushNewGrades: true,
-        pushNewMessages: true,
-    });
+    // Ticket state
+    const [tickets, setTickets] = useState([]);
+    const [isLoadingTickets, setIsLoadingTickets] = useState(false);
+    const [newTicket, setNewTicket] = useState({ subject: "", message: "" });
+    const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
 
     useEffect(() => {
         if (!token) {
@@ -50,21 +51,46 @@ function SettingsPage() {
         }
     }, [token, navigate]);
 
-    const handleProfileUpdate = async (e) => {
-        e.preventDefault();
-        setIsLoading(true);
+    useEffect(() => {
+        if (activeTab === "support") {
+            fetchTickets();
+        }
+    }, [activeTab]);
+
+    const fetchTickets = async () => {
+        setIsLoadingTickets(true);
         try {
-            const res = await axios.put(
-                "/api/users/profile",
-                { name: profileData.name },
+            const res = await axios.get("/api/tickets", {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setTickets(res.data.tickets || []);
+        } catch (err) {
+            console.error("Failed to fetch tickets:", err);
+        } finally {
+            setIsLoadingTickets(false);
+        }
+    };
+
+    const handleSubmitTicket = async (e) => {
+        e.preventDefault();
+        if (!newTicket.subject.trim() || !newTicket.message.trim()) {
+            toast.error("Please fill in all fields");
+            return;
+        }
+        setIsSubmittingTicket(true);
+        try {
+            await axios.post(
+                "/api/tickets",
+                { subject: newTicket.subject, message: newTicket.message },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            setUser(res.data.user);
-            toast.success("Profile updated successfully");
+            toast.success("Ticket submitted successfully");
+            setNewTicket({ subject: "", message: "" });
+            fetchTickets();
         } catch (err) {
-            toast.error(err.response?.data?.errMsg || "Failed to update profile");
+            toast.error(err.response?.data?.errMsg || "Failed to submit ticket");
         } finally {
-            setIsLoading(false);
+            setIsSubmittingTicket(false);
         }
     };
 
@@ -81,7 +107,7 @@ function SettingsPage() {
         setIsLoading(true);
         try {
             await axios.put(
-                "/api/users/password",
+                "/api/auth/password",
                 {
                     currentPassword: passwordData.currentPassword,
                     newPassword: passwordData.newPassword,
@@ -100,8 +126,18 @@ function SettingsPage() {
     const tabs = [
         { id: "profile", label: "Profile", icon: User },
         { id: "password", label: "Password", icon: Lock },
-        { id: "notifications", label: "Notifications", icon: Bell },
+        { id: "support", label: "Support", icon: MessageSquare },
     ];
+
+    const formatDate = (dateString) => {
+        return new Date(dateString).toLocaleDateString("en-US", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+        });
+    };
 
     return (
         <PageWrapper>
@@ -111,7 +147,7 @@ function SettingsPage() {
                         Settings
                     </h1>
                     <p className="text-slate-500 dark:text-slate-400 mt-2">
-                        Manage your account preferences
+                        Manage your account
                     </p>
                 </div>
 
@@ -140,7 +176,7 @@ function SettingsPage() {
                     <div className="flex-1">
                         <div className="glass-panel rounded-2xl p-6">
                             {activeTab === "profile" && (
-                                <form onSubmit={handleProfileUpdate}>
+                                <div>
                                     <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
                                         <User className="w-5 h-5 text-blue-500" />
                                         Profile Information
@@ -190,15 +226,7 @@ function SettingsPage() {
                                             />
                                         </div>
                                     </div>
-                                    <button
-                                        type="submit"
-                                        disabled={isLoading}
-                                        className="btn btn-primary rounded-xl mt-6"
-                                    >
-                                        <Save className="w-5 h-5 mr-2" />
-                                        {isLoading ? "Saving..." : "Save Changes"}
-                                    </button>
-                                </form>
+                                </div>
                             )}
 
                             {activeTab === "password" && (
@@ -272,42 +300,112 @@ function SettingsPage() {
                                 </form>
                             )}
 
-                            {activeTab === "notifications" && (
+                            {activeTab === "support" && (
                                 <div>
                                     <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-                                        <Bell className="w-5 h-5 text-blue-500" />
-                                        Notification Preferences
+                                        <MessageSquare className="w-5 h-5 text-blue-500" />
+                                        Submit Support Ticket
                                     </h2>
-                                    <div className="space-y-4">
-                                        {[
-                                            { key: "emailQuizResults", label: "Email Quiz Results", desc: "Receive email when quiz is graded" },
-                                            { key: "emailCourseUpdates", label: "Course Updates", desc: "Get notified about course changes" },
-                                            { key: "pushNewGrades", label: "Grade Notifications", desc: "Push notifications for new grades" },
-                                            { key: "pushNewMessages", label: "Message Notifications", desc: "Push notifications for new messages" },
-                                        ].map((item) => (
-                                            <div key={item.key} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-base-300/50 rounded-xl">
-                                                <div>
-                                                    <p className="font-medium text-slate-900 dark:text-white">{item.label}</p>
-                                                    <p className="text-sm text-slate-500">{item.desc}</p>
+                                    <form onSubmit={handleSubmitTicket} className="space-y-4 mb-8">
+                                        <div className="form-control">
+                                            <label className="label">
+                                                <span className="label-text font-bold">Subject</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                className="input input-bordered rounded-xl"
+                                                value={newTicket.subject}
+                                                onChange={(e) =>
+                                                    setNewTicket({ ...newTicket, subject: e.target.value })
+                                                }
+                                                placeholder="Brief description of your issue"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="form-control">
+                                            <label className="label">
+                                                <span className="label-text font-bold">Message</span>
+                                            </label>
+                                            <textarea
+                                                className="textarea textarea-bordered rounded-xl h-32"
+                                                value={newTicket.message}
+                                                onChange={(e) =>
+                                                    setNewTicket({ ...newTicket, message: e.target.value })
+                                                }
+                                                placeholder="Describe your issue in detail..."
+                                                required
+                                            />
+                                        </div>
+                                        <button
+                                            type="submit"
+                                            disabled={isSubmittingTicket}
+                                            className="btn btn-primary rounded-xl"
+                                        >
+                                            <Send className="w-5 h-5 mr-2" />
+                                            {isSubmittingTicket ? "Submitting..." : "Submit Ticket"}
+                                        </button>
+                                    </form>
+
+                                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                                        <Clock className="w-5 h-5" />
+                                        Your Tickets
+                                    </h3>
+                                    {isLoadingTickets ? (
+                                        <div className="text-center py-8">
+                                            <span className="loading loading-spinner"></span>
+                                        </div>
+                                    ) : tickets.length === 0 ? (
+                                        <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                                            No tickets submitted yet
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {tickets.map((ticket) => (
+                                                <div
+                                                    key={ticket._id}
+                                                    className="p-4 bg-slate-50 dark:bg-base-300/50 rounded-xl"
+                                                >
+                                                    <div className="flex items-start justify-between gap-4 mb-2">
+                                                        <div>
+                                                            <p className="font-medium text-slate-900 dark:text-white">
+                                                                {ticket.subject}
+                                                            </p>
+                                                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                                                                {ticket.message}
+                                                            </p>
+                                                        </div>
+                                                        <span
+                                                            className={`badge badge-sm ${
+                                                                ticket.status === "open"
+                                                                    ? "badge-warning"
+                                                                    : "badge-success"
+                                                            }`}
+                                                        >
+                                                            {ticket.status === "open" ? (
+                                                                <AlertCircle className="w-3 h-3 mr-1" />
+                                                            ) : (
+                                                                <CheckCircle className="w-3 h-3 mr-1" />
+                                                            )}
+                                                            {ticket.status}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-xs text-slate-400 dark:text-slate-500">
+                                                        {formatDate(ticket.createdAt)}
+                                                    </div>
+                                                    {ticket.adminReply && (
+                                                        <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                                                            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                                                Admin Response:
+                                                            </p>
+                                                            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                                                {ticket.adminReply}
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <input
-                                                    type="checkbox"
-                                                    className="toggle toggle-primary"
-                                                    checked={notifications[item.key]}
-                                                    onChange={(e) =>
-                                                        setNotifications({ ...notifications, [item.key]: e.target.checked })
-                                                    }
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <button
-                                        className="btn btn-primary rounded-xl mt-6"
-                                        onClick={() => toast.success("Preferences saved")}
-                                    >
-                                        <Save className="w-5 h-5 mr-2" />
-                                        Save Preferences
-                                    </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

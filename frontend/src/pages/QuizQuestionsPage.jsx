@@ -13,6 +13,9 @@ import {
     Circle,
     Copy,
     Sparkles,
+    Eye,
+    EyeOff,
+    Send,
 } from "lucide-react";
 import PageWrapper from "../components/layout/PageWrapper";
 
@@ -26,11 +29,15 @@ function QuizQuestionsPage() {
         updateQuestion,
         deleteQuestion,
         generateAiQuestions,
+        publishQuiz,
+        unpublishQuiz,
         errMsg,
         clearErrMsg,
     } = useQuizStore();
 
     const [questions, setQuestions] = useState([]);
+    const [quizPublished, setQuizPublished] = useState(false);
+    const [courseId, setCourseId] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState(null);
@@ -52,8 +59,35 @@ function QuizQuestionsPage() {
     const fetchQuestions = async () => {
         setIsLoading(true);
         const data = await listQuizQuestions(quizId);
-        setQuestions(data);
+        setQuestions(data.questions || data);
+        if (data.quiz) {
+            setQuizPublished(data.quiz.published || false);
+            const courseIdValue = data.quiz.course?._id || data.quiz.course;
+            if (courseIdValue) {
+                setCourseId(courseIdValue);
+            }
+        }
         setIsLoading(false);
+    };
+
+    const handlePublish = async () => {
+        try {
+            await publishQuiz(quizId);
+            setQuizPublished(true);
+            toast.success("Quiz published successfully");
+        } catch (err) {
+            toast.error(err.message || "Failed to publish quiz");
+        }
+    };
+
+    const handleUnpublish = async () => {
+        try {
+            await unpublishQuiz(quizId);
+            setQuizPublished(false);
+            toast.success("Quiz unpublished successfully");
+        } catch (err) {
+            toast.error(err.message || "Failed to unpublish quiz");
+        }
     };
 
     useEffect(() => {
@@ -215,7 +249,7 @@ function QuizQuestionsPage() {
                             <div>
                                 <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-1">
                                     <button
-                                        onClick={() => navigate(-1)}
+                                        onClick={() => courseId ? navigate(`/teacher/course/${courseId}`) : navigate(-1)}
                                         className="btn btn-ghost btn-xs btn-circle dark:text-slate-300"
                                     >
                                         <ArrowLeft className="w-4 h-4" />
@@ -227,22 +261,25 @@ function QuizQuestionsPage() {
                                     <span className="badge badge-primary bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-0">{questions.length}</span>
                                 </h1>
                             </div>
-                            {!isAdding && !isAiModalOpen && (
+                            {!isAdding && (
                                 <div className="flex flex-col sm:flex-row gap-3">
-                                    <button
-                                        onClick={() => setIsAiModalOpen(true)}
-                                        className="btn bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white shadow-lg shadow-purple-500/20 border-0 rounded-xl hover:-translate-y-0.5 transition-transform"
-                                    >
-                                        <Sparkles className="w-5 h-5 mr-1" />
-                                        Generate with AI
-                                    </button>
-                                    <button
-                                        onClick={() => setIsAdding(true)}
-                                        className="btn btn-primary shadow-lg shadow-blue-500/20 rounded-xl hover:-translate-y-0.5 transition-transform"
-                                    >
-                                        <Plus className="w-5 h-5 mr-1" />
-                                        Add Question
-                                    </button>
+                                    {!quizPublished ? (
+                                        <button
+                                            onClick={handlePublish}
+                                            className="btn bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-500/20 border-0 rounded-xl hover:-translate-y-0.5 transition-transform"
+                                        >
+                                            <Send className="w-5 h-5 mr-1" />
+                                            Publish Quiz
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={handleUnpublish}
+                                            className="btn bg-orange-500 hover:bg-orange-400 text-white shadow-lg shadow-orange-500/20 border-0 rounded-xl hover:-translate-y-0.5 transition-transform"
+                                        >
+                                            <EyeOff className="w-5 h-5 mr-1" />
+                                            Unpublish
+                                        </button>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -482,6 +519,17 @@ function QuizQuestionsPage() {
 
                 {/* Questions List */}
                 <div className="space-y-6">
+                    {!isAdding && (
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => setIsAdding(true)}
+                                className="btn btn-primary shadow-lg shadow-blue-500/20 rounded-xl"
+                            >
+                                <Plus className="w-5 h-5 mr-1" />
+                                Add Question
+                            </button>
+                        </div>
+                    )}
                     {questions.length === 0 && !isAdding ? (
                         <div className="glass-panel border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-900/10">
                             <div className="p-12 text-center">
@@ -494,18 +542,18 @@ function QuizQuestionsPage() {
                                 </p>
                                 <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
                                     <button
+                                        onClick={() => setIsAdding(true)}
+                                        className="btn btn-primary px-8 rounded-xl shadow-lg shadow-blue-500/20"
+                                    >
+                                        <Plus className="w-5 h-5 mr-1" />
+                                        Add Question
+                                    </button>
+                                    <button
                                         onClick={() => setIsAiModalOpen(true)}
                                         className="btn bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white shadow-lg shadow-purple-500/20 border-0 rounded-xl"
                                     >
                                         <Sparkles className="w-5 h-5 mr-1" />
                                         Generate with AI
-                                    </button>
-                                    <button
-                                        onClick={() => setIsAdding(true)}
-                                        className="btn btn-primary px-8 rounded-xl shadow-lg shadow-blue-500/20"
-                                    >
-                                        <Plus className="w-5 h-5 mr-1" />
-                                        Add Manually
                                     </button>
                                 </div>
                             </div>
