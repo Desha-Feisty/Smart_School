@@ -9,6 +9,7 @@ import type { IQuestion } from "../models/question.js";
 import Enrollment from "../models/enrollment.js";
 import dayjs from "dayjs";
 import { Types } from "mongoose";
+import { gradeWrittenAnswer } from "../services/aiGrading.js";
 
 const ensureEnrollment = async (userId: string, courseId: string) => {
     const enrolled = await Enrollment.findOne({
@@ -57,13 +58,25 @@ const selectRandomQuestions = (allQuestions: any[], count: number, seed: string)
 const startAttempt = async (req: AuthRequest, res: Response) => {
     try {
         const { quizId } = req.params;
+        console.log(`[startAttempt] Called with quizId: ${quizId}, user: ${req.user?._id}`);
+        
         if (!quizId) {
             return res.status(400).json({ errMsg: "invalid quiz id" });
         }
+        
+        // Validate quizId format
+        if (!quizId.match(/^[0-9a-fA-F]{24}$/)) {
+            console.log(`[startAttempt] Invalid quizId format: ${quizId}`);
+            return res.status(400).json({ errMsg: "Invalid quiz ID format" });
+        }
+        
         const quiz = await Quiz.findById(quizId);
         if (!quiz) {
-            return res.status(500).json({ errMsg: "quiz not found" });
+            console.log(`[startAttempt] Quiz not found: ${quizId}`);
+            return res.status(404).json({ errMsg: "quiz not found" });
         }
+        
+        console.log(`[startAttempt] Quiz found: ${quiz.title}, published: ${quiz.published}, openAt: ${quiz.openAt}, closeAt: ${quiz.closeAt}`);
         const now = dayjs();
         if (!quiz.published) {
             return res.status(400).json({ errMsg: "quiz unavailable" });
@@ -146,6 +159,11 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
             .sort({ orderIndex: 1 })
             .lean();
         
+        // Defensive check: no questions in quiz
+        if (!allQuestions || allQuestions.length === 0) {
+            return res.status(400).json({ errMsg: "This quiz has no questions yet" });
+        }
+        
         // Select random subset if questionsPerAttempt is set
         let questions = allQuestions;
         if (quiz.questionsPerAttempt && quiz.questionsPerAttempt < allQuestions.length) {
@@ -156,9 +174,15 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
             );
         }
         
+        // Defensive check: ensure questions array is valid
+        if (!questions || questions.length === 0) {
+            return res.status(400).json({ errMsg: "Failed to select questions for this attempt" });
+        }
+        
         const responses = questions.map((q) => ({
             question: q._id,
             selectedChoiceIds: [],
+            textAnswer: q.questionType === "written" ? "" : "",
             pointsAwarded: 0,
         }));
         const attempt = await Attempt.create({
@@ -169,13 +193,22 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
             status: "inProgress",
             responses,
         });
+        
+        console.log(`[startAttempt] Created attempt: ${attempt._id} for user: ${req.user._id}, quiz: ${quiz._id}`);
+        
+        // Verify the attempt was saved
+        const savedAttempt = await Attempt.findById(attempt._id);
+        console.log(`[startAttempt] Verified attempt in DB: ${savedAttempt ? 'YES' : 'NO'}, status: ${savedAttempt?.status}`);
+        
         return res.status(201).json({
-            attemptId: attempt._id,
+            attemptId: attempt._id.toString(),
             endAt,
             questions: questions.map((q) => ({
                 _id: q._id,
                 prompt: q.prompt,
-                choices: q.choices.map((c) => ({
+                questionType: q.questionType,
+                points: q.points,
+                choices: q.questionType === "written" ? [] : q.choices.map((c) => ({
                     _id: c._id,
                     text: c.text,
                 })),
@@ -189,8 +222,9 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
 
 const autoSaveSchema = Joi.object({
     questionId: Joi.string().required(),
-    selectedChoiceIds: Joi.array().items(Joi.string()).required(),
-});
+    selectedChoiceIds: Joi.array().items(Joi.string()).optional(),
+    textAnswer: Joi.string().allow("").optional(),
+}).or("selectedChoiceIds", "textAnswer");
 const autoSaveAnswer = async (req: AuthRequest, res: Response) => {
     try {
         const { error, value } = autoSaveSchema.validate(req.body);
@@ -221,11 +255,19 @@ const autoSaveAnswer = async (req: AuthRequest, res: Response) => {
         );
         if (!resp) return res.status(404).json({ error: "Response not found" });
         
-        // Convert string IDs to ObjectIds before storing
-        const objectIdSelection = value.selectedChoiceIds.map((id: string) => 
-            Types.ObjectId.isValid(id) ? new Types.ObjectId(id) : id
-        );
-        resp.selectedChoiceIds = objectIdSelection as any;
+        // Handle MCQ answers
+        if (value.selectedChoiceIds && value.selectedChoiceIds.length > 0) {
+            const objectIdSelection = value.selectedChoiceIds.map((id: string) => 
+                Types.ObjectId.isValid(id) ? new Types.ObjectId(id) : id
+            );
+            resp.selectedChoiceIds = objectIdSelection as any;
+        }
+        
+        // Handle written answers
+        if (value.textAnswer !== undefined) {
+            resp.textAnswer = value.textAnswer;
+        }
+        
         await attempt.save();
         return res.json({ ok: true });
     } catch (error) {
@@ -281,8 +323,47 @@ export const gradeSubmittedAttempt = async (attempt: any, wasLate = false) => {
     });
     let total = 0;
     let maxScore = 0;
+    
     for (const resp of attempt.responses) {
         const q = resp.question as any;
+        
+        // Handle written questions with AI grading
+        if (q.questionType === "written") {
+            const maxPoints = q.points || 1;
+            maxScore += maxPoints;
+            
+            // Only grade if there's a text answer
+            if (resp.textAnswer && resp.textAnswer.trim()) {
+                try {
+                    const gradingResult = await gradeWrittenAnswer({
+                        questionPrompt: q.prompt,
+                        studentAnswer: resp.textAnswer,
+                        sampleAnswer: q.sampleAnswer,
+                        rubric: q.rubric,
+                        maxPoints: maxPoints,
+                    });
+                    
+                    resp.aiScore = gradingResult.score;
+                    resp.aiFeedback = gradingResult.feedback;
+                    resp.pointsAwarded = gradingResult.score;
+                    total += gradingResult.score;
+                } catch (error) {
+                    console.error("AI grading failed for question:", q._id, error);
+                    resp.pointsAwarded = 0;
+                    resp.aiFeedback = "AI grading failed. Please contact your teacher.";
+                    total += 0;
+                }
+            } else {
+                // No answer provided
+                resp.pointsAwarded = 0;
+                resp.aiScore = 0;
+                resp.aiFeedback = "No answer provided.";
+                total += 0;
+            }
+            continue;
+        }
+        
+        // Handle MCQ questions
         const choices = q.choices || [];
         
         // Find the correct choice
@@ -545,13 +626,18 @@ const listMyGrades = async (req: AuthRequest, res: Response) => {
 };
 
 const startAttemptFromBody = async (req: AuthRequest, res: Response) => {
+    console.log(`[startAttemptFromBody] Called with body:`, JSON.stringify(req.body));
     try {
         const { quizId } = req.body || {};
-        if (!quizId)
+        if (!quizId) {
+            console.log(`[startAttemptFromBody] ERROR: quizId missing in body`);
             return res.status(400).json({ error: "quizId is required" });
+        }
+        console.log(`[startAttemptFromBody] Received quizId: ${quizId}, user: ${req.user?._id}`);
         req.params.quizId = quizId;
         return startAttempt(req, res);
     } catch (err) {
+        console.error(`[startAttemptFromBody] EXCEPTION:`, err instanceof Error ? err.message : err);
         return res.status(500).json({ error: "Start attempt failed" });
     }
 };
@@ -559,22 +645,102 @@ const startAttemptFromBody = async (req: AuthRequest, res: Response) => {
 const getAttemptDetails = async (req: AuthRequest, res: Response) => {
     try {
         const { attemptId } = req.params;
-        const attempt = await Attempt.findById(attemptId)
+        
+        // Validate attemptId
+        if (!attemptId) {
+            return res.status(400).json({ error: "Attempt ID is required" });
+        }
+
+        // Validate attemptId format (must be valid ObjectId)
+        if (!attemptId.match(/^[0-9a-fA-F]{24}$/)) {
+            console.log(`[getAttemptDetails] Invalid attempt ID format: ${attemptId}`);
+            return res.status(400).json({ error: "Invalid attempt ID format" });
+        }
+
+        // Debug: Log attemptId
+        console.log(`[getAttemptDetails] Attempt ID: ${attemptId}, User: ${req.user?._id}`);
+        
+        // First, let's just check if ANY attempts exist for this user
+        const userAttempts = req.user?._id 
+            ? await Attempt.find({ user: req.user._id }).select("_id status").limit(5).lean()
+            : [];
+        console.log(`[getAttemptDetails] User has ${userAttempts.length} attempts:`, userAttempts.map(a => ({ id: a._id, status: a.status })));
+
+        let attempt = await Attempt.findById(attemptId)
             .populate({ path: "responses.question", model: "Question" })
             .populate({
                 path: "quiz",
                 select: "title course",
                 populate: { path: "course", select: "title" },
             });
-        if (!attempt)
-            return res.status(404).json({ error: "Attempt not found" });
-        if (attempt.user.toString() !== req.user?._id)
-            return res.status(403).json({ error: "Forbidden" });
+        
+        // Debug: Log attempt status if found
+        if (attempt) {
+            console.log(`[getAttemptDetails] Found attempt - status: ${attempt.status}, user: ${attempt.user}`);
+        } else if (req.user?._id) {
+            // Try to find ONLY inProgress attempt for this user as fallback
+            // Don't return submitted/graded/late attempts - those are completed quizzes
+            console.log(`[getAttemptDetails] Attempt not found by ID, checking for in-progress attempts...`);
+            
+            const existingAttempt = await Attempt.findOne({
+                user: req.user._id,
+                status: "inProgress"
+            }).sort({ createdAt: -1 }).limit(1).lean();
+            
+            if (existingAttempt && existingAttempt._id) {
+                console.log(`[getAttemptDetails] Found in-progress fallback attempt: ${existingAttempt._id}`);
+                attempt = await Attempt.findById(existingAttempt._id)
+                    .populate({ path: "responses.question", model: "Question" })
+                    .populate({
+                        path: "quiz",
+                        select: "title course",
+                        populate: { path: "course", select: "title" },
+                    });
+            }
+        }
+        
+        // Defensive check: attempt not found
+        if (!attempt) {
+            console.log(`[getAttemptDetails] Attempt not found for ID: ${attemptId}`);
+            // Return more helpful error message
+            return res.status(404).json({ 
+                error: "Attempt not found",
+                hint: "The quiz attempt may have expired or not started properly. Please start a new attempt."
+            });
+        }
+        
+        // Defensive check: user ownership
+        if (!req.user?._id || attempt.user.toString() !== req.user._id) {
+            console.log(`[getAttemptDetails] User mismatch - attempt user: ${attempt.user}, request user: ${req.user?._id}`);
+            return res.status(403).json({ error: "Forbidden - you can only view your own attempts" });
+        }
+        
+        // Defensive check: responses exist
+        if (!attempt.responses || attempt.responses.length === 0) {
+            return res.status(400).json({ error: "No responses found for this attempt" });
+        }
+        
         const resp = attempt.responses.map((r) => {
+            // Defensive check: question might not be populated
             const question = r.question as unknown as IQuestion;
+            if (!question) {
+                return {
+                    questionId: null,
+                    prompt: "Question not found",
+                    questionType: "mcq_single",
+                    points: 1,
+                    selectedChoiceIds: [],
+                    textAnswer: "",
+                    pointsAwarded: 0,
+                    selectedText: [],
+                    correctText: [],
+                    choices: [],
+                };
+            }
+            
             const choices = question?.choices || [];
             
-            const selectedText = r.selectedChoiceIds.map(id => {
+            const selectedText = (r.selectedChoiceIds || []).map(id => {
                 const choice = choices.find(c => c._id?.toString() === id.toString() || (c as any).id === id.toString());
                 return choice ? choice.text : "Unknown choice";
             });
@@ -590,9 +756,13 @@ const getAttemptDetails = async (req: AuthRequest, res: Response) => {
             return {
                 questionId: (question as any)?._id,
                 prompt: question?.prompt,
+                questionType: question?.questionType,
                 points: question?.points,
-                selectedChoiceIds: r.selectedChoiceIds,
+                selectedChoiceIds: r.selectedChoiceIds || [],
+                textAnswer: r.textAnswer || "",
                 pointsAwarded: r.pointsAwarded,
+                aiScore: r.aiScore,
+                aiFeedback: r.aiFeedback,
                 selectedText,
                 correctText,
                 choices: choiceOptions,
@@ -771,6 +941,91 @@ const getBatchStudentGrades = async (req: AuthRequest, res: Response) => {
     }
 };
 
+// Update response score (for teachers to override AI grades)
+const updateResponseScore = async (req: AuthRequest, res: Response) => {
+    try {
+        const { attemptId, responseIndex } = req.params;
+        const { score, feedback } = req.body;
+
+        if (!responseIndex) {
+            return res.status(400).json({ error: "Response index is required" });
+        }
+
+        if (score === undefined) {
+            return res.status(400).json({ error: "Score is required" });
+        }
+
+        const attempt = await Attempt.findById(attemptId).populate({
+            path: "quiz",
+            populate: { path: "course" },
+        });
+
+        if (!attempt) {
+            return res.status(404).json({ error: "Attempt not found" });
+        }
+
+        // Verify teacher owns the course
+        const quiz = attempt.quiz as any;
+        if (!quiz || !quiz.course) {
+            return res.status(500).json({ error: "Failed to populate quiz" });
+        }
+        
+        const course = quiz.course as any;
+        const userId = req.user?._id;
+        if (!userId || course.teacher.toString() !== userId) {
+            return res.status(403).json({ error: "Forbidden" });
+        }
+
+        const index = parseInt(responseIndex, 10);
+        if (isNaN(index) || index < 0 || index >= attempt.responses.length) {
+            return res.status(400).json({ error: "Invalid response index" });
+        }
+
+        const resp = attempt.responses[index];
+        if (!resp) {
+            return res.status(400).json({ error: "Response not found" });
+        }
+        
+        // Update the score (this overrides AI score for written questions)
+        resp.pointsAwarded = score;
+        
+        // Optionally update feedback
+        if (feedback !== undefined) {
+            resp.aiFeedback = feedback;
+        }
+
+        // Recalculate total score
+        let total = 0;
+        let maxScore = 0;
+        
+        await attempt.populate({
+            path: "responses.question",
+            model: "Question",
+        });
+        
+        for (const r of attempt.responses) {
+            const q = r.question as any;
+            total += r.pointsAwarded || 0;
+            maxScore += q.points || 1;
+        }
+        
+        attempt.score = total;
+        attempt.maxScore = maxScore;
+        await attempt.save();
+
+        return res.json({ 
+            success: true, 
+            score: resp.pointsAwarded,
+            feedback: resp.aiFeedback,
+            totalScore: total,
+            maxScore: maxScore,
+        });
+    } catch (err) {
+        console.error("updateResponseScore error:", err);
+        return res.status(500).json({ error: "Failed to update score" });
+    }
+};
+
 export {
     startAttempt,
     autoSaveAnswer,
@@ -783,4 +1038,91 @@ export {
     getStudentCourseGrades,
     getAttemptDetails,
     getBatchStudentGrades,
+    updateResponseScore,
+    getTeacherRecentSubmissions,
+    debugMyAttempts,
+};
+
+/**
+ * Get recent submissions for teacher's courses
+ */
+const getTeacherRecentSubmissions = async (req: AuthRequest, res: Response): Promise<Response> => {
+    try {
+        if (!req.user) return res.status(401).json({ errMsg: "Unauthorized" });
+
+        // Get all courses owned by this teacher
+        const { default: Course } = await import("../models/course.js");
+        const courses = await Course.find({ teacher: req.user._id }).select("_id").lean();
+        const courseIds = courses.map(c => c._id);
+
+        if (courseIds.length === 0) {
+            return res.json({ submissions: [] });
+        }
+
+        // Get recent graded/late attempts from these courses
+        const { default: Quiz } = await import("../models/quiz.js");
+
+        const quizIds = await Quiz.find({ course: { $in: courseIds } }).select("_id").lean().then(qs => qs.map(q => q._id));
+
+        const submissions = await Attempt.find({
+            quiz: { $in: quizIds },
+            status: { $in: ["graded", "late"] }
+        })
+            .populate({
+                path: "user",
+                select: "name"
+            })
+            .populate({
+                path: "quiz",
+                select: "title course",
+                populate: { path: "course", select: "title" }
+            })
+            .select("score maxScore submittedAt")
+            .sort({ submittedAt: -1 })
+            .limit(10)
+            .lean();
+
+        const results = submissions.map(s => {
+            const quiz = s.quiz as any;
+            const user = s.user as any;
+            const course = quiz?.course as any;
+            const scoreValue = s.score ?? 0;
+            const maxValue = s.maxScore ?? 1;
+            const scorePercentage = maxValue > 0 ? Math.round((scoreValue / maxValue) * 100) : 0;
+
+            return {
+                id: s._id,
+                studentName: user?.name || "Unknown",
+                quizTitle: quiz?.title || "Unknown Quiz",
+                courseTitle: course?.title || "Unknown Course",
+                score: scorePercentage,
+                submittedAt: s.submittedAt
+            };
+        });
+
+        return res.json({ submissions: results });
+    } catch (error) {
+        console.error("getTeacherRecentSubmissions error:", error);
+        return res.status(500).json({ errMsg: "Failed to fetch recent submissions" });
+    }
+};
+
+/**
+ * Debug: List user's attempts
+ */
+const debugMyAttempts = async (req: AuthRequest, res: Response): Promise<Response> => {
+    try {
+        if (!req.user) return res.status(401).json({ errMsg: "Unauthorized" });
+        
+        const attempts = await Attempt.find({ user: req.user._id })
+            .select("quiz status createdAt endAt")
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .lean();
+            
+        return res.json({ attempts });
+    } catch (error) {
+        console.error("debugMyAttempts error:", error);
+        return res.status(500).json({ errMsg: "Failed to fetch attempts" });
+    }
 };

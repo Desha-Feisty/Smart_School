@@ -19,6 +19,10 @@ router.post(
     "/start",
     authMiddleware,
     requireRole("student"),
+    async (req, res, next) => {
+        console.log(`[attempt.routes] POST /start called with body:`, JSON.stringify(req.body));
+        next();
+    },
     attemptController.startAttemptFromBody,
 );
 router.post(
@@ -107,6 +111,30 @@ router.get(
     authMiddleware,
     requireRole("student"),
     attemptController.getAttemptDetails,
+);
+
+// Teacher endpoint to update response score (override AI grade)
+router.patch(
+    "/:attemptId/responses/:responseIndex/score",
+    authMiddleware,
+    requireRole("teacher"),
+    attemptController.updateResponseScore,
+);
+
+// Teacher endpoint to get recent submissions
+router.get(
+    "/recent/teacher",
+    authMiddleware,
+    requireRole("teacher"),
+    attemptController.getTeacherRecentSubmissions,
+);
+
+// Debug endpoint - list user's attempts (for debugging)
+router.get(
+    "/debug/my-attempts",
+    authMiddleware,
+    requireRole("student"),
+    attemptController.debugMyAttempts,
 );
 
 export default router;

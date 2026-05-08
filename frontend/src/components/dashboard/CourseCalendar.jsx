@@ -24,7 +24,8 @@ function CourseCalendar({ events = [], onEventClick, role = "student" }) {
     const processedEvents = useMemo(() => {
         return events.map((event) => {
             const isExpired = isPast(new Date(event.closeAt || event.endAt));
-            const isOverdue = isExpired && !event.completed;
+            const isCompleted = event.completed === true;
+            const isOverdue = isExpired && !isCompleted;
             
             return {
                 id: event._id,
@@ -33,19 +34,24 @@ function CourseCalendar({ events = [], onEventClick, role = "student" }) {
                 end: event.closeAt || event.endAt,
                 backgroundColor: isOverdue 
                     ? "#EF4444" 
-                    : isExpired 
+                    : isCompleted 
                         ? "#22C55E" 
-                        : "#8B5CF6",
+                        : isExpired 
+                            ? "#22C55E" 
+                            : "#8B5CF6",
                 borderColor: isOverdue 
                     ? "#EF4444" 
-                    : isExpired 
+                    : isCompleted 
                         ? "#22C55E" 
-                        : "#8B5CF6",
+                        : isExpired 
+                            ? "#22C55E" 
+                            : "#8B5CF6",
                 extendedProps: {
                     type: event.type || "quiz",
                     course: event.course,
                     duration: event.durationMinutes,
-                    status: isOverdue ? "overdue" : isExpired ? "completed" : "upcoming",
+                    completed: isCompleted,
+                    status: isOverdue ? "overdue" : isCompleted ? "completed" : isExpired ? "completed" : "upcoming",
                 },
             };
         });

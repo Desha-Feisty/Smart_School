@@ -40,6 +40,7 @@ function DashboardPage() {
         totalNotes: 0,
         enrollmentCount: 0,
     });
+    const [recentSubmissions, setRecentSubmissions] = useState([]);
 
     useEffect(() => {
         if (!token) {
@@ -56,6 +57,19 @@ function DashboardPage() {
             // Student-only endpoints
             if (role === "student") {
                 promises.push(fetchAvailableQuizzes(), listMyGrades());
+            }
+            
+            // Teacher-only: fetch recent submissions
+            if (role === "teacher") {
+                const axios = (await import("axios")).default;
+                try {
+                    const subRes = await axios.get("/api/attempts/recent/teacher", {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    setRecentSubmissions(subRes.data.submissions || []);
+                } catch (err) {
+                    console.error("Failed to fetch recent submissions:", err);
+                }
             }
             
             await Promise.all(promises);
@@ -104,7 +118,7 @@ function DashboardPage() {
     }, [allCourses, availableQuizzes, myGrades, role]);
 
     const upcomingQuizzes = availableQuizzes
-        .filter((q) => q.timingStatus === "open")
+        .filter((q) => q.timingStatus === "open" && !q.isAttempted)
         .slice(0, 3);
 
     const recentGrades = myGrades
@@ -327,7 +341,7 @@ function DashboardPage() {
                                             key={quiz._id}
                                             initial={{ opacity: 0, x: -20 }}
                                             animate={{ opacity: 1, x: 0 }}
-                                            onClick={() => navigate(`${rolePrefix}/quiz/${quiz._id}`)}
+                                            onClick={() => navigate(`/student/quizzes`)}
                                             className="w-full flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-700/30 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors text-left"
                                         >
                                             <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center shrink-0">
@@ -343,7 +357,7 @@ function DashboardPage() {
                                             </div>
                                             <div className="text-right shrink-0">
                                                 <span className="px-3 py-1.5 rounded-xl text-xs font-medium bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400">
-                                                    Start
+                                                    Show
                                                 </span>
                                             </div>
                                         </motion.button>
@@ -391,12 +405,47 @@ function DashboardPage() {
                         </div>
 
                         {role === "teacher" ? (
-                            /* Teacher: Recent Submissions (placeholder) */
-                            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-                                <ClipboardList className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                                <p>No submissions yet</p>
-                                <p className="text-sm">Students will appear here after taking quizzes</p>
-                            </div>
+                            /* Teacher: Recent Submissions */
+                            recentSubmissions.length === 0 ? (
+                                <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                                    <ClipboardList className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                    <p>No submissions yet</p>
+                                    <p className="text-sm">Students will appear here after taking quizzes</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {recentSubmissions.map((sub, index) => (
+                                        <motion.div
+                                            key={sub.id}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: index * 0.05 }}
+                                            className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-700/30"
+                                        >
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg ${
+                                                sub.score >= 80
+                                                    ? "bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400"
+                                                    : sub.score >= 60
+                                                        ? "bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
+                                                        : "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400"
+                                            }`}>
+                                                {sub.score}%
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-slate-900 dark:text-white truncate">
+                                                    {sub.studentName}
+                                                </p>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                                    {sub.quizTitle} • {sub.courseTitle}
+                                                </p>
+                                            </div>
+                                            <div className="text-xs text-slate-400 dark:text-slate-500">
+                                                {sub.submittedAt ? new Date(sub.submittedAt).toLocaleDateString() : ""}
+                                            </div>
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            )
                         ) : (
                             /* Student: Recent Grades */
                             recentGrades.length === 0 ? (

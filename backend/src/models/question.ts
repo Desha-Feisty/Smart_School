@@ -15,7 +15,7 @@ const choiceSchema = new Schema<IChoice>(
     { _id: true }
 );
 
-export type QuestionType = "mcq_single";
+export type QuestionType = "mcq_single" | "written";
 
 export interface IQuestion {
     quiz: Types.ObjectId | IQuiz;
@@ -24,6 +24,8 @@ export interface IQuestion {
     points: number;
     orderIndex: number;
     choices: [IChoice];
+    sampleAnswer?: string;
+    rubric?: string;
 }
 
 const questionSchema = new Schema<IQuestion>(
@@ -34,6 +36,8 @@ const questionSchema = new Schema<IQuestion>(
         points: { type: Number, default: 1 },
         orderIndex: { type: Number, default: 0 },
         choices: [choiceSchema],
+        sampleAnswer: { type: String },
+        rubric: { type: String },
     },
     { timestamps: true }
 );

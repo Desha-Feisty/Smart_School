@@ -28,6 +28,31 @@ import { dirname } from "path";
 import { authMiddleware, requireRole } from "../middleware/auth.js";
 import * as quizController from "../controllers/quiz.controller.js";
 import { specs } from "../utils/swagger.js";
+
+// Request timeout middleware to detect hanging requests
+const requestTimeout = (timeoutMs: number = 30000) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+        const timeoutId = setTimeout(() => {
+            console.error(`[TIMEOUT] Request to ${req.method} ${req.path} timed out after ${timeoutMs}ms`);
+        }, timeoutMs);
+        
+        // Override res.send to clear timeout
+        const originalSend = res.send.bind(res);
+        res.send = (body?: any) => {
+            clearTimeout(timeoutId);
+            return originalSend(body);
+        };
+        
+        // Override res.json to clear timeout
+        const originalJson = res.json.bind(res);
+        res.json = (body: any) => {
+            clearTimeout(timeoutId);
+            return originalJson(body);
+        };
+        
+        next();
+    };
+};
 import { requestLogger } from "../middleware/requestLogger.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -68,8 +93,14 @@ const readLimiter = rateLimit({
 });
 
 app.use(limiter);
-app.use(cors());
-app.use(express.json());
+// CORS configuration - allow all origins for development
+app.use(cors({
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+app.use(express.json({ limit: '10mb' }));
 app.use(morgan("dev"));
 app.use(requestLogger);
 
@@ -87,7 +118,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs, {
     },
 }));
 
-// API routes
+app.use(requestTimeout(30000));
 app.use("/api/auth", authRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/courses", calendarEventRoutes);

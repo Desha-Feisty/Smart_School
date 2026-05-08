@@ -121,6 +121,7 @@ const createQuiz = async (req: AuthRequest, res: Response) => {
 
 const addQuestionSchema = Joi.object({
     prompt: Joi.string().min(3).required(),
+    questionType: Joi.string().valid("mcq_single", "written").default("mcq_single"),
     points: Joi.number().integer().default(1).min(0),
     orderIndex: Joi.number().integer().min(0).default(0),
     choices: Joi.array()
@@ -131,7 +132,12 @@ const addQuestionSchema = Joi.object({
             }),
         )
         .min(2)
-        .required(),
+        .when("questionType", {
+            is: "written",
+            then: Joi.optional().allow(null),
+        }),
+    sampleAnswer: Joi.string().allow("").optional(),
+    rubric: Joi.string().allow("").optional(),
 });
 
 const addQuestion = async (req: AuthRequest, res: Response) => {
@@ -164,11 +170,24 @@ const addQuestion = async (req: AuthRequest, res: Response) => {
             return res
                 .status(400)
                 .json({ error: error.details[0]?.message || error.message });
-        const question = await Question.create({
+
+        // For written questions, don't require choices
+        const questionData: any = {
             quiz: quiz._id,
-            questionType: "mcq_single",
-            ...value,
-        });
+            questionType: value.questionType || "mcq_single",
+            prompt: value.prompt,
+            points: value.points,
+            orderIndex: value.orderIndex,
+        };
+
+        if (value.questionType === "written") {
+            questionData.sampleAnswer = value.sampleAnswer || undefined;
+            questionData.rubric = value.rubric || undefined;
+        } else {
+            questionData.choices = value.choices;
+        }
+
+        const question = await Question.create(questionData);
         return res.status(201).json({ question });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
@@ -179,6 +198,7 @@ const addQuestion = async (req: AuthRequest, res: Response) => {
 const addQuestionBodySchema = Joi.object({
     quizId: Joi.string().required(),
     prompt: Joi.string().min(2).required(),
+    questionType: Joi.string().valid("mcq_single", "written").default("mcq_single"),
     points: Joi.number().integer().min(0).default(1),
     orderIndex: Joi.number().integer().min(0).default(0),
     choices: Joi.array()
@@ -189,7 +209,12 @@ const addQuestionBodySchema = Joi.object({
             }),
         )
         .min(2)
-        .required(),
+        .when("questionType", {
+            is: "written",
+            then: Joi.optional().allow(null),
+        }),
+    sampleAnswer: Joi.string().allow("").optional(),
+    rubric: Joi.string().allow("").optional(),
 });
 
 const addQuestionViaBody = async (req: AuthRequest, res: Response) => {
@@ -209,14 +234,23 @@ const addQuestionViaBody = async (req: AuthRequest, res: Response) => {
         }
         if (quiz.course.teacher.toString() !== req.user?._id)
             return res.status(403).json({ error: "Forbidden" });
-        const q = await Question.create({
+
+        const questionData: any = {
             quiz: quiz._id,
-            questionType: "mcq_single",
+            questionType: value.questionType || "mcq_single",
             prompt: value.prompt,
             points: value.points,
             orderIndex: value.orderIndex,
-            choices: value.choices,
-        });
+        };
+
+        if (value.questionType === "written") {
+            questionData.sampleAnswer = value.sampleAnswer || undefined;
+            questionData.rubric = value.rubric || undefined;
+        } else {
+            questionData.choices = value.choices;
+        }
+
+        const q = await Question.create(questionData);
         return res.status(201).json({ question: q });
     } catch (error) {
         console.error(error instanceof Error ? error.message : error);
@@ -226,6 +260,7 @@ const addQuestionViaBody = async (req: AuthRequest, res: Response) => {
 
 const updateQuestionSchema = Joi.object({
     prompt: Joi.string().min(2).optional(),
+    questionType: Joi.string().valid("mcq_single", "written").optional(),
     points: Joi.number().integer().min(0).optional(),
     orderIndex: Joi.number().integer().min(0).optional(),
     choices: Joi.array()
@@ -237,6 +272,8 @@ const updateQuestionSchema = Joi.object({
         )
         .min(2)
         .optional(),
+    sampleAnswer: Joi.string().allow("").optional(),
+    rubric: Joi.string().allow("").optional(),
 }).min(1);
 
 const updateQuestion = async (req: AuthRequest, res: Response) => {
@@ -272,10 +309,13 @@ const updateQuestion = async (req: AuthRequest, res: Response) => {
             return res.status(403).json({ errMsg: "forbidden" });
         }
         if (value.prompt !== undefined) question.prompt = value.prompt;
+        if (value.questionType !== undefined) question.questionType = value.questionType;
         if (value.points !== undefined) question.points = value.points;
         if (value.orderIndex !== undefined)
             question.orderIndex = value.orderIndex;
         if (value.choices !== undefined) question.choices = value.choices;
+        if (value.sampleAnswer !== undefined) question.sampleAnswer = value.sampleAnswer || undefined;
+        if (value.rubric !== undefined) question.rubric = value.rubric || undefined;
         await question.save();
         return res.status(200).json({ question });
     } catch (error) {
@@ -561,13 +601,24 @@ const listAvailableQuizzes = async (req: AuthRequest, res: Response) => {
         const userAttempts = await Attempt.find({
             user: req.user._id,
             quiz: { $in: quizzes.map((q) => q._id) },
-        }).select("quiz");
+        }).select("quiz status");
 
         const attemptedQuizIds = new Set(
             userAttempts.map((a) => a.quiz.toString()),
         );
 
-        // Add isAttempted flag and status to each quiz
+        // Fetch user attempts that have been SUBMITTED (graded, submitted, or late)
+        const userSubmittedAttempts = await Attempt.find({
+            user: req.user._id,
+            quiz: { $in: quizzes.map((q) => q._id) },
+            status: { $in: ["graded", "submitted", "late"] },
+        }).select("quiz");
+
+        const submittedQuizIds = new Set(
+            userSubmittedAttempts.map((a) => a.quiz.toString()),
+        );
+
+        // Add isAttempted flag, completed flag, and status to each quiz
         const quizzesWithStatus = quizzes.map((quiz) => {
             const openAt = new Date(quiz.openAt);
             const closeAt = new Date(quiz.closeAt);
@@ -582,6 +633,7 @@ const listAvailableQuizzes = async (req: AuthRequest, res: Response) => {
             return {
                 ...quiz.toObject(),
                 isAttempted: attemptedQuizIds.has(quiz._id.toString()),
+                completed: submittedQuizIds.has(quiz._id.toString()),
                 timingStatus: status, // upcoming, open, closed
             };
         });
@@ -712,13 +764,19 @@ const createQuizFromBody = async (req: AuthRequest, res: Response) => {
 const generateQuestionsWithAI = async (req: AuthRequest, res: Response) => {
     try {
         const { id: quizId } = req.params;
-        const { topic, count = 5 } = req.body;
+        const { topic, count = 5, questionType = "mcq_single", points = 1 } = req.body;
 
         if (!quizId) return res.status(400).json({ errMsg: "invalid quiz id" });
         if (!topic)
             return res.status(400).json({ errMsg: "topic is required" });
         if (count > 20)
             return res.status(400).json({ errMsg: "max 20 questions allowed" });
+        if (!["mcq_single", "written"].includes(questionType)) {
+            return res.status(400).json({ errMsg: "questionType must be 'mcq_single' or 'written'" });
+        }
+        if (typeof points !== "number" || points < 1 || points > 10) {
+            return res.status(400).json({ errMsg: "points must be a number between 1 and 10" });
+        }
 
         const quiz = await Quiz.findById(quizId).populate({
             path: "course",
@@ -750,21 +808,36 @@ const generateQuestionsWithAI = async (req: AuthRequest, res: Response) => {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-        const prompt = `You are an expert educator. Create ${count} multiple-choice questions about the following topic: "${topic}".
-        Return ONLY a JSON array of objects with this exact structure:
-        [
-            {
-                "prompt": "The question text",
-                "points": 1,
-                "choices": [
-                    { "text": "Correct Answer", "isCorrect": true },
-                    { "text": "Wrong Answer 1", "isCorrect": false },
-                    { "text": "Wrong Answer 2", "isCorrect": false },
-                    { "text": "Wrong Answer 3", "isCorrect": false }
-                ]
-            }
-        ]
-        Do not wrap in markdown code blocks. Just output the raw JSON array. Make sure there is exactly ONE correct answer per question, and the questions are high quality.`;
+        let prompt;
+        if (questionType === "written") {
+            prompt = `You are an expert educator. Create ${count} written/essay questions about the following topic: "${topic}".
+            Return ONLY a JSON array of objects with this exact structure:
+            [
+                {
+                    "prompt": "The question text",
+                    "points": 1,
+                    "sampleAnswer": "Optional ideal answer that shows what a good response should include",
+                    "rubric": "Optional grading criteria or key points to look for"
+                }
+            ]
+            Do not wrap in markdown code blocks. Just output the raw JSON array. Make sure the questions are high quality and can be answered with a paragraph or short essay.`;
+        } else {
+            prompt = `You are an expert educator. Create ${count} multiple-choice questions about the following topic: "${topic}".
+            Return ONLY a JSON array of objects with this exact structure:
+            [
+                {
+                    "prompt": "The question text",
+                    "points": 1,
+                    "choices": [
+                        { "text": "Correct Answer", "isCorrect": true },
+                        { "text": "Wrong Answer 1", "isCorrect": false },
+                        { "text": "Wrong Answer 2", "isCorrect": false },
+                        { "text": "Wrong Answer 3", "isCorrect": false }
+                    ]
+                }
+            ]
+            Do not wrap in markdown code blocks. Just output the raw JSON array. Make sure there is exactly ONE correct answer per question, and the questions are high quality.`;
+        }
 
         const result = await model.generateContent(prompt);
         const text = result.response.text().trim();
@@ -787,14 +860,36 @@ const generateQuestionsWithAI = async (req: AuthRequest, res: Response) => {
                 .json({ errMsg: "AI returned invalid JSON data" });
         }
 
-        const questionsToInsert = generatedQuestions.map((q: any) => ({
-            quiz: quiz._id,
-            questionType: "mcq_single",
-            prompt: q.prompt,
-            points: q.points || 1,
-            orderIndex: 0,
-            choices: q.choices,
-        }));
+        // Validate that AI generated the requested number of questions
+        if (!Array.isArray(generatedQuestions) || generatedQuestions.length !== count) {
+            const actualCount = Array.isArray(generatedQuestions) ? generatedQuestions.length : 0;
+            return res.status(400).json({
+                errMsg: `AI generated ${actualCount} question${actualCount !== 1 ? "s" : ""} but you requested ${count}. Please try again.`,
+            });
+        }
+
+        const questionsToInsert = generatedQuestions.map((q: any) => {
+            const base = {
+                quiz: quiz._id,
+                questionType: questionType as "mcq_single" | "written",
+                prompt: q.prompt,
+                points: points,
+                orderIndex: 0,
+            };
+
+            if (questionType === "written") {
+                return {
+                    ...base,
+                    sampleAnswer: q.sampleAnswer || undefined,
+                    rubric: q.rubric || undefined,
+                };
+            } else {
+                return {
+                    ...base,
+                    choices: q.choices,
+                };
+            }
+        });
 
         const inserted = await Question.insertMany(questionsToInsert);
         return res.status(201).json({ questions: inserted });

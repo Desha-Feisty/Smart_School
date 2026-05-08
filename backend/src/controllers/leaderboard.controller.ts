@@ -29,7 +29,7 @@ const getCourseLeaderboard = async (req: AuthRequest, res: Response) => {
                 $group: {
                     _id: "$user",
                     totalScore: { $sum: "$score" },
-                    totalPossible: { $sum: { $size: "$responses" } },
+                    totalPossible: { $sum: "$maxScore" },
                     quizzesAttempted: { $sum: 1 }
                 }
             },

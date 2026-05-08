@@ -41,6 +41,9 @@ function QuizResultsPage() {
                 console.error("Failed to fetch attempt:", err);
                 if (currentAttempt?._id === attemptId) {
                     setAttempt(currentAttempt);
+                } else if (err.response?.status === 404) {
+                    // Quiz might have been already submitted and graded
+                    setError("This quiz has already been submitted. Your results are available.");
                 } else {
                     setError(
                         err.response?.data?.errMsg || "Failed to load results",
@@ -113,7 +116,10 @@ function QuizResultsPage() {
                   (Number.isFinite(r.pointsAwarded) ? r.pointsAwarded : 0),
               0,
           );
-    const totalPointsPossible = attempt.responses?.length || 0;
+    const totalPointsPossible = attempt.responses?.reduce(
+        (sum, r) => sum + (r.points || 1),
+        0,
+    ) || 0;
     const scorePercentage =
         totalPointsPossible > 0
             ? Math.round((rawScore / totalPointsPossible) * 100)
@@ -329,6 +335,8 @@ function QuizResultsPage() {
                             <div className="space-y-4">
                                 {attempt.responses.map((response, index) => {
                                     const isCorrect = response.pointsAwarded > 0;
+                                    const isWritten = response.questionType === "written";
+                                    
                                     return (
                                         <div
                                             key={index}
@@ -343,6 +351,7 @@ function QuizResultsPage() {
                                                     <div className="flex items-center gap-3 mb-2">
                                                         <h3 className="font-bold text-lg text-slate-900 dark:text-white">
                                                             Question {index + 1}
+                                                            {isWritten && <span className="ml-2 badge badge-info badge-sm">Written</span>}
                                                         </h3>
                                                         {isCorrect ? (
                                                             <CheckCircle className="w-5 h-5 text-emerald-500" />
@@ -354,22 +363,46 @@ function QuizResultsPage() {
                                                         {response.prompt || "Question not available"}
                                                     </p>
                                                     
-                                                    <div className="space-y-2 bg-white/50 dark:bg-base-300/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50">
-                                                        <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                                                            <span className="text-slate-500 dark:text-slate-400 mr-2">Your Answer:</span>
-                                                            <span className={`font-semibold ${isCorrect ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                                                                {response.selectedText?.length > 0 ? response.selectedText.join(", ") : "No answer provided"}
-                                                            </span>
-                                                        </p>
-                                                        {!isCorrect && response.correctText && response.correctText.length > 0 && (
-                                                            <p className="text-sm font-medium text-slate-800 dark:text-slate-200 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700/50">
-                                                                <span className="text-slate-500 dark:text-slate-400 mr-2">Correct Answer:</span>
-                                                                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                                                                    {response.correctText.join(", ")}
+                                                    {isWritten ? (
+                                                        <div className="space-y-4">
+                                                            <div className="bg-white/50 dark:bg-base-300/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50">
+                                                                <p className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+                                                                    <span className="text-slate-500 dark:text-slate-400">Your Answer:</span>
+                                                                </p>
+                                                                <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                                                                    {response.textAnswer || "No answer provided"}
+                                                                </p>
+                                                            </div>
+                                                            
+                                                            {response.aiFeedback && (
+                                                                <div className="bg-blue-50/50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
+                                                                    <p className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">
+                                                                        AI Feedback:
+                                                                    </p>
+                                                                    <p className="text-sm text-blue-700 dark:text-blue-300 whitespace-pre-wrap">
+                                                                        {response.aiFeedback}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-2 bg-white/50 dark:bg-base-300/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50">
+                                                            <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                                                                <span className="text-slate-500 dark:text-slate-400 mr-2">Your Answer:</span>
+                                                                <span className={`font-semibold ${isCorrect ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                                                                    {response.selectedText?.length > 0 ? response.selectedText.join(", ") : "No answer provided"}
                                                                 </span>
                                                             </p>
-                                                        )}
-                                                    </div>
+                                                            {!isCorrect && response.correctText && response.correctText.length > 0 && (
+                                                                <p className="text-sm font-medium text-slate-800 dark:text-slate-200 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700/50">
+                                                                    <span className="text-slate-500 dark:text-slate-400 mr-2">Correct Answer:</span>
+                                                                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                                                        {response.correctText.join(", ")}
+                                                                    </span>
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className="text-left sm:text-right shrink-0 bg-white dark:bg-base-300 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 shadow-sm self-start w-full sm:w-auto">
                                                     <div
@@ -379,7 +412,7 @@ function QuizResultsPage() {
                                                                 : "text-red-600 dark:text-red-400"
                                                         }`}
                                                     >
-                                                        {response.pointsAwarded} <span className="text-lg text-slate-400 font-medium">/ 1</span>
+                                                        {response.pointsAwarded} <span className="text-lg text-slate-400 font-medium">/ {response.points || 1}</span>
                                                     </div>
                                                     <div
                                                         className={`text-xs font-bold uppercase tracking-wider ${

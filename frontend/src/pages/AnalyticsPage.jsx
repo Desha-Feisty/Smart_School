@@ -76,22 +76,21 @@ function AnalyticsPage() {
         if (role === "teacher") {
             const totalCourses = allCourses.length;
             const totalStudents = allCourses.reduce((sum, c) => sum + (c.enrollmentCount || 0), 0);
-            const totalQuizzes = allCourses.reduce((sum, c) => sum + (c.quizCount || 0), 0);
+            const totalQuizzes = allCourses.reduce((sum, c) => sum + (c.publishedQuizCount || 0), 0);
 
             // Course performance data
             const coursePerformance = allCourses.map((course) => ({
                 name: course.title?.slice(0, 20) || "Course",
                 fullName: course.title,
                 students: course.enrollmentCount || 0,
-                quizzes: course.quizCount || 0,
+                quizzes: course.publishedQuizCount || 0,
                 avgScore: course.avgScore || 0,
             }));
 
-            // Student engagement by course
-            const engagementData = allCourses.map((course) => ({
+            // Calculate real completion rates (placeholder - would need API data)
+            const completionRates = allCourses.map((course) => ({
                 course: course.title?.slice(0, 15) || "Course",
-                active: Math.floor((course.enrollmentCount || 0) * 0.8),
-                inactive: Math.floor((course.enrollmentCount || 0) * 0.2),
+                rate: course.enrollmentCount > 0 ? Math.round(50 + Math.random() * 50) : 0, // Placeholder
             }));
 
             return {
@@ -100,7 +99,7 @@ function AnalyticsPage() {
                 totalStudents,
                 totalQuizzes,
                 coursePerformance,
-                engagementData,
+                completionRates,
                 avgScore: totalCourses > 0 ? Math.round(coursePerformance.reduce((sum, c) => sum + c.avgScore, 0) / totalCourses) : 0,
             };
         }
@@ -139,17 +138,15 @@ function AnalyticsPage() {
             }
         });
 
-        // Time-based data (mocked for demo)
-        const progressData = [
-            { week: "Week 1", score: 65, attempts: 2 },
-            { week: "Week 2", score: 72, attempts: 3 },
-            { week: "Week 3", score: 68, attempts: 2 },
-            { week: "Week 4", score: 80, attempts: 4 },
-            { week: "Week 5", score: 75, attempts: 3 },
-            { week: "Week 6", score: 85, attempts: 2 },
-        ];
+        // Real progress data from completed quizzes
+        const progressData = completed
+            .slice(-6)
+            .map((g, idx) => ({
+                quiz: g.quiz?.title?.slice(0, 15) || `Quiz ${idx + 1}`,
+                score: g.score || 0,
+            }));
 
-        // Course performance
+        // Course performance (real data)
         const coursePerformance = allCourses.map((course) => {
             const courseGrades = completed.filter((g) =>
                 g.course?._id === course._id || g.course === course._id
@@ -161,27 +158,10 @@ function AnalyticsPage() {
             return {
                 name: course.title?.slice(0, 20) || "Course",
                 fullName: course.title,
-                students: course.enrollmentCount || 0,
-                quizzes: course.quizCount || 0,
+                quizzes: course.publishedQuizCount || 0,
                 average: avg,
             };
         });
-
-        // Quiz type performance (by duration)
-        const durationPerformance = [
-            { name: "10-20 min", avgScore: 72 },
-            { name: "21-30 min", avgScore: 78 },
-            { name: "31-45 min", avgScore: 75 },
-            { name: "45+ min", avgScore: 82 },
-        ];
-
-        // Best performing time of day
-        const timeOfDay = [
-            { time: "Morning (6am-12pm)", count: 15, avgScore: 80 },
-            { time: "Afternoon (12pm-6pm)", count: 25, avgScore: 72 },
-            { time: "Evening (6pm-9pm)", count: 35, avgScore: 78 },
-            { time: "Night (9pm+)", count: 25, avgScore: 68 },
-        ];
 
         return {
             isTeacher: false,
@@ -192,8 +172,6 @@ function AnalyticsPage() {
             scoreRanges,
             progressData,
             coursePerformance,
-            durationPerformance,
-            timeOfDay,
             completed,
         };
     }, [myGrades, allCourses, role]);
@@ -319,6 +297,51 @@ function AnalyticsPage() {
                             </div>
                             <p className="text-3xl font-bold text-slate-900 dark:text-white">{data.avgScore}%</p>
                             <p className="text-sm text-slate-500 dark:text-slate-400">Avg Score</p>
+                        </div>
+                    </div>
+
+                    {/* Teacher Analytics Charts */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-white dark:bg-base-200 rounded-3xl p-6 shadow-md">
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
+                                Students per Course
+                            </h3>
+                            {data.coursePerformance.length === 0 ? (
+                                <div className="h-48 flex items-center justify-center text-slate-500 dark:text-slate-400">
+                                    <p>No courses yet</p>
+                                </div>
+                            ) : (
+                                <ResponsiveContainer width="100%" height={200}>
+                                    <BarChart data={data.coursePerformance} layout="vertical">
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                                        <XAxis type="number" stroke="#9CA3AF" fontSize={12} />
+                                        <YAxis dataKey="name" type="category" stroke="#9CA3AF" fontSize={11} width={100} />
+                                        <Tooltip content={<CustomTooltip />} />
+                                        <Bar dataKey="students" name="Students" fill="#3B82F6" radius={[0, 4, 4, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            )}
+                        </div>
+
+                        <div className="bg-white dark:bg-base-200 rounded-3xl p-6 shadow-md">
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
+                                Quizzes per Course
+                            </h3>
+                            {data.coursePerformance.length === 0 ? (
+                                <div className="h-48 flex items-center justify-center text-slate-500 dark:text-slate-400">
+                                    <p>No courses yet</p>
+                                </div>
+                            ) : (
+                                <ResponsiveContainer width="100%" height={200}>
+                                    <BarChart data={data.coursePerformance} layout="vertical">
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                                        <XAxis type="number" stroke="#9CA3AF" fontSize={12} />
+                                        <YAxis dataKey="name" type="category" stroke="#9CA3AF" fontSize={11} width={100} />
+                                        <Tooltip content={<CustomTooltip />} />
+                                        <Bar dataKey="quizzes" name="Quizzes" fill="#8B5CF6" radius={[0, 4, 4, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            )}
                         </div>
                     </div>
 
@@ -448,28 +471,34 @@ function AnalyticsPage() {
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
                         Score Progress
                     </h3>
-                    <ResponsiveContainer width="100%" height={280}>
-                        <AreaChart data={data.progressData}>
-                            <defs>
-                                <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor={colors.violet} stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor={colors.violet} stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                            <XAxis dataKey="week" stroke="#9CA3AF" fontSize={12} />
-                            <YAxis stroke="#9CA3AF" fontSize={12} domain={[0, 100]} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Area
-                                type="monotone"
-                                dataKey="score"
-                                name="Score"
-                                stroke={colors.violet}
-                                fill="url(#colorScore)"
-                                strokeWidth={2}
-                            />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                    {data.progressData.length === 0 ? (
+                        <div className="h-[280px] flex items-center justify-center text-slate-500 dark:text-slate-400">
+                            <p>No quiz attempts yet</p>
+                        </div>
+                    ) : (
+                        <ResponsiveContainer width="100%" height={280}>
+                            <AreaChart data={data.progressData}>
+                                <defs>
+                                    <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor={colors.violet} stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor={colors.violet} stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                                <XAxis dataKey="quiz" stroke="#9CA3AF" fontSize={12} />
+                                <YAxis stroke="#9CA3AF" fontSize={12} domain={[0, 100]} />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Area
+                                    type="monotone"
+                                    dataKey="score"
+                                    name="Score"
+                                    stroke={colors.violet}
+                                    fill="url(#colorScore)"
+                                    strokeWidth={2}
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    )}
                 </div>
 
                 {/* Score Distribution */}
@@ -503,50 +532,33 @@ function AnalyticsPage() {
                     </ResponsiveContainer>
                 </div>
 
-                {/* Performance by Time of Day */}
+                {/* Course Performance Chart */}
                 <div className="bg-white dark:bg-base-200 rounded-3xl p-6 shadow-md">
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
-                        Performance by Time of Day
+                        Performance by Course
                     </h3>
-                    <ResponsiveContainer width="100%" height={280}>
-                        <BarChart data={data.timeOfDay} layout="vertical">
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                            <XAxis type="number" stroke="#9CA3AF" fontSize={12} />
-                            <YAxis dataKey="time" type="category" stroke="#9CA3AF" fontSize={12} width={100} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Bar dataKey="avgScore" name="Avg Score" radius={[0, 6, 6, 0]}>
-                                {data.timeOfDay.map((entry, index) => (
-                                    <Cell
-                                        key={`cell-${index}`}
-                                        fill={entry.avgScore >= 75 ? colors.green : colors.amber}
-                                    />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-
-                {/* Performance by Quiz Duration */}
-                <div className="bg-white dark:bg-base-200 rounded-3xl p-6 shadow-md">
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
-                        Performance by Quiz Duration
-                    </h3>
-                    <ResponsiveContainer width="100%" height={280}>
-                        <LineChart data={data.durationPerformance}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                            <XAxis dataKey="name" stroke="#9CA3AF" fontSize={12} />
-                            <YAxis stroke="#9CA3AF" fontSize={12} domain={[0, 100]} />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Line
-                                type="monotone"
-                                dataKey="avgScore"
-                                name="Avg Score"
-                                stroke={colors.blue}
-                                strokeWidth={2}
-                                dot={{ fill: colors.blue, strokeWidth: 2, r: 6 }}
-                            />
-                        </LineChart>
-                    </ResponsiveContainer>
+                    {data.coursePerformance.length === 0 ? (
+                        <div className="h-[280px] flex items-center justify-center text-slate-500 dark:text-slate-400">
+                            <p>No course data available</p>
+                        </div>
+                    ) : (
+                        <ResponsiveContainer width="100%" height={280}>
+                            <BarChart data={data.coursePerformance} layout="vertical">
+                                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                                <XAxis type="number" stroke="#9CA3AF" fontSize={12} domain={[0, 100]} />
+                                <YAxis dataKey="name" type="category" stroke="#9CA3AF" fontSize={12} width={120} />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Bar dataKey="average" name="Avg Score" radius={[0, 6, 6, 0]}>
+                                    {data.coursePerformance.map((entry, index) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={entry.average >= 80 ? colors.green : entry.average >= 60 ? colors.amber : colors.red}
+                                        />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    )}
                 </div>
             </div>
 
@@ -570,9 +582,6 @@ function AnalyticsPage() {
                                         Course
                                     </th>
                                     <th className="text-left py-3 px-4 font-semibold text-slate-900 dark:text-white">
-                                        Enrolled
-                                    </th>
-                                    <th className="text-left py-3 px-4 font-semibold text-slate-900 dark:text-white">
                                         Quizzes
                                     </th>
                                     <th className="text-left py-3 px-4 font-semibold text-slate-900 dark:text-white">
@@ -593,9 +602,6 @@ function AnalyticsPage() {
                                             <p className="font-medium text-slate-900 dark:text-white">
                                                 {course.fullName}
                                             </p>
-                                        </td>
-                                        <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
-                                            {course.students}
                                         </td>
                                         <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
                                             {course.quizzes}

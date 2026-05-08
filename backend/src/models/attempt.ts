@@ -3,12 +3,18 @@ import type { IQuiz } from "./quiz.js";
 export interface IResponse {
     question: Types.ObjectId;
     selectedChoiceIds: [Types.ObjectId];
+    textAnswer?: string;
+    aiScore?: number;
+    aiFeedback?: string;
     pointsAwarded?: number;
 }
 
 const responseSchema = new Schema<IResponse>({
     question: { type: Types.ObjectId, ref: "Question", required: true },
     selectedChoiceIds: [{ type: Types.ObjectId }],
+    textAnswer: { type: String },
+    aiScore: { type: Number },
+    aiFeedback: { type: String },
     pointsAwarded: { type: Number, default: 0 },
 });
 

@@ -134,7 +134,7 @@ export const getPlatformAnalytics = async (req: AuthRequest, res: Response) => {
 
             const avgScore = attempts.length > 0 
                 ? attempts.reduce((sum, a) => {
-                    const totalPointsPossible = a.responses?.length || 1;
+                    const totalPointsPossible = a.maxScore || 1;
                     return sum + ((a.score || 0) / totalPointsPossible) * 100;
                 }, 0) / attempts.length 
                 : 0;
@@ -154,6 +154,174 @@ export const getPlatformAnalytics = async (req: AuthRequest, res: Response) => {
     } catch (error) {
         console.error("Admin getPlatformAnalytics error:", error);
         res.status(500).json({ errMsg: "Failed to fetch platform analytics" });
+    }
+};
+
+/**
+ * Get platform activity over time (last 7/30 days)
+ */
+export const getPlatformActivity = async (req: AuthRequest, res: Response) => {
+    try {
+        const { days = "7" } = req.query;
+        const daysNum = parseInt(days as string) || 7;
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - daysNum);
+        startDate.setHours(0, 0, 0, 0);
+
+        // Get all graded/late attempts in the date range
+        const attempts = await Attempt.find({
+            submittedAt: { $gte: startDate },
+            status: { $in: ["graded", "late"] }
+        }).select("submittedAt").lean();
+
+        // Group by date
+        const dailyAttempts: Record<string, number> = {};
+        for (let i = 0; i < daysNum; i++) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            const dateStr = date.toISOString().split("T")[0] ?? "";
+            dailyAttempts[dateStr] = 0;
+        }
+
+        attempts.forEach((a) => {
+            if (!a.submittedAt) return;
+            const dateStr = new Date(a.submittedAt).toISOString().split("T")[0] ?? "";
+            if (dailyAttempts[dateStr] !== undefined) {
+                dailyAttempts[dateStr]++;
+            }
+        });
+
+        const result = Object.entries(dailyAttempts)
+            .map(([date, count]) => ({ date, count }))
+            .sort((a, b) => a.date.localeCompare(b.date));
+
+        const totalAttempts = result.reduce((sum, r) => sum + r.count, 0);
+        const averageDaily = daysNum > 0 ? totalAttempts / daysNum : 0;
+
+        res.status(200).json({
+            dailyAttempts: result,
+            totalAttempts,
+            averageDaily: Math.round(averageDaily * 10) / 10
+        });
+    } catch (error) {
+        console.error("Admin getPlatformActivity error:", error);
+        res.status(500).json({ errMsg: "Failed to fetch platform activity" });
+    }
+};
+
+/**
+ * Get teacher performance metrics
+ */
+export const getTeacherPerformance = async (req: AuthRequest, res: Response) => {
+    try {
+        const teachers = await User.find({ role: "teacher" }).select("name email").lean();
+        
+        const teacherStats = await Promise.all(teachers.map(async (teacher) => {
+            const courses = await Course.find({ teacher: teacher._id }).select("_id").lean();
+            const courseIds = courses.map(c => c._id);
+            
+            const studentCount = await Enrollment.countDocuments({
+                course: { $in: courseIds },
+                status: "active"
+            });
+            
+            const quizzes = await Quiz.find({ 
+                course: { $in: courseIds },
+                published: true 
+            }).select("_id").lean();
+            const quizIds = quizzes.map(q => q._id);
+            
+            const attempts = await Attempt.find({
+                quiz: { $in: quizIds },
+                status: { $in: ["graded", "late"] }
+            }).lean();
+            
+            const avgScore = attempts.length > 0
+                ? attempts.reduce((sum, a) => {
+                    const totalPointsPossible = a.maxScore || 1;
+                    return sum + ((a.score || 0) / totalPointsPossible) * 100;
+                }, 0) / attempts.length
+                : 0;
+
+            // Active students (with at least one attempt)
+            const activeStudents = new Set(attempts.map(a => a.user.toString())).size;
+
+            return {
+                id: teacher._id,
+                name: teacher.name,
+                email: teacher.email,
+                courseCount: courses.length,
+                studentCount,
+                quizCount: quizzes.length,
+                avgScore: Math.round(avgScore),
+                activeStudents,
+                totalAttempts: attempts.length
+            };
+        }));
+
+        // Sort by avgScore descending
+        teacherStats.sort((a, b) => b.avgScore - a.avgScore);
+
+        res.status(200).json({ teachers: teacherStats });
+    } catch (error) {
+        console.error("Admin getTeacherPerformance error:", error);
+        res.status(500).json({ errMsg: "Failed to fetch teacher performance" });
+    }
+};
+
+/**
+ * Get enhanced platform stats
+ */
+export const getEnhancedStats = async (req: AuthRequest, res: Response) => {
+    try {
+        const [
+            totalUsers,
+            totalStudents,
+            totalTeachers,
+            totalCourses,
+            totalQuizzes,
+            totalAttempts,
+            coursesWithQuizzes
+        ] = await Promise.all([
+            User.countDocuments(),
+            User.countDocuments({ role: "student" }),
+            User.countDocuments({ role: "teacher" }),
+            Course.countDocuments(),
+            Quiz.countDocuments({ published: true }),
+            Attempt.countDocuments({ status: { $in: ["graded", "late"] } }),
+            Course.countDocuments({ quizCount: { $gt: 0 } })
+        ]);
+
+        // Calculate avg platform score
+        const attempts = await Attempt.find({ status: { $in: ["graded", "late"] } }).select("score maxScore").lean();
+        const avgPlatformScore = attempts.length > 0
+            ? attempts.reduce((sum, a) => {
+                const totalPointsPossible = a.maxScore || 1;
+                return sum + ((a.score || 0) / totalPointsPossible) * 100;
+            }, 0) / attempts.length
+            : 0;
+
+        // Active this week (users with activity in last 7 days)
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const activeThisWeek = await Attempt.countDocuments({ submittedAt: { $gte: weekAgo } });
+
+        res.status(200).json({
+            stats: {
+                totalUsers,
+                totalStudents,
+                totalTeachers,
+                totalCourses,
+                totalQuizzes,
+                totalAttempts,
+                coursesWithQuizzes,
+                avgPlatformScore: Math.round(avgPlatformScore),
+                activeThisWeek
+            }
+        });
+    } catch (error) {
+        console.error("Admin getEnhancedStats error:", error);
+        res.status(500).json({ errMsg: "Failed to fetch enhanced stats" });
     }
 };
 

@@ -45,15 +45,20 @@ function QuizQuestionsPage() {
     const [isAiModalOpen, setIsAiModalOpen] = useState(false);
     const [aiTopic, setAiTopic] = useState("");
     const [aiCount, setAiCount] = useState(5);
+    const [aiQuestionType, setAiQuestionType] = useState("mcq_single");
+    const [aiPoints, setAiPoints] = useState(1);
     const [isGenerating, setIsGenerating] = useState(false);
 
     const [formData, setFormData] = useState({
         prompt: "",
+        questionType: "mcq_single",
         points: 1,
         choices: [
             { text: "", isCorrect: true },
             { text: "", isCorrect: false },
         ],
+        sampleAnswer: "",
+        rubric: "",
     });
 
     const fetchQuestions = async () => {
@@ -135,31 +140,48 @@ function QuizQuestionsPage() {
             toast.error("Question prompt is required");
             return;
         }
-        if (formData.choices.some((c) => !c.text.trim())) {
-            toast.error("All choice text fields must be filled");
-            return;
-        }
-        if (!formData.choices.some((c) => c.isCorrect)) {
-            toast.error("Select a correct answer");
-            return;
+
+        // Validate based on question type
+        if (formData.questionType === "mcq_single") {
+            if (formData.choices.some((c) => !c.text.trim())) {
+                toast.error("All choice text fields must be filled");
+                return;
+            }
+            if (!formData.choices.some((c) => c.isCorrect)) {
+                toast.error("Select a correct answer");
+                return;
+            }
         }
 
         setIsSubmitting(true);
         try {
+            // Prepare payload based on question type
+            const payload = { ...formData };
+            if (formData.questionType === "written") {
+                // Remove choices for written questions
+                delete payload.choices;
+                // Only include sampleAnswer and rubric if they have values
+                if (!payload.sampleAnswer) delete payload.sampleAnswer;
+                if (!payload.rubric) delete payload.rubric;
+            }
+
             if (editingId) {
-                await updateQuestion(editingId, formData);
+                await updateQuestion(editingId, payload);
                 toast.success("Question updated successfully");
             } else {
-                await addQuestion(quizId, formData);
+                await addQuestion(quizId, payload);
                 toast.success("Question added successfully");
             }
             setFormData({
                 prompt: "",
+                questionType: "mcq_single",
                 points: 1,
                 choices: [
                     { text: "", isCorrect: true },
                     { text: "", isCorrect: false },
                 ],
+                sampleAnswer: "",
+                rubric: "",
             });
             setIsAdding(false);
             setEditingId(null);
@@ -179,10 +201,12 @@ function QuizQuestionsPage() {
         }
         setIsGenerating(true);
         try {
-            await generateAiQuestions(quizId, aiTopic, aiCount);
-            toast.success(`Successfully generated ${aiCount} questions!`);
+            await generateAiQuestions(quizId, aiTopic, aiCount, aiQuestionType, aiPoints);
+            toast.success(`Successfully generated ${aiCount} ${aiQuestionType === "written" ? "written" : "multiple choice"} questions!`);
             setIsAiModalOpen(false);
             setAiTopic("");
+            setAiQuestionType("mcq_single");
+            setAiPoints(1);
             fetchQuestions();
         } catch (err) {
             const errorMsg = err.response?.data?.errMsg || err.message || "Failed to generate AI questions";
@@ -195,11 +219,17 @@ function QuizQuestionsPage() {
     const handleEdit = (q) => {
         setFormData({
             prompt: q.prompt,
+            questionType: q.questionType || "mcq_single",
             points: q.points,
-            choices: q.choices.map((c) => ({
+            choices: q.choices ? q.choices.map((c) => ({
                 text: c.text,
                 isCorrect: c.isCorrect,
-            })),
+            })) : [
+                { text: "", isCorrect: true },
+                { text: "", isCorrect: false },
+            ],
+            sampleAnswer: q.sampleAnswer || "",
+            rubric: q.rubric || "",
         });
         setEditingId(q._id);
         setIsAdding(true);
@@ -316,6 +346,41 @@ function QuizQuestionsPage() {
                                         placeholder="E.g., The history of the Roman Empire, Newton's Laws of Motion, or paste a block of text..."
                                     />
                                 </div>
+                                
+                                {/* Question Type Selector */}
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text font-semibold text-slate-700 dark:text-slate-300">
+                                            Question Type
+                                        </span>
+                                    </label>
+                                    <div className="flex gap-4">
+                                        <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${aiQuestionType === "mcq_single" ? "bg-purple-50/50 dark:bg-purple-900/10 border-purple-400 dark:border-purple-500/50" : "bg-slate-50/50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700 hover:border-slate-300"}`}>
+                                            <input
+                                                type="radio"
+                                                name="aiQuestionType"
+                                                value="mcq_single"
+                                                checked={aiQuestionType === "mcq_single"}
+                                                onChange={(e) => setAiQuestionType(e.target.value)}
+                                                className="radio radio-primary"
+                                            />
+                                            <span className="font-medium text-sm">Multiple Choice</span>
+                                        </label>
+                                        <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${aiQuestionType === "written" ? "bg-purple-50/50 dark:bg-purple-900/10 border-purple-400 dark:border-purple-500/50" : "bg-slate-50/50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700 hover:border-slate-300"}`}>
+                                            <input
+                                                type="radio"
+                                                name="aiQuestionType"
+                                                value="written"
+                                                checked={aiQuestionType === "written"}
+                                                onChange={(e) => setAiQuestionType(e.target.value)}
+                                                className="radio radio-primary"
+                                            />
+                                            <span className="font-medium text-sm">Written (AI Graded)</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex gap-6">
                                 <div className="form-control max-w-xs">
                                     <label className="label">
                                         <span className="label-text font-semibold text-slate-700 dark:text-slate-300">
@@ -331,6 +396,22 @@ function QuizQuestionsPage() {
                                         className="input bg-white/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/50 rounded-xl text-lg w-32 font-mono"
                                     />
                                 </div>
+                                <div className="form-control max-w-xs">
+                                    <label className="label">
+                                        <span className="label-text font-semibold text-slate-700 dark:text-slate-300">
+                                            Points per Question
+                                        </span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="10"
+                                        value={aiPoints}
+                                        onChange={(e) => setAiPoints(parseInt(e.target.value))}
+                                        className="input bg-white/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/50 rounded-xl text-lg w-32 font-mono"
+                                    />
+                                </div>
+                            </div>
                                 <div className="flex gap-4 pt-4">
                                     <button
                                         type="submit"
@@ -365,6 +446,39 @@ function QuizQuestionsPage() {
                                 {editingId ? "Edit Question" : "Add New Question"}
                             </h2>
                             <form onSubmit={handleSubmit} className="space-y-6">
+                                {/* Question Type Selector */}
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text font-semibold text-slate-700 dark:text-slate-300">
+                                            Question Type
+                                        </span>
+                                    </label>
+                                    <div className="flex gap-4">
+                                        <label className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${formData.questionType === "mcq_single" ? "bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-400 dark:border-emerald-500/50" : "bg-slate-50/50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700 hover:border-slate-300"}`}>
+                                            <input
+                                                type="radio"
+                                                name="questionType"
+                                                value="mcq_single"
+                                                checked={formData.questionType === "mcq_single"}
+                                                onChange={(e) => setFormData({ ...formData, questionType: e.target.value })}
+                                                className="radio radio-primary"
+                                            />
+                                            <span className="font-medium">Multiple Choice</span>
+                                        </label>
+                                        <label className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${formData.questionType === "written" ? "bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-400 dark:border-emerald-500/50" : "bg-slate-50/50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700 hover:border-slate-300"}`}>
+                                            <input
+                                                type="radio"
+                                                name="questionType"
+                                                value="written"
+                                                checked={formData.questionType === "written"}
+                                                onChange={(e) => setFormData({ ...formData, questionType: e.target.value })}
+                                                className="radio radio-primary"
+                                            />
+                                            <span className="font-medium">Written (AI Graded)</span>
+                                        </label>
+                                    </div>
+                                </div>
+
                                 {/* Question Prompt */}
                                 <div className="form-control">
                                     <label className="label">
@@ -409,7 +523,7 @@ function QuizQuestionsPage() {
                                     />
                                 </div>
 
-                                {/* Choices */}
+                                {formData.questionType === "mcq_single" && (
                                 <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700/50">
                                     <label className="label px-0">
                                         <span className="label-text font-semibold text-lg text-slate-800 dark:text-slate-200">
@@ -473,6 +587,45 @@ function QuizQuestionsPage() {
                                         Add Another Option
                                     </button>
                                 </div>
+                                )}
+
+                                {formData.questionType === "written" && (
+                                <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700/50">
+                                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-4">
+                                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                                            <strong>AI Grading:</strong> Student answers will be automatically graded using AI. You can optionally provide a sample answer and rubric to help the AI grade more accurately.
+                                        </p>
+                                    </div>
+                                    
+                                    <div className="form-control">
+                                        <label className="label">
+                                            <span className="label-text font-semibold text-slate-700 dark:text-slate-300">
+                                                Sample Answer (Optional)
+                                            </span>
+                                        </label>
+                                        <textarea
+                                            value={formData.sampleAnswer}
+                                            onChange={(e) => setFormData({ ...formData, sampleAnswer: e.target.value })}
+                                            className="textarea h-24 bg-white/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 rounded-xl resize-y"
+                                            placeholder="Enter a sample ideal answer to help the AI grade more accurately..."
+                                        />
+                                    </div>
+
+                                    <div className="form-control">
+                                        <label className="label">
+                                            <span className="label-text font-semibold text-slate-700 dark:text-slate-300">
+                                                Rubric (Optional)
+                                            </span>
+                                        </label>
+                                        <textarea
+                                            value={formData.rubric}
+                                            onChange={(e) => setFormData({ ...formData, rubric: e.target.value })}
+                                            className="textarea h-24 bg-white/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 rounded-xl resize-y"
+                                            placeholder="Enter grading criteria or rubric to help the AI evaluate answers..."
+                                        />
+                                    </div>
+                                </div>
+                                )}
 
                                 {/* Form Actions */}
                                 <div className="flex gap-4 pt-6 border-t border-slate-200 dark:border-slate-700/50 mt-8">

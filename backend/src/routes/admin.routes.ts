@@ -15,7 +15,10 @@ router.delete("/users/:id", adminController.deleteUser);
 
 // Platform Analytics & Stats
 router.get("/stats", adminController.getPlatformStats);
+router.get("/stats/enhanced", adminController.getEnhancedStats);
 router.get("/analytics", adminController.getPlatformAnalytics);
+router.get("/activity", adminController.getPlatformActivity);
+router.get("/teachers", adminController.getTeacherPerformance);
 
 // System Monitoring & Logging
 router.get("/system-health", adminController.getSystemHealth);

@@ -32,7 +32,7 @@ const getCourseAnalytics = async (req: AuthRequest, res: Response) => {
             // Calculate percentage per attempt and then average them
             const avgScore = attempts.length > 0 
                 ? attempts.reduce((sum, a) => {
-                    const totalPointsPossible = a.responses?.length || 1;
+                    const totalPointsPossible = a.maxScore || 1;
                     const percentage = ( (a.score || 0) / totalPointsPossible ) * 100;
                     return sum + percentage;
                 }, 0) / attempts.length 
@@ -80,7 +80,7 @@ const getStudentProgress = async (req: AuthRequest, res: Response) => {
 
         const history = attempts.map(a => {
             const quiz = quizzes.find(q => q._id.toString() === a.quiz.toString());
-            const totalPointsPossible = a.responses?.length || 1;
+            const totalPointsPossible = a.maxScore || 1;
             const scorePercentage = Math.round(((a.score || 0) / totalPointsPossible) * 100);
             
             return {

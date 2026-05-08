@@ -1,7 +1,9 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import useQuizStore from "../stores/Quizstore";
+import useAuthStore from "../stores/Authstore";
 import toast from "react-hot-toast";
+import axios from "axios";
 import {
     ChevronLeft,
     ChevronRight,
@@ -17,6 +19,7 @@ import PageWrapper from "./layout/PageWrapper";
 function StudentQuizPage() {
     const { attemptId } = useParams();
     const navigate = useNavigate();
+    const { token } = useAuthStore();
     const {
         currentAttempt,
         attemptQuestions,
@@ -26,30 +29,72 @@ function StudentQuizPage() {
         attemptError,
     } = useQuizStore();
 
+    // Function to check if quiz was already submitted
+    const checkAttemptResults = useCallback(async (id) => {
+        try {
+            await axios.get(`/api/attempts/${id}/result`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            // Results found - navigate to results page
+            navigate(`/student/quiz/${id}/results`);
+        } catch {
+            // No results - quiz might be expired or deleted
+            toast.error("Quiz not found or already submitted");
+            navigate("/student/quizzes");
+        }
+    }, [token, navigate]);
+
     const [answers, setAnswers] = useState({});
     const [timeRemaining, setTimeRemaining] = useState(null);
     const [showWarning, setShowWarning] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [savingIndices, setSavingIndices] = useState(new Set());
+    const [isSubmitted, setIsSubmitted] = useState(false);
+    
+    // Use a ref to track if we've initiated the fetch for this attemptId
+    const fetchedAttemptId = useRef(null);
 
     useEffect(() => {
-        if (attemptId) {
-            fetchAttempt(attemptId).then((data) => {
-                if (data && data.responses) {
-                    const initialAnswers = {};
-                    data.responses.forEach((r) => {
-                        if (
-                            r.selectedChoiceIds &&
-                            r.selectedChoiceIds.length > 0
-                        ) {
-                            initialAnswers[r.questionId] = r.selectedChoiceIds;
-                        }
-                    });
-                    setAnswers(initialAnswers);
-                }
-            });
+        // Skip if we've already fetched this attempt
+        if (!attemptId || fetchedAttemptId.current === attemptId) {
+            return;
         }
-    }, [attemptId, fetchAttempt]);
+        fetchedAttemptId.current = attemptId;
+        
+        // Reset local state for new attempt
+        setIsSubmitted(false);
+        setAnswers({});
+        
+        // Fetch attempt data
+        fetchAttempt(attemptId)
+                .then((data) => {
+                    // Only load saved answers if the attempt is actually in progress
+                    // Don't load answers from completed/submitted/graded attempts
+                    if (data && data.responses && data.attempt?.status === "inProgress") {
+                        const initialAnswers = {};
+                        data.responses.forEach((r) => {
+                            if (r.textAnswer) {
+                                initialAnswers[r.questionId] = { textAnswer: r.textAnswer };
+                            } else if (
+                                r.selectedChoiceIds &&
+                                r.selectedChoiceIds.length > 0
+                            ) {
+                                initialAnswers[r.questionId] = r.selectedChoiceIds;
+                            }
+                        });
+                        setAnswers(initialAnswers);
+                    }
+                })
+                .catch((error) => {
+                    // Handle 404 - quiz might be already completed/submitted
+                    if (error.response?.status === 404) {
+                        checkAttemptResults(attemptId);
+                    } else {
+                        toast.error("Failed to load quiz");
+                        console.error("Failed to fetch attempt:", error);
+                    }
+                });
+    }, [attemptId, fetchAttempt, checkAttemptResults]);
 
     const [selectedQuestionId, setSelectedQuestionId] = useState(null);
 
@@ -71,23 +116,33 @@ function StudentQuizPage() {
     };
 
     const handleAutoSubmit = useCallback(async () => {
+        if (isSubmitting || isSubmitted) return;
+        
         setIsSubmitting(true);
-        const result = await submitAttempt(attemptId);
-        if (result) {
-            toast.success("Quiz submitted successfully!");
-            // If gradingMode is "onSubmit", show results immediately
-            // If gradingMode is "onClose", show submission success page
-            if (result.gradingMode === "onSubmit") {
-                navigate(`/student/quiz/${attemptId}/results`);
+        try {
+            const result = await submitAttempt(attemptId);
+            if (result) {
+                setIsSubmitted(true);
+                toast.success("Quiz submitted successfully!");
+                // If gradingMode is "onSubmit", show results immediately
+                // If gradingMode is "onClose", show submission success page
+                if (result.gradingMode === "onSubmit") {
+                    navigate(`/student/quiz/${attemptId}/results`);
+                } else {
+                    navigate(`/student/quiz/${attemptId}/submitted`, {
+                        state: { quizEndAt: result.quizEndAt }
+                    });
+                }
             } else {
-                navigate(`/student/quiz/${attemptId}/submitted`, {
-                    state: { quizEndAt: result.quizEndAt }
-                });
+                toast.error("Failed to submit quiz. Please try again.");
+                setIsSubmitting(false);
             }
-        } else {
+        } catch (error) {
+            console.error("Failed to submit attempt:", error);
             toast.error("Failed to submit quiz. Please try again.");
+            setIsSubmitting(false);
         }
-    }, [attemptId, submitAttempt, navigate]);
+    }, [attemptId, submitAttempt, navigate, isSubmitting, isSubmitted]);
 
     useEffect(() => {
         if (!currentAttempt?.endAt) return;
@@ -109,7 +164,8 @@ function StudentQuizPage() {
                 toast.error("⏰ Only 5 minutes remaining!");
             }
 
-            if (remainingSeconds <= 0) {
+            if (remainingSeconds <= 0 && !isSubmitting && !isSubmitted) {
+                setIsSubmitted(true);
                 handleAutoSubmit();
             }
         };
@@ -120,7 +176,34 @@ function StudentQuizPage() {
     }, [currentAttempt?.endAt, showWarning, handleAutoSubmit]);
 
     const handleAnswerChange = useCallback(
-        async (questionId, choiceId) => {
+        async (questionId, choiceId, textAnswer) => {
+            // Handle written question text answer
+            if (textAnswer !== undefined) {
+                setAnswers((prev) => {
+                    return {
+                        ...prev,
+                        [questionId]: { textAnswer },
+                    };
+                });
+
+                setSavingIndices((prev) => new Set(prev).add(questionId));
+
+                const timeoutId = setTimeout(async () => {
+                    const success = await submitAnswer(attemptId, questionId, null, textAnswer);
+                    if (success) {
+                        toast.success("Answer saved");
+                    }
+                    setSavingIndices((prev) => {
+                        const newSet = new Set(prev);
+                        newSet.delete(questionId);
+                        return newSet;
+                    });
+                }, 500);
+
+                return () => clearTimeout(timeoutId);
+            }
+
+            // Handle MCQ choice answer
             setAnswers((prev) => {
                 return {
                     ...prev,
@@ -131,9 +214,7 @@ function StudentQuizPage() {
             setSavingIndices((prev) => new Set(prev).add(questionId));
 
             const timeoutId = setTimeout(async () => {
-                const success = await submitAnswer(attemptId, questionId, [
-                    choiceId,
-                ]);
+                const success = await submitAnswer(attemptId, questionId, [choiceId], null);
                 if (success) {
                     toast.success("Answer saved");
                 }
@@ -156,17 +237,28 @@ function StudentQuizPage() {
         return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
     };
 
-    const allQuestionsAnswered = attemptQuestions.every(
-        (q) => answers[q._id]?.length > 0,
-    );
+    const allQuestionsAnswered = attemptQuestions.every((q) => {
+        const answer = answers[q._id];
+        if (q.questionType === "written") {
+            // Written questions need text answer
+            return answer?.textAnswer?.trim()?.length > 0;
+        }
+        // MCQ questions need at least one choice selected
+        return answer?.length > 0;
+    });
 
     const currentQuestionIndex = selectedQuestion
         ? attemptQuestions.findIndex((q) => q._id === selectedQuestion._id) + 1
         : 1;
 
-    const answeredCount = Object.keys(answers).filter(
-        (qId) => answers[qId]?.length > 0,
-    ).length;
+    const answeredCount = Object.keys(answers).filter((qId) => {
+        const answer = answers[qId];
+        const question = attemptQuestions.find(q => q._id === qId);
+        if (question?.questionType === "written") {
+            return answer?.textAnswer?.trim()?.length > 0;
+        }
+        return answer?.length > 0;
+    }).length;
 
     const timeColor =
         timeRemaining <= 60
@@ -358,73 +450,101 @@ function StudentQuizPage() {
 
                                         {/* Answer Choices */}
                                         <div className="space-y-3 mb-8">
-                                            {selectedQuestion.choices &&
-                                            selectedQuestion.choices.length >
-                                                0 ? (
-                                                selectedQuestion.choices.map(
-                                                    (choice) => {
-                                                        const isSelected =
-                                                            answers[
-                                                                selectedQuestion
-                                                                    ._id
-                                                            ]?.includes(
-                                                                choice._id,
-                                                            ) ?? false;
+                                            {selectedQuestion.questionType === "written" ? (
+                                                <div className="form-control">
+                                                    <label className="label">
+                                                        <span className="label-text font-semibold text-slate-700 dark:text-slate-300">
+                                                            Your Answer
+                                                        </span>
+                                                        <span className="label-text-alt text-slate-500">
+                                                            {answers[selectedQuestion._id]?.textAnswer?.length || 0} / 5000 characters
+                                                        </span>
+                                                    </label>
+                                                    <textarea
+                                                        value={answers[selectedQuestion._id]?.textAnswer || ""}
+                                                        onChange={(e) => {
+                                                            if (e.target.value.length <= 5000) {
+                                                                handleAnswerChange(
+                                                                    selectedQuestion._id,
+                                                                    null,
+                                                                    e.target.value,
+                                                                );
+                                                            }
+                                                        }}
+                                                        disabled={isSubmitting}
+                                                        className="textarea h-48 bg-white/50 dark:bg-base-300/50 border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 rounded-xl text-base resize-y"
+                                                        placeholder="Type your answer here..."
+                                                    />
+                                                </div>
+                                            ) : (
+                                                selectedQuestion.choices &&
+                                                selectedQuestion.choices.length >
+                                                    0 ? (
+                                                    selectedQuestion.choices.map(
+                                                        (choice) => {
+                                                            const isSelected =
+                                                                answers[
+                                                                    selectedQuestion
+                                                                        ._id
+                                                                ]?.includes(
+                                                                    choice._id,
+                                                                ) ?? false;
 
-                                                        return (
-                                                            <label
-                                                                key={choice._id}
-                                                                className={`flex items-start p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                                                                    isSelected
-                                                                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                                                                        : "border-slate-200 dark:border-slate-700/50 hover:border-blue-300 dark:hover:border-blue-400/50 hover:bg-blue-50/50 dark:hover:bg-blue-900/10"
-                                                                }`}
-                                                            >
-                                                                <input
-                                                                    type="radio"
-                                                                    name={`question-${selectedQuestion._id}`}
-                                                                    value={
-                                                                        choice._id
-                                                                    }
-                                                                    checked={
+                                                            return (
+                                                                <label
+                                                                    key={choice._id}
+                                                                    className={`flex items-start p-4 rounded-lg border-2 cursor-pointer transition-all ${
                                                                         isSelected
-                                                                    }
-                                                                    onChange={() =>
-                                                                        handleAnswerChange(
-                                                                            selectedQuestion._id,
-                                                                            choice._id,
-                                                                        )
-                                                                    }
-                                                                    disabled={
-                                                                        isSubmitting
-                                                                    }
-                                                                    className="radio radio-primary mt-1 shrink-0"
-                                                                />
-                                                                <span
-                                                                    className={`ml-4 text-base ${
-                                                                        isSelected
-                                                                            ? "font-semibold text-slate-900 dark:text-white"
-                                                                            : "text-slate-700 dark:text-slate-300"
+                                                                            ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                                                                            : "border-slate-200 dark:border-slate-700/50 hover:border-blue-300 dark:hover:border-blue-400/50 hover:bg-blue-50/50 dark:hover:bg-blue-900/10"
                                                                     }`}
                                                                 >
-                                                                    {
-                                                                        choice.text
-                                                                    }
-                                                                </span>
-                                                                {isSelected && (
-                                                                    <CheckCircle className="w-5 h-5 text-blue-600 ml-auto shrink-0" />
-                                                                )}
-                                                            </label>
-                                                        );
-                                                    },
+                                                                    <input
+                                                                        type="radio"
+                                                                        name={`question-${selectedQuestion._id}`}
+                                                                        value={
+                                                                            choice._id
+                                                                        }
+                                                                        checked={
+                                                                            isSelected
+                                                                        }
+                                                                        onChange={() =>
+                                                                            handleAnswerChange(
+                                                                                selectedQuestion._id,
+                                                                                choice._id,
+                                                                            )
+                                                                        }
+                                                                        disabled={
+                                                                            isSubmitting
+                                                                        }
+                                                                        className="radio radio-primary mt-1 shrink-0"
+                                                                    />
+                                                                    <span
+                                                                        className={`ml-4 text-base ${
+                                                                            isSelected
+                                                                                ? "font-semibold text-slate-900 dark:text-white"
+                                                                                : "text-slate-700 dark:text-slate-300"
+                                                                        }`}
+                                                                    >
+                                                                        {
+                                                                            choice.text
+                                                                        }
+                                                                    </span>
+                                                                    {isSelected && (
+                                                                        <CheckCircle className="w-5 h-5 text-blue-600 ml-auto shrink-0" />
+                                                                    )}
+                                                                </label>
+                                                            );
+                                                        },
+                                                    )
+                                                ) : (
+                                                    <div className="alert alert-info">
+                                                        <AlertCircle className="w-5 h-5" />
+                                                        <span>
+                                                            No choices available
+                                                        </span>
+                                                    </div>
                                                 )
-                                            ) : (
-                                                <div className="alert alert-info">
-                                                    <AlertCircle className="w-5 h-5" />
-                                                    <span>
-                                                        No choices available
-                                                    </span>
-                                                </div>
                                             )}
                                         </div>
 

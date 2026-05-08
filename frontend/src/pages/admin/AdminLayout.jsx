@@ -45,7 +45,10 @@ function AdminLayout() {
         totalQuizzes: 0,
         completedAttempts: 0
     });
+    const [enhancedStats, setEnhancedStats] = useState(null);
     const [courseAnalytics, setCourseAnalytics] = useState([]);
+    const [activityData, setActivityData] = useState(null);
+    const [teacherStats, setTeacherStats] = useState([]);
     const [loading, setLoading] = useState(true);
     const [systemHealth, setSystemHealth] = useState(null);
     const [healthLoading, setHealthLoading] = useState(false);
@@ -64,16 +67,22 @@ function AdminLayout() {
             if (!token) return;
             setLoading(true);
             try {
-                const [statsRes, usersRes, analyticsRes, healthRes] = await Promise.all([
+                const [statsRes, usersRes, analyticsRes, healthRes, enhancedRes, activityRes, teacherRes] = await Promise.all([
                     axios.get("/api/admin/stats", { headers: { Authorization: `Bearer ${token}` } }),
                     axios.get("/api/admin/users", { headers: { Authorization: `Bearer ${token}` } }),
                     axios.get("/api/admin/analytics", { headers: { Authorization: `Bearer ${token}` } }),
-                    axios.get("/api/admin/system-health", { headers: { Authorization: `Bearer ${token}` } })
+                    axios.get("/api/admin/system-health", { headers: { Authorization: `Bearer ${token}` } }),
+                    axios.get("/api/admin/stats/enhanced", { headers: { Authorization: `Bearer ${token}` } }),
+                    axios.get("/api/admin/activity?days=7", { headers: { Authorization: `Bearer ${token}` } }),
+                    axios.get("/api/admin/teachers", { headers: { Authorization: `Bearer ${token}` } })
                 ]);
                 setStats(statsRes.data.stats);
                 setUsers(usersRes.data.users);
                 setCourseAnalytics(analyticsRes.data.courseAnalytics);
                 setSystemHealth(healthRes.data);
+                setEnhancedStats(enhancedRes.data.stats);
+                setActivityData(activityRes.data);
+                setTeacherStats(teacherRes.data.teachers || []);
             } catch (err) {
                 console.error("Admin data fetch error:", err);
                 toast.error("Failed to load dashboard data");
@@ -99,9 +108,12 @@ function AdminLayout() {
     // Provide shared data via context-like pattern (direct props)
     const sharedData = {
         stats,
+        enhancedStats,
         users,
         setUsers,
         courseAnalytics,
+        activityData,
+        teacherStats,
         systemHealth,
         healthLoading,
         fetchSystemHealth,

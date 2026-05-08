@@ -208,15 +208,22 @@ const useQuizStore = create((set) => ({
         }
     },
 
-    startAttempt: async (quizId) => {
+startAttempt: async (quizId) => {
         try {
             set({ attemptError: null });
             const token = useAuthStore.getState().token;
+            console.log(`[Quizstore] startAttempt called with quizId: ${quizId}, token exists: ${!!token}`);
+            
             const response = await axios.post(
                 "/api/attempts/start",
                 { quizId },
-                { headers: { Authorization: `Bearer ${token}` } },
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                    timeout: 30000, // 30 second timeout
+                }
             );
+
+            console.log(`[Quizstore] startAttempt success:`, response.data);
 
             const attemptData = {
                 _id: response.data.attemptId,
@@ -230,6 +237,7 @@ const useQuizStore = create((set) => ({
 
             return { attempt: attemptData, questions: response.data.questions };
         } catch (error) {
+            console.error(`[Quizstore] startAttempt error:`, error.message, error.response?.data);
             set({
                 attemptError: error.response?.data?.errMsg || error.message,
             });
@@ -265,23 +273,29 @@ const useQuizStore = create((set) => ({
                     ? response.data.responses.map((r) => ({
                         _id: r.questionId,
                         prompt: r.prompt,
+                        questionType: r.questionType,
                         points: r.points,
                         choices: r.choices || [],
                         selectedChoiceIds: r.selectedChoiceIds,
+                        textAnswer: r.textAnswer,
                     }))
                     : quizQuestions.map((q) => {
                         const answered = answeredMap.get(q._id?.toString() || q._id);
                         return answered
-                            ? { ...q, selectedChoiceIds: answered.selectedChoiceIds }
+                            ? { ...q, selectedChoiceIds: answered.selectedChoiceIds, textAnswer: answered.textAnswer }
                             : q;
                     });
             } else {
                 questions = (response.data.responses || []).map((r) => ({
                     _id: r.questionId,
                     prompt: r.prompt,
+                    questionType: r.questionType,
                     points: r.points,
                     choices: r.choices || [],
                     selectedChoiceIds: r.selectedChoiceIds,
+                    textAnswer: r.textAnswer,
+                    aiScore: r.aiScore,
+                    aiFeedback: r.aiFeedback,
                 }));
             }
 
@@ -299,12 +313,20 @@ const useQuizStore = create((set) => ({
         }
     },
 
-    submitAnswer: async (attemptId, questionId, selectedChoiceIds) => {
+    submitAnswer: async (attemptId, questionId, selectedChoiceIds, textAnswer) => {
         try {
             const token = useAuthStore.getState().token;
+            const payload = { questionId };
+            
+            if (textAnswer !== undefined) {
+                payload.textAnswer = textAnswer;
+            } else if (selectedChoiceIds) {
+                payload.selectedChoiceIds = selectedChoiceIds;
+            }
+            
             await axios.patch(
                 `/api/attempts/${attemptId}/answers`,
-                { questionId, selectedChoiceIds },
+                payload,
                 { headers: { Authorization: `Bearer ${token}` } },
             );
             return true;
@@ -331,13 +353,13 @@ const useQuizStore = create((set) => ({
         }
     },
 
-    generateAiQuestions: async (quizId, topic, count) => {
+    generateAiQuestions: async (quizId, topic, count, questionType = "mcq_single", points = 1) => {
         try {
             set({ errMsg: null });
             const token = useAuthStore.getState().token;
             const response = await axios.post(
                 `/api/quizzes/${quizId}/questions/generate-ai`,
-                { topic, count },
+                { topic, count, questionType, points },
                 {
                     headers: {
                         "Content-Type": "application/json",

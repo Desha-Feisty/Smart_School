@@ -5,6 +5,15 @@ export default function StudentQuizzesTab({
     startingQuizId,
     handleStartQuiz
 }) {
+    const handleClick = (quizId, e) => {
+        console.log(`[StudentQuizzesTab] Button clicked for quizId: ${quizId}, event:`, e);
+        if (handleStartQuiz && typeof handleStartQuiz === 'function') {
+            handleStartQuiz(quizId);
+        } else {
+            console.error(`[StudentQuizzesTab] handleStartQuiz is not a function!`, handleStartQuiz);
+        }
+    };
+    
     return (
         <div>
             {availableQuizzes.length === 0 ? (
@@ -78,7 +87,7 @@ export default function StudentQuizzesTab({
                                         </div>
                                         <div className="flex flex-col items-center gap-1">
                                             <button
-                                                onClick={() => handleStartQuiz(quiz._id)}
+                                                onClick={(e) => handleClick(quiz._id, e)}
                                                 disabled={startingQuizId === quiz._id || isLocked || isClosed}
                                                 className={`btn gap-2 ml-4 shadow-lg min-w-[140px] ${
                                                     isLocked || isClosed
