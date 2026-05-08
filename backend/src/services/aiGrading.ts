@@ -56,7 +56,20 @@ Be fair and constructive in your feedback. Consider:
 Return ONLY valid JSON, no markdown formatting.`;
 
     try {
-        const result = await model.generateContent(prompt);
+        let result;
+        let lastError;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                result = await model.generateContent(prompt);
+                break;
+            } catch (err) {
+                lastError = err;
+                if (attempt < 2) {
+                    await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+                }
+            }
+        }
+        if (!result) throw lastError;
         const text = result.response.text().trim();
 
         // Extract JSON from response

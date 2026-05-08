@@ -150,21 +150,15 @@ function StudentPage() {
     };
 
     const handleStartQuiz = async (quizId) => {
-        console.log(`[StudentPage] handleStartQuiz called with quizId: ${quizId}`);
         setStartingQuizId(quizId);
         try {
-            console.log(`[StudentPage] Calling startAttempt for quizId: ${quizId}`);
             const result = await startAttempt(quizId);
-            console.log(`[StudentPage] startAttempt returned:`, result);
             if (result && result.attempt) {
-                console.log(`[StudentPage] Navigating to: /student/quiz/${result.attempt._id}`);
                 navigate(`/student/quiz/${result.attempt._id}`);
             } else {
-                console.log(`[StudentPage] startAttempt failed, error:`, attemptError);
                 toast.error(attemptError || "Failed to start quiz");
             }
         } catch (err) {
-            console.error(`[StudentPage] handleStartQuiz exception:`, err);
             toast.error(
                 err.message || "An error occurred while starting the quiz",
             );

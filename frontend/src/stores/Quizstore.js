@@ -208,22 +208,19 @@ const useQuizStore = create((set) => ({
         }
     },
 
-startAttempt: async (quizId) => {
+    startAttempt: async (quizId) => {
         try {
             set({ attemptError: null });
             const token = useAuthStore.getState().token;
-            console.log(`[Quizstore] startAttempt called with quizId: ${quizId}, token exists: ${!!token}`);
             
             const response = await axios.post(
                 "/api/attempts/start",
                 { quizId },
                 {
                     headers: { Authorization: `Bearer ${token}` },
-                    timeout: 30000, // 30 second timeout
+                    timeout: 30000,
                 }
             );
-
-            console.log(`[Quizstore] startAttempt success:`, response.data);
 
             const attemptData = {
                 _id: response.data.attemptId,
@@ -237,7 +234,6 @@ startAttempt: async (quizId) => {
 
             return { attempt: attemptData, questions: response.data.questions };
         } catch (error) {
-            console.error(`[Quizstore] startAttempt error:`, error.message, error.response?.data);
             set({
                 attemptError: error.response?.data?.errMsg || error.message,
             });

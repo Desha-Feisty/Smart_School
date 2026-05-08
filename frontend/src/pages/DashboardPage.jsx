@@ -341,7 +341,7 @@ function DashboardPage() {
                                             key={quiz._id}
                                             initial={{ opacity: 0, x: -20 }}
                                             animate={{ opacity: 1, x: 0 }}
-                                            onClick={() => navigate(`/student/quizzes`)}
+                                            onClick={() => navigate(`/student/quiz/${quiz._id}`)}
                                             className="w-full flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-700/30 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors text-left"
                                         >
                                             <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center shrink-0">

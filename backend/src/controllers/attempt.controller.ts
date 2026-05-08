@@ -133,7 +133,9 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
                 questions: questions.map((q) => ({
                     _id: q._id,
                     prompt: q.prompt,
-                    choices: q.choices.map((c) => ({
+                    questionType: q.questionType,
+                    points: q.points,
+                    choices: q.questionType === "written" ? [] : q.choices.map((c) => ({
                         _id: c._id,
                         text: c.text,
                     })),

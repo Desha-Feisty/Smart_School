@@ -345,8 +345,12 @@ function StudentQuizPage() {
                                 {/* Question List */}
                                 <div className="space-y-1 max-h-96 overflow-y-auto">
                                     {attemptQuestions.map((question, index) => {
-                                        const isAnswered =
-                                            answers[question._id]?.length > 0;
+                                        const isAnswered = (() => {
+                                            if (question.questionType === "written") {
+                                                return answers[question._id]?.textAnswer?.trim()?.length > 0;
+                                            }
+                                            return answers[question._id]?.length > 0;
+                                        })();
                                         const isSelected =
                                             selectedQuestion?._id ===
                                             question._id;

@@ -131,10 +131,10 @@ const addQuestionSchema = Joi.object({
                 isCorrect: Joi.boolean().default(false),
             }),
         )
-        .min(2)
         .when("questionType", {
             is: "written",
             then: Joi.optional().allow(null),
+            otherwise: Joi.array().min(2).required(),
         }),
     sampleAnswer: Joi.string().allow("").optional(),
     rubric: Joi.string().allow("").optional(),
@@ -866,6 +866,18 @@ const generateQuestionsWithAI = async (req: AuthRequest, res: Response) => {
             return res.status(400).json({
                 errMsg: `AI generated ${actualCount} question${actualCount !== 1 ? "s" : ""} but you requested ${count}. Please try again.`,
             });
+        }
+
+        // Validate each question has exactly one correct answer (for MCQ)
+        for (const q of generatedQuestions) {
+            if (questionType !== "written") {
+                const correctCount = q.choices?.filter((c) => c.isCorrect).length ?? 0;
+                if (correctCount !== 1) {
+                    return res.status(400).json({
+                        errMsg: `AI generated a question with ${correctCount} correct answer(s) — expected exactly 1. Please try again.`,
+                    });
+                }
+            }
         }
 
         const questionsToInsert = generatedQuestions.map((q: any) => {
