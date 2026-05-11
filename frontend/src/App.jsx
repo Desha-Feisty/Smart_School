@@ -7,6 +7,8 @@ import useSocketStore from "./stores/SocketStore";
 import useNotificationStore from "./stores/NotificationStore";
 import useQuizStore from "./stores/Quizstore";
 import useTeacherStore from "./stores/Teacherstore";
+import useChatStore from "./stores/ChatStore";
+import ChatWindow from "./components/ChatWindow";
 import { LoadingPage } from "./components/common/Loading";
 import ErrorBoundary from "./components/common/ErrorBoundary";
 import AppLayout from "./components/layout/AppLayout";
@@ -192,6 +194,22 @@ function SocketListener() {
     return null;
 }
 
+function ChatWindowWrapper() {
+    const activeChat = useChatStore((state) => state.activeChat);
+    const closeChat = useChatStore((state) => state.closeChat);
+
+    if (!activeChat) return null;
+
+    return (
+        <ChatWindow
+            courseId={activeChat.courseId}
+            peerId={activeChat.peerId}
+            peerName={activeChat.peerName}
+            onClose={closeChat}
+        />
+    );
+}
+
 function App() {
     // Set up auth interceptor after React is initialized
     useEffect(() => {
@@ -201,8 +219,8 @@ function App() {
         try {
             const { initTheme } = useThemeStore.getState();
             if (initTheme) initTheme();
-        } catch (e) {
-            console.error("Theme init error in App:", e);
+        } catch {
+            // Silent theme init fail
         }
     }, []);
 
@@ -264,6 +282,9 @@ function App() {
                     </Route>
                 </Routes>
             </Suspense>
+
+            {/* Global Chat Window */}
+            <ChatWindowWrapper />
         </ErrorBoundary>
     );
 }

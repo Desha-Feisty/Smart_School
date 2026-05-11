@@ -9,14 +9,76 @@ import ActivityLog from "../models/activityLog.js";
 import { Types } from "mongoose";
 import os from "os";
 import { getLogs as fetchLogs, getLogStats as fetchLogStats, exportLogsToCsv } from "../services/logger.js";
+import { PASSWORD_VALIDATION, PAGINATION } from "../utils/constants.js";
+
+// Sanitize search input to prevent regex injection
+const sanitizeSearchInput = (input: unknown): string => {
+    if (typeof input !== "string") return "";
+    return input.slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+};
+
+// Validate password strength
+const validatePassword = (password: string): string | null => {
+    if (!password || password.length < PASSWORD_VALIDATION.MIN_LENGTH) {
+        return `Password must be at least ${PASSWORD_VALIDATION.MIN_LENGTH} characters`;
+    }
+    if (PASSWORD_VALIDATION.REQUIRE_UPPERCASE && !/[A-Z]/.test(password)) {
+        return "Password must contain an uppercase letter";
+    }
+    if (PASSWORD_VALIDATION.REQUIRE_LOWERCASE && !/[a-z]/.test(password)) {
+        return "Password must contain a lowercase letter";
+    }
+    if (PASSWORD_VALIDATION.REQUIRE_NUMBER && !/[0-9]/.test(password)) {
+        return "Password must contain a number";
+    }
+    return null;
+};
 
 /**
- * List all users in the system
+ * List all users in the system with pagination
  */
 export const listUsers = async (req: AuthRequest, res: Response) => {
     try {
-        const users = await User.find().select("-password").sort("-createdAt");
-        return res.status(200).json({ users });
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = Math.min(parseInt(req.query.limit as string) || PAGINATION.DEFAULT_LIMIT, PAGINATION.MAX_LIMIT);
+        const { search, role } = req.query;
+        
+        const skip = (page - 1) * limit;
+        
+        // Build filter
+        const filter: Record<string, unknown> = {};
+        
+        if (role && role !== "all") {
+            filter.role = role;
+        }
+        
+        if (search) {
+            const searchRegex = new RegExp(sanitizeSearchInput(search), "i");
+            filter.$or = [
+                { name: { $regex: searchRegex } },
+                { email: { $regex: searchRegex } }
+            ];
+        }
+        
+        if (search) {
+            const searchRegex = new RegExp(search as string, "i");
+            filter.$or = [
+                { name: { $regex: searchRegex } },
+                { email: { $regex: searchRegex } }
+            ];
+        }
+        
+        const [users, total] = await Promise.all([
+            User.find(filter).select("-password").sort("-createdAt").skip(skip).limit(limit).lean(),
+            User.countDocuments(filter)
+        ]);
+        
+        return res.status(200).json({ 
+            users, 
+            total,
+            page,
+            totalPages: Math.ceil(total / limit)
+        });
     } catch (error) {
         console.error("Admin listUsers error:", error);
         return res.status(500).json({ errMsg: "Failed to fetch users" });
@@ -32,6 +94,12 @@ export const addUser = async (req: AuthRequest, res: Response) => {
 
         if (!["student", "teacher", "admin"].includes(role)) {
             return res.status(400).json({ errMsg: "Invalid role. Only 'student', 'teacher', and 'admin' can be added." });
+        }
+
+        // Validate password strength
+        const passwordError = validatePassword(password);
+        if (passwordError) {
+            return res.status(400).json({ errMsg: passwordError });
         }
 
         const existingUser = await User.findOne({ email });
@@ -306,6 +374,29 @@ export const getEnhancedStats = async (req: AuthRequest, res: Response) => {
         weekAgo.setDate(weekAgo.getDate() - 7);
         const activeThisWeek = await Attempt.countDocuments({ submittedAt: { $gte: weekAgo } });
 
+        // Calculate participation rate (students with attempts in last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const participatedRecently = await Attempt.distinct("user", {
+            submittedAt: { $gte: thirtyDaysAgo },
+            status: { $in: ["graded", "late"] }
+        });
+
+        const participationRate = totalStudents > 0
+            ? Math.round((participatedRecently.length / totalStudents) * 100)
+            : 0;
+
+        // Calculate new signups in last 30 days
+        const newSignupsLast30Days = await User.countDocuments({
+            createdAt: { $gte: thirtyDaysAgo }
+        });
+
+        // Calculate logins in last 30 days
+        const loginsLast30Days = await User.countDocuments({
+            lastLogin: { $gte: thirtyDaysAgo }
+        });
+
         res.status(200).json({
             stats: {
                 totalUsers,
@@ -316,7 +407,10 @@ export const getEnhancedStats = async (req: AuthRequest, res: Response) => {
                 totalAttempts,
                 coursesWithQuizzes,
                 avgPlatformScore: Math.round(avgPlatformScore),
-                activeThisWeek
+                activeThisWeek,
+                participationRate,
+                newSignupsLast30Days,
+                loginsLast30Days
             }
         });
     } catch (error) {
@@ -327,7 +421,7 @@ export const getEnhancedStats = async (req: AuthRequest, res: Response) => {
 
 export const getLogs = async (req: AuthRequest, res: Response) => {
     try {
-        const { action, userId, startDate, endDate, page = "1", limit = "50" } = req.query;
+        const { action, userId, startDate, endDate, page = "1", limit = "50", search } = req.query;
         
         const options: {
             action?: string;
@@ -336,10 +430,12 @@ export const getLogs = async (req: AuthRequest, res: Response) => {
             endDate?: Date;
             limit?: number;
             skip?: number;
+            search?: string;
         } = {};
         
         if (action) options.action = action as string;
         if (userId) options.userId = userId as string;
+        if (search) options.search = search as string;
         
         if (startDate) {
             const sd = new Date(startDate as string);

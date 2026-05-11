@@ -79,7 +79,7 @@ export default function CourseContentModal({
                                                             Closes{" "}
                                                             {new Date(
                                                                 quiz.closeAt,
-                                                            ).toLocaleDateString()}
+                                                            ).toLocaleDateString("en-GB")}
                                                         </div>
                                                     </div>
                                                     <button

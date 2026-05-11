@@ -1,5 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -16,7 +15,7 @@ import {
     ChevronRight,
 } from "lucide-react";
 
-function CourseCalendar({ events = [], onEventClick, role = "student" }) {
+function CourseCalendar({ events = [], onEventClick }) {
     const [calendarRef, setCalendarRef] = useState(null);
     const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -93,7 +92,7 @@ function CourseCalendar({ events = [], onEventClick, role = "student" }) {
     };
 
     const getEventContent = (eventInfo) => {
-        const { status, type, duration } = eventInfo.event.extendedProps;
+        const { status, type } = eventInfo.event.extendedProps;
         
         const statusColors = {
             overdue: "bg-red-500",

@@ -16,10 +16,8 @@ const authMiddleware = async (
             return res.status(401).json({ errMsg: "unauthenticated" });
         }
         if (!process.env.JWT_SECRET) {
-            console.error("JWT_SECRET is missing from environment variables!");
             return res.status(500).json({
-                errMsg: "could not verify user",
-                debug: "JWT_SECRET_MISSING",
+                errMsg: "Server configuration error",
             });
         }
         const payload = Jwt.verify(token, process.env.JWT_SECRET) as JwtPayload;

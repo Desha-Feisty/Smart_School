@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import useAuthStore from "../../stores/Authstore";
 import useThemeStore from "../../stores/ThemeStore";
 import {
@@ -138,6 +138,7 @@ function Sidebar({ isOpen, onClose }) {
                         }}>
                             {links.map((link) => (
                                 <NavLink
+                                    end
                                     key={link.id}
                                     to={link.to}
                                     onClick={onClose}

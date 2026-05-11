@@ -10,6 +10,7 @@ import Enrollment from "../models/enrollment.js";
 import dayjs from "dayjs";
 import { Types } from "mongoose";
 import { gradeWrittenAnswer } from "../services/aiGrading.js";
+import { logActivity } from "../services/logger.js";
 
 const ensureEnrollment = async (userId: string, courseId: string) => {
     const enrolled = await Enrollment.findOne({
@@ -66,17 +67,16 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
         
         // Validate quizId format
         if (!quizId.match(/^[0-9a-fA-F]{24}$/)) {
-            console.log(`[startAttempt] Invalid quizId format: ${quizId}`);
+            
             return res.status(400).json({ errMsg: "Invalid quiz ID format" });
         }
         
         const quiz = await Quiz.findById(quizId);
         if (!quiz) {
-            console.log(`[startAttempt] Quiz not found: ${quizId}`);
             return res.status(404).json({ errMsg: "quiz not found" });
         }
         
-        console.log(`[startAttempt] Quiz found: ${quiz.title}, published: ${quiz.published}, openAt: ${quiz.openAt}, closeAt: ${quiz.closeAt}`);
+        
         const now = dayjs();
         if (!quiz.published) {
             return res.status(400).json({ errMsg: "quiz unavailable" });
@@ -90,22 +90,25 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
         if (!req.user || !req.user._id) {
             return res.status(401).json({ errMsg: "unauthenticated" });
         }
-        const enrolled = await ensureEnrollment(
-            req.user._id,
-            quiz.course.toString(),
-        );
+
+        // Parallel execution for performance
+        const [enrolled, expiredResult] = await Promise.all([
+            ensureEnrollment(req.user._id, quiz.course.toString()),
+            Attempt.updateMany(
+                {
+                    user: req.user._id,
+                    quiz: quiz._id,
+                    status: "inProgress",
+                    endAt: { $lte: now.toDate() },
+                },
+                { $set: { status: "expired" } },
+            ),
+        ]);
+
         if (!enrolled) {
             return res.status(403).json({ errMsg: "not enrolled in course" });
         }
-        await Attempt.updateMany(
-            {
-                user: req.user._id,
-                quiz: quiz._id,
-                status: "inProgress",
-                endAt: { $lte: now.toDate() },
-            },
-            { $set: { status: "expired" } },
-        );
+
         const activeAttempt = await Attempt.findOne({
             user: req.user._id,
             quiz: quiz._id,
@@ -196,11 +199,29 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
             responses,
         });
         
-        console.log(`[startAttempt] Created attempt: ${attempt._id} for user: ${req.user._id}, quiz: ${quiz._id}`);
+        
+        
+        // Log attempt started activity
+        try {
+            const course = await Course.findById(quiz.course).select("title").lean();
+            await logActivity({
+                userId: req.user._id,
+                action: "attempt_started",
+                details: `Started quiz: "${quiz.title}" in course "${course?.title || "Unknown"}"`,
+                metadata: { 
+                    quizId: quiz._id.toString(), 
+                    quizTitle: quiz.title,
+                    courseId: quiz.course.toString(),
+                    courseName: course?.title || "Unknown",
+                    attemptId: attempt._id.toString(),
+                },
+            });
+        } catch (logErr) {
+            console.error("Failed to log attempt started:", logErr);
+        }
         
         // Verify the attempt was saved
         const savedAttempt = await Attempt.findById(attempt._id);
-        console.log(`[startAttempt] Verified attempt in DB: ${savedAttempt ? 'YES' : 'NO'}, status: ${savedAttempt?.status}`);
         
         return res.status(201).json({
             attemptId: attempt._id.toString(),
@@ -304,6 +325,34 @@ const submitAttempt = async (req: AuthRequest, res: Response) => {
         const quizCloseAt = quiz?.closeAt;
         
         await gradeSubmittedAttempt(attempt, isLate);
+        
+        // Log quiz submission activity
+        try {
+            const quiz = attempt.quiz as any;
+            const course = await Course.findById(quiz.course).select("title").lean();
+            const score = attempt.score || 0;
+            const maxScore = attempt.maxScore || 0;
+            const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+            
+            await logActivity({
+                userId: req.user?._id,
+                action: isLate ? "quiz_submitted_late" : "quiz_submitted",
+                details: `Submitted quiz: "${quiz.title}" in course "${course?.title || "Unknown"}" (Score: ${score}/${maxScore}, ${percentage}%)${isLate ? " [LATE]" : ""}`,
+                metadata: { 
+                    quizId: quiz._id.toString(), 
+                    quizTitle: quiz.title,
+                    courseId: quiz.course.toString(),
+                    courseName: course?.title || "Unknown",
+                    attemptId: attempt._id.toString(),
+                    score,
+                    maxScore,
+                    percentage,
+                    isLate,
+                },
+            });
+        } catch (logErr) {
+            console.error("Failed to log quiz submission:", logErr);
+        }
         
         return res.json({ 
             attempt: attempt,
@@ -628,18 +677,14 @@ const listMyGrades = async (req: AuthRequest, res: Response) => {
 };
 
 const startAttemptFromBody = async (req: AuthRequest, res: Response) => {
-    console.log(`[startAttemptFromBody] Called with body:`, JSON.stringify(req.body));
     try {
         const { quizId } = req.body || {};
         if (!quizId) {
-            console.log(`[startAttemptFromBody] ERROR: quizId missing in body`);
             return res.status(400).json({ error: "quizId is required" });
         }
-        console.log(`[startAttemptFromBody] Received quizId: ${quizId}, user: ${req.user?._id}`);
         req.params.quizId = quizId;
         return startAttempt(req, res);
     } catch (err) {
-        console.error(`[startAttemptFromBody] EXCEPTION:`, err instanceof Error ? err.message : err);
         return res.status(500).json({ error: "Start attempt failed" });
     }
 };
@@ -655,18 +700,13 @@ const getAttemptDetails = async (req: AuthRequest, res: Response) => {
 
         // Validate attemptId format (must be valid ObjectId)
         if (!attemptId.match(/^[0-9a-fA-F]{24}$/)) {
-            console.log(`[getAttemptDetails] Invalid attempt ID format: ${attemptId}`);
             return res.status(400).json({ error: "Invalid attempt ID format" });
         }
 
-        // Debug: Log attemptId
-        console.log(`[getAttemptDetails] Attempt ID: ${attemptId}, User: ${req.user?._id}`);
-        
         // First, let's just check if ANY attempts exist for this user
         const userAttempts = req.user?._id 
             ? await Attempt.find({ user: req.user._id }).select("_id status").limit(5).lean()
             : [];
-        console.log(`[getAttemptDetails] User has ${userAttempts.length} attempts:`, userAttempts.map(a => ({ id: a._id, status: a.status })));
 
         let attempt = await Attempt.findById(attemptId)
             .populate({ path: "responses.question", model: "Question" })
@@ -676,34 +716,8 @@ const getAttemptDetails = async (req: AuthRequest, res: Response) => {
                 populate: { path: "course", select: "title" },
             });
         
-        // Debug: Log attempt status if found
-        if (attempt) {
-            console.log(`[getAttemptDetails] Found attempt - status: ${attempt.status}, user: ${attempt.user}`);
-        } else if (req.user?._id) {
-            // Try to find ONLY inProgress attempt for this user as fallback
-            // Don't return submitted/graded/late attempts - those are completed quizzes
-            console.log(`[getAttemptDetails] Attempt not found by ID, checking for in-progress attempts...`);
-            
-            const existingAttempt = await Attempt.findOne({
-                user: req.user._id,
-                status: "inProgress"
-            }).sort({ createdAt: -1 }).limit(1).lean();
-            
-            if (existingAttempt && existingAttempt._id) {
-                console.log(`[getAttemptDetails] Found in-progress fallback attempt: ${existingAttempt._id}`);
-                attempt = await Attempt.findById(existingAttempt._id)
-                    .populate({ path: "responses.question", model: "Question" })
-                    .populate({
-                        path: "quiz",
-                        select: "title course",
-                        populate: { path: "course", select: "title" },
-                    });
-            }
-        }
-        
         // Defensive check: attempt not found
         if (!attempt) {
-            console.log(`[getAttemptDetails] Attempt not found for ID: ${attemptId}`);
             // Return more helpful error message
             return res.status(404).json({ 
                 error: "Attempt not found",
@@ -713,7 +727,6 @@ const getAttemptDetails = async (req: AuthRequest, res: Response) => {
         
         // Defensive check: user ownership
         if (!req.user?._id || attempt.user.toString() !== req.user._id) {
-            console.log(`[getAttemptDetails] User mismatch - attempt user: ${attempt.user}, request user: ${req.user?._id}`);
             return res.status(403).json({ error: "Forbidden - you can only view your own attempts" });
         }
         
@@ -1066,6 +1079,12 @@ const getTeacherRecentSubmissions = async (req: AuthRequest, res: Response): Pro
 
         const quizIds = await Quiz.find({ course: { $in: courseIds } }).select("_id").lean().then(qs => qs.map(q => q._id));
 
+        // Get total count of all graded/late submissions
+        const totalCount = await Attempt.countDocuments({
+            quiz: { $in: quizIds },
+            status: { $in: ["graded", "late"] }
+        });
+
         const submissions = await Attempt.find({
             quiz: { $in: quizIds },
             status: { $in: ["graded", "late"] }
@@ -1102,7 +1121,7 @@ const getTeacherRecentSubmissions = async (req: AuthRequest, res: Response): Pro
             };
         });
 
-        return res.json({ submissions: results });
+        return res.json({ submissions: results, totalCount });
     } catch (error) {
         console.error("getTeacherRecentSubmissions error:", error);
         return res.status(500).json({ errMsg: "Failed to fetch recent submissions" });

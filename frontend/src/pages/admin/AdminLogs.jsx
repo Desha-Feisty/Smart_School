@@ -11,6 +11,10 @@ import {
     CheckCircle,
     AlertCircle,
     ChevronRight,
+    Search,
+    ChevronDown,
+    ChevronUp,
+    AlertTriangle,
 } from "lucide-react";
 
 function AdminLogs() {
@@ -30,6 +34,8 @@ function AdminLogs() {
     const [lastLogTimestamp, setLastLogTimestamp] = useState(null);
     const [systemHealth, setSystemHealth] = useState(null);
     const [healthLoading, setHealthLoading] = useState(false);
+    const [logSearch, setLogSearch] = useState("");
+    const [expandedLogId, setExpandedLogId] = useState(null);
 
     // Refs for all values accessed inside interval callback
     const autoRefreshRef = useRef(false);
@@ -56,12 +62,12 @@ function AdminLogs() {
             if (logActionFilterRef.current) params.append("action", logActionFilterRef.current);
             if (logDateFromRef.current) params.append("startDate", logDateFromRef.current);
             if (logDateToRef.current) params.append("endDate", logDateToRef.current);
+            if (logSearch) params.append("search", logSearch);
             
             const res = await axios.get(`/api/admin/logs?${params}`, { headers: { Authorization: `Bearer ${token}` } });
             setLogs(res.data.logs);
             setLogsTotal(res.data.total);
         } catch (err) {
-            console.error("Failed to fetch logs:", err);
             toast.error("Failed to fetch logs");
         } finally {
             setLogsLoading(false);
@@ -72,9 +78,7 @@ function AdminLogs() {
         try {
             const res = await axios.get("/api/admin/logs/stats?days=30", { headers: { Authorization: `Bearer ${token}` } });
             setLogStats(res.data);
-        } catch (err) {
-            console.error("Failed to fetch log stats:", err);
-        }
+        } catch { /* Silent */ }
     };
 
     const fetchSystemHealth = async () => {
@@ -83,7 +87,7 @@ function AdminLogs() {
             const res = await axios.get("/api/admin/system-health", { headers: { Authorization: `Bearer ${token}` } });
             setSystemHealth(res.data);
         } catch (err) {
-            console.error("Failed to fetch system health:", err);
+            toast.error("Failed to fetch system health");
         } finally {
             setHealthLoading(false);
         }
@@ -124,9 +128,7 @@ function AdminLogs() {
             setLogs(logsRes.data.logs);
             setLogsTotal(logsRes.data.total);
             setLogStats(statsRes.data);
-        } catch (err) {
-            console.error("Poll error:", err);
-        }
+        } catch { /* Silent */ }
     }, [token]);
 
     const exportLogs = async () => {
@@ -161,9 +163,7 @@ function AdminLogs() {
             try {
                 const timestampRes = await axios.get("/api/admin/logs/latest", { headers: { Authorization: `Bearer ${token}` } });
                 setLastLogTimestamp(timestampRes.data.latestTimestamp);
-            } catch (err) {
-                console.error("Failed to get initial timestamp:", err);
-            }
+            } catch { /* Silent */ }
         })();
     }, [token]);
 
@@ -251,24 +251,66 @@ function AdminLogs() {
             {/* Filters */}
             <div className="glass-panel p-4">
                 <div className="flex flex-wrap gap-4 items-center">
-                    <div className="flex-1 min-w-[200px]">
+                    {/* Search */}
+                    <div className="relative min-w-[200px] flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="Search quiz, course, or student..."
+                            className="input input-bordered w-full bg-white/50 dark:bg-base-300/50 rounded-xl pl-10"
+                            value={logSearch}
+                            onChange={(e) => { setLogSearch(e.target.value); setLogPage(1); }}
+                            onKeyDown={(e) => e.key === "Enter" && fetchLogs()}
+                        />
+                    </div>
+                    
+                    {/* Action Filter */}
+                    <div className="min-w-[200px]">
                         <select 
                             className="select select-bordered w-full bg-white/50 dark:bg-base-300/50 rounded-xl"
                             value={logActionFilter}
                             onChange={(e) => { setLogActionFilter(e.target.value); setLogPage(1); }}
                         >
                             <option value="">All Actions</option>
-                            <option value="user_login">User Login</option>
-                            <option value="user_logout">User Logout</option>
-                            <option value="user_created">User Created</option>
-                            <option value="quiz_created">Quiz Created</option>
-                            <option value="quiz_published">Quiz Published</option>
-                            <option value="quiz_submitted">Quiz Submitted</option>
-                            <option value="quiz_graded">Quiz Graded</option>
-                            <option value="course_created">Course Created</option>
-                            <option value="course_enrolled">Course Enrolled</option>
+                            <optgroup label="User">
+                                <option value="user_login">User Login</option>
+                                <option value="user_logout">User Logout</option>
+                                <option value="user_created">User Created</option>
+                            </optgroup>
+                            <optgroup label="Quiz Attempts">
+                                <option value="attempt_started">Quiz Attempt Started</option>
+                                <option value="quiz_submitted">Quiz Submitted</option>
+                                <option value="quiz_submitted_late">Quiz Submitted Late</option>
+                                <option value="quiz_auto_submitted">Quiz Auto-Submitted</option>
+                                <option value="quiz_auto_submitted_late">Quiz Auto-Submitted Late</option>
+                                <option value="quiz_graded">Quiz Graded</option>
+                            </optgroup>
+                            <optgroup label="Quiz Management">
+                                <option value="quiz_created">Quiz Created</option>
+                                <option value="quiz_published">Quiz Published</option>
+                                <option value="quiz_unpublished">Quiz Unpublished</option>
+                                <option value="quiz_deleted">Quiz Deleted</option>
+                            </optgroup>
+                            <optgroup label="Course">
+                                <option value="course_created">Course Created</option>
+                                <option value="course_enrolled">Course Enrolled</option>
+                                <option value="course_deleted">Course Deleted</option>
+                            </optgroup>
                         </select>
                     </div>
+                    
+                    {/* Quick Filters */}
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => { setLogActionFilter("quiz_submitted_late,quiz_auto_submitted_late"); setLogPage(1); }}
+                            className="btn btn-sm btn-outline border-amber-500 text-amber-600 dark:text-amber-400 rounded-xl"
+                            title="Show late submissions"
+                        >
+                            <AlertTriangle className="w-4 h-4" />
+                            Late
+                        </button>
+                    </div>
+                    
                     <div className="flex gap-2 items-center">
                         <input 
                             type="date" 
@@ -307,6 +349,7 @@ function AdminLogs() {
                     <table className="table w-full">
                         <thead className="bg-slate-50 dark:bg-base-300 text-slate-500 uppercase text-[11px] font-black tracking-widest">
                             <tr>
+                                <th className="px-4 py-3 w-12"></th>
                                 <th className="px-4 py-3">Timestamp</th>
                                 <th className="px-4 py-3">User</th>
                                 <th className="px-4 py-3">Action</th>
@@ -316,43 +359,124 @@ function AdminLogs() {
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {logsLoading ? (
                                 <tr>
-                                    <td colSpan="4" className="px-4 py-8 text-center">
+                                    <td colSpan="5" className="px-4 py-8 text-center">
                                         <span className="loading loading-spinner loading-md text-blue-500"></span>
                                     </td>
                                 </tr>
                             ) : logs.length === 0 ? (
                                 <tr>
-                                    <td colSpan="4" className="px-4 py-8 text-center text-slate-500">
+                                    <td colSpan="5" className="px-4 py-8 text-center text-slate-500">
                                         No activity logs found
                                     </td>
                                 </tr>
                             ) : (
                                 logs.map((log) => (
-                                    <tr key={log._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2 text-slate-500 text-sm">
-                                                <Clock className="w-3.5 h-3.5" />
-                                                {log.createdAt ? new Date(log.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "N/A"}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {log.user ? (
-                                                <span className="text-sm font-medium text-slate-900 dark:text-white">
-                                                    {log.user.name}
+                                    <>
+                                        <tr key={log._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                                            <td className="px-4 py-3">
+                                                <button
+                                                    onClick={() => setExpandedLogId(expandedLogId === log._id ? null : log._id)}
+                                                    className="btn btn-ghost btn-xs btn-circle"
+                                                >
+                                                    {expandedLogId === log._id ? (
+                                                        <ChevronUp className="w-4 h-4" />
+                                                    ) : (
+                                                        <ChevronDown className="w-4 h-4" />
+                                                    )}
+                                                </button>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-2 text-slate-500 text-sm">
+                                                    <Clock className="w-3.5 h-3.5" />
+                                                    {log.createdAt ? new Date(log.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "N/A"}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {log.user ? (
+                                                    <div>
+                                                        <span className="text-sm font-medium text-slate-900 dark:text-white">
+                                                            {log.user.name}
+                                                        </span>
+                                                        <div className="text-xs text-slate-400">{log.user.email}</div>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-sm text-slate-400">System</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className={`badge badge-sm border-none capitalize ${
+                                                    log.action.includes("auto_submitted_late") ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
+                                                    log.action.includes("submitted_late") ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
+                                                    log.action.includes("auto_submitted") ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
+                                                    log.action.includes("attempt_started") ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                                                    log.action.includes("submitted") || log.action.includes("graded") ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" :
+                                                    log.action.includes("quiz_created") || log.action.includes("quiz_published") || log.action.includes("quiz_unpublished") || log.action.includes("quiz_deleted") ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400" :
+                                                    log.action.includes("course_") ? "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400" :
+                                                    log.action.includes("user_") ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
+                                                    "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                                                }`}>
+                                                    {log.action.replace(/_/g, " ")}
                                                 </span>
-                                            ) : (
-                                                <span className="text-sm text-slate-400">System</span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <span className="badge badge-sm bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-none capitalize">
-                                                {log.action.replace(/_/g, " ")}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 max-w-md truncate">
-                                            {log.details}
-                                        </td>
-                                    </tr>
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 max-w-md truncate">
+                                                {log.details}
+                                            </td>
+                                        </tr>
+                                        {expandedLogId === log._id && (
+                                            <tr key={`${log._id}-expanded`}>
+                                                <td colSpan="5" className="px-4 py-4 bg-slate-50 dark:bg-slate-800/50">
+                                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                                        {log.metadata?.quizTitle && (
+                                                            <div>
+                                                                <span className="text-slate-500 text-xs">Quiz</span>
+                                                                <p className="font-medium text-slate-900 dark:text-white">{log.metadata.quizTitle}</p>
+                                                            </div>
+                                                        )}
+                                                        {log.metadata?.courseName && (
+                                                            <div>
+                                                                <span className="text-slate-500 text-xs">Course</span>
+                                                                <p className="font-medium text-slate-900 dark:text-white">{log.metadata.courseName}</p>
+                                                            </div>
+                                                        )}
+                                                        {log.metadata?.score !== undefined && (
+                                                            <div>
+                                                                <span className="text-slate-500 text-xs">Score</span>
+                                                                <p className="font-medium text-slate-900 dark:text-white">
+                                                                    {log.metadata.score} / {log.metadata.maxScore} ({log.metadata.percentage}%)
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                        {log.metadata?.isLate !== undefined && (
+                                                            <div>
+                                                                <span className="text-slate-500 text-xs">Status</span>
+                                                                <p className={`font-medium ${log.metadata.isLate ? "text-amber-600" : "text-green-600"}`}>
+                                                                    {log.metadata.isLate ? "Late Submission" : "On Time"}
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                        {log.metadata?.attemptId && (
+                                                            <div>
+                                                                <span className="text-slate-500 text-xs">Attempt ID</span>
+                                                                <p className="font-mono text-xs text-slate-600 dark:text-slate-400">{log.metadata.attemptId}</p>
+                                                            </div>
+                                                        )}
+                                                        {log.ipAddress && (
+                                                            <div>
+                                                                <span className="text-slate-500 text-xs">IP Address</span>
+                                                                <p className="font-mono text-xs text-slate-600 dark:text-slate-400">{log.ipAddress}</p>
+                                                            </div>
+                                                        )}
+                                                        {log.userAgent && (
+                                                            <div className="col-span-2">
+                                                                <span className="text-slate-500 text-xs">User Agent</span>
+                                                                <p className="font-mono text-xs text-slate-500 truncate">{log.userAgent}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </>
                                 ))
                             )}
                         </tbody>

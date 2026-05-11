@@ -23,11 +23,13 @@ import notificationRoutes from "../routes/notification.routes.js";
 import searchRoutes from "../routes/search.routes.js";
 import ticketRoutes from "../routes/ticket.routes.js";
 import calendarEventRoutes from "../routes/calendarEvent.routes.js";
+import gradeRoutes from "../routes/grade.routes.js";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { authMiddleware, requireRole } from "../middleware/auth.js";
 import * as quizController from "../controllers/quiz.controller.js";
 import { specs } from "../utils/swagger.js";
+import { RATE_LIMITS, TIMEOUTS } from "../utils/constants.js";
 
 // Request timeout middleware to detect hanging requests
 const requestTimeout = (timeoutMs: number = 30000) => {
@@ -64,11 +66,12 @@ const app = express();
 app.use(helmet());
 
 const isTest = process.env.NODE_ENV === "test";
+const isProduction = process.env.NODE_ENV === "production";
 
 // Security: Rate limiting - increased for normal use
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: isTest ? 10000 : 1000, // Increased from 500
+    max: isTest ? 10000 : RATE_LIMITS.DEFAULT,
     message: { error: "Too many requests, please try again later." },
     standardHeaders: true,
     legacyHeaders: false,
@@ -77,7 +80,7 @@ const limiter = rateLimit({
 // Strict rate limit for autosave (frequent endpoint)
 const autosaveLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: isTest ? 1000 : 60, // Increased from 30
+    max: isTest ? 1000 : RATE_LIMITS.AUTOSAVE,
     message: { error: "Too many autosave requests, please try again later." },
     standardHeaders: true,
     legacyHeaders: false,
@@ -86,16 +89,39 @@ const autosaveLimiter = rateLimit({
 // More lenient limiter for read operations (GET requests)
 const readLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: isTest ? 10000 : 500, // Increased from 200
+    max: isTest ? 10000 : RATE_LIMITS.READ,
     message: { error: "Too many read requests, please try again later." },
     standardHeaders: true,
     legacyHeaders: false,
 });
 
 app.use(limiter);
-// CORS configuration - allow all origins for development
+
+// CORS configuration - environment-based
+const allowedOrigins = isProduction
+    ? (process.env.ALLOWED_ORIGINS?.split(",").map(s => s.trim()) || [])
+    : [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+    ];
+
 app.use(cors({
-    origin: true,
+    origin: (origin, callback) => {
+        // Allow requests with no origin (curl, Postman, mobile apps)
+        if (!origin) {
+            return callback(null, true);
+        }
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        if (isProduction) {
+            return callback(new Error("Not allowed by CORS"));
+        }
+        // In development, allow any origin
+        callback(null, true);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -118,7 +144,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs, {
     },
 }));
 
-app.use(requestTimeout(30000));
+app.use(requestTimeout(TIMEOUTS.REQUEST));
 app.use("/api/auth", authRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/courses", calendarEventRoutes);
@@ -132,8 +158,9 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
 app.use("/api/notifications", notificationRoutes);
-app.use("/api/search", searchRoutes);
+app.use("/api/search", authMiddleware, searchRoutes);
 app.use("/api/tickets", ticketRoutes);
+app.use("/api/grades", gradeRoutes);
 app.use("/api/admin", adminRoutes);
 
 // Question management root-level endpoints

@@ -22,4 +22,11 @@ router.patch(
     ticketController.respondToTicket
 );
 
+// Close ticket - available to admin or ticket owner
+router.patch(
+    "/:id/close",
+    authMiddleware,
+    ticketController.closeTicket
+);
+
 export default router;

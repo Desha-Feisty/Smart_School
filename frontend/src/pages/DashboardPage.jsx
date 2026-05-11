@@ -41,6 +41,7 @@ function DashboardPage() {
         enrollmentCount: 0,
     });
     const [recentSubmissions, setRecentSubmissions] = useState([]);
+    const [totalSubmissions, setTotalSubmissions] = useState(0);
 
     useEffect(() => {
         if (!token) {
@@ -67,9 +68,8 @@ function DashboardPage() {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     setRecentSubmissions(subRes.data.submissions || []);
-                } catch (err) {
-                    console.error("Failed to fetch recent submissions:", err);
-                }
+                    setTotalSubmissions(subRes.data.totalCount || 0);
+                } catch { /* Silent */ }
             }
             
             await Promise.all(promises);
@@ -92,30 +92,30 @@ function DashboardPage() {
     useEffect(() => {
         // Calculate stats based on role
         let totalStudents = 0;
-        let totalSubmissions = 0;
         let avgScore = 0;
+        let teacherSubmissions = 0;
         
         if (role === "student") {
             const completed = myGrades.filter((g) => g.status === "graded" || g.status === "late");
             avgScore = completed.length > 0
                 ? Math.round(completed.reduce((sum, g) => sum + (g.score || 0), 0) / completed.length)
                 : 0;
-            totalSubmissions = completed.length;
+            teacherSubmissions = completed.length;
         } else {
             // Teacher: calculate total students across all courses
             totalStudents = allCourses.reduce((sum, c) => sum + (c.enrollmentCount || 0), 0);
-            totalSubmissions = 0; // Will be fetched from API
+            teacherSubmissions = totalSubmissions; // Use state from API
         }
 
         setStats({
             totalCourses: allCourses.length,
             totalQuizzes: availableQuizzes.length,
-            completedQuizzes: role === "student" ? myGrades.filter((g) => g.status === "graded" || g.status === "late").length : allCourses.length,
+            completedQuizzes: role === "student" ? teacherSubmissions : totalSubmissions,
             averageScore: avgScore,
             totalNotes: 0,
             enrollmentCount: totalStudents,
         });
-    }, [allCourses, availableQuizzes, myGrades, role]);
+    }, [allCourses, availableQuizzes, myGrades, role, totalSubmissions]);
 
     const upcomingQuizzes = availableQuizzes
         .filter((q) => q.timingStatus === "open" && !q.isAttempted)
@@ -155,10 +155,10 @@ function DashboardPage() {
                 </div>
                 <div className="hidden md:block">
                     <p className="text-sm text-slate-500 dark:text-slate-400">
-                        {new Date().toLocaleDateString("en-US", {
+                        {new Date().toLocaleDateString("en-GB", {
                             weekday: "long",
-                            month: "long",
                             day: "numeric",
+                            month: "long",
                             year: "numeric",
                         })}
                     </p>
@@ -440,7 +440,7 @@ function DashboardPage() {
                                                 </p>
                                             </div>
                                             <div className="text-xs text-slate-400 dark:text-slate-500">
-                                                {sub.submittedAt ? new Date(sub.submittedAt).toLocaleDateString() : ""}
+                                                {sub.submittedAt ? new Date(sub.submittedAt).toLocaleDateString("en-GB") : ""}
                                             </div>
                                         </motion.div>
                                     ))}

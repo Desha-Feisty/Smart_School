@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Outlet, NavLink, useLocation } from "react-router-dom";
 import axios from "axios";
+import toast from "react-hot-toast";
 import useAuthStore from "../../stores/Authstore";
 import PageWrapper from "../../components/layout/PageWrapper";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -84,7 +85,6 @@ function AdminLayout() {
                 setActivityData(activityRes.data);
                 setTeacherStats(teacherRes.data.teachers || []);
             } catch (err) {
-                console.error("Admin data fetch error:", err);
                 toast.error("Failed to load dashboard data");
             } finally {
                 setLoading(false);
@@ -99,7 +99,7 @@ function AdminLayout() {
             const res = await axios.get("/api/admin/system-health", { headers: { Authorization: `Bearer ${token}` } });
             setSystemHealth(res.data);
         } catch (err) {
-            console.error("Failed to fetch system health:", err);
+            toast.error("Failed to fetch system health");
         } finally {
             setHealthLoading(false);
         }
@@ -151,6 +151,7 @@ function AdminLayout() {
                     <div className="flex gap-2 bg-slate-200/50 dark:bg-base-300/50 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700/50">
                         {tabConfig.map(({ id, label, icon: Icon, path }) => (
                             <NavLink
+                                end={path === "/admin"}
                                 key={id}
                                 to={path}
                                 className={({ isActive }) =>
@@ -182,7 +183,7 @@ export function useAdminData() {
 }
 
 // Export shared data for child components
-export function AdminOverviewContent({ stats, systemHealth, healthLoading, fetchSystemHealth }) {
+export function AdminOverviewContent({ stats, enhancedStats, systemHealth, healthLoading, fetchSystemHealth }) {
     return (
         <div className="space-y-8">
             {/* Stats Grid */}
@@ -215,15 +216,27 @@ export function AdminOverviewContent({ stats, systemHealth, healthLoading, fetch
                     <div className="space-y-4">
                         <div className="p-4 bg-slate-50 dark:bg-base-300/50 rounded-2xl flex items-center justify-between">
                             <span className="text-slate-600 dark:text-slate-400 font-medium">Average Student Performance</span>
-                            <span className="font-bold text-emerald-500">76.4%</span>
+                            <span className="font-bold text-emerald-500">
+                                {enhancedStats?.avgPlatformScore != null ? `${enhancedStats.avgPlatformScore}%` : "—"}
+                            </span>
                         </div>
                         <div className="p-4 bg-slate-50 dark:bg-base-300/50 rounded-2xl flex items-center justify-between">
                             <span className="text-slate-600 dark:text-slate-400 font-medium">Participation Rate</span>
-                            <span className="font-bold text-blue-500">88%</span>
+                            <span className="font-bold text-blue-500">
+                                {enhancedStats?.participationRate != null ? `${enhancedStats.participationRate}%` : "—"}
+                            </span>
                         </div>
                         <div className="p-4 bg-slate-50 dark:bg-base-300/50 rounded-2xl flex items-center justify-between">
-                            <span className="text-slate-600 dark:text-slate-400 font-medium">New Signs (30d)</span>
-                            <span className="font-bold text-purple-500">+12</span>
+                            <span className="text-slate-600 dark:text-slate-400 font-medium">New Signups (30d)</span>
+                            <span className="font-bold text-purple-500">
+                                {enhancedStats?.newSignupsLast30Days != null ? `+${enhancedStats.newSignupsLast30Days}` : "—"}
+                            </span>
+                        </div>
+                        <div className="p-4 bg-slate-50 dark:bg-base-300/50 rounded-2xl flex items-center justify-between">
+                            <span className="text-slate-600 dark:text-slate-400 font-medium">Logins (30d)</span>
+                            <span className="font-bold text-amber-500">
+                                {enhancedStats?.loginsLast30Days != null ? `+${enhancedStats.loginsLast30Days}` : "—"}
+                            </span>
                         </div>
                     </div>
                 </div>

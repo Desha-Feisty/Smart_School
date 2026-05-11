@@ -11,15 +11,23 @@ const useTeacherStore = create((set, get) => ({
     recentChats: [],
     recentChatsLoading: false,
     createCourse: async (title, description) => {
-        // Wait for auth token to be available
+        // Wait for auth token to be available with timeout
+        const MAX_WAIT_MS = 5000;
+        const RETRY_DELAY = 100;
         let token = useAuthStore.getState().token;
+        const startTime = Date.now();
         let retries = 3;
+
         while (!token && retries > 0) {
-            await new Promise(resolve => setTimeout(resolve, 100));
+            if (Date.now() - startTime > MAX_WAIT_MS) {
+                set({ errMsg: "Authentication timeout. Please refresh." });
+                return;
+            }
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
             token = useAuthStore.getState().token;
             retries--;
         }
-        
+
         if (!token) {
             set({ errMsg: "Not authenticated. Please log in again." });
             return;
@@ -37,30 +45,32 @@ const useTeacherStore = create((set, get) => ({
             }
             const data = response.data.course;
             set((state) => ({ allCourses: [...state.allCourses, data] }));
-        } catch (error) {
-            console.error(
-                "Create course error:",
-                error.response?.data || error.message,
-            );
-            set({ errMsg: error.response?.data?.errMsg || error.message });
-        }
+        } catch { /* Silent */ }
     },
     listMyCourses: async () => {
         try {
-            // Wait for auth token to be available
+            // Wait for auth token to be available with timeout
+            const MAX_WAIT_MS = 5000;
+            const RETRY_DELAY = 100;
             let token = useAuthStore.getState().token;
+            const startTime = Date.now();
             let retries = 3;
-while (!token && retries > 0) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            token = useAuthStore.getState().token;
-            retries--;
-        }
-        
-        if (!token) {
-            set({ errMsg: "Not authenticated. Please log in again." });
-            return;
-        }
-        const response = await axios.get("/api/courses/my", {
+
+            while (!token && retries > 0) {
+                if (Date.now() - startTime > MAX_WAIT_MS) {
+                    set({ errMsg: "Authentication timeout. Please refresh." });
+                    return;
+                }
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                token = useAuthStore.getState().token;
+                retries--;
+            }
+
+            if (!token) {
+                set({ errMsg: "Not authenticated. Please log in again." });
+                return;
+            }
+            const response = await axios.get("/api/courses/my", {
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
@@ -69,9 +79,7 @@ while (!token && retries > 0) {
             if (response.status !== 200) {
                 throw new Error("Failed to list courses");
             }
-            const data = response.data.courses;
-            console.log("listMyCourses response:", data);
-            set({ allCourses: data });
+            set({ allCourses: response.data.courses });
         } catch (error) {
             set({ errMsg: error.message });
         }
@@ -495,13 +503,7 @@ listRecentChats: async (silent = false) => {
                 .filter(Boolean)
                 .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             set({ recentChats: conversationList, recentChatsLoading: false });
-        } catch (error) {
-            console.error("List recent chats error:", error);
-            set({
-                errMsg: error.response?.data?.errMsg || error.message,
-                recentChatsLoading: false,
-            });
-        }
+        } catch { /* Silent */ }
     },
 
     // Calendar Events

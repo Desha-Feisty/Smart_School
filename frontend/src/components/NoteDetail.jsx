@@ -122,11 +122,11 @@ export default function NoteDetail() {
     }
 
     const isNoteAuthor = user?.id === note?.teacher._id;
-    const noteDate = new Date(note?.createdAt).toLocaleDateString("en-US", {
+    const noteDate = new Date(note?.createdAt).toLocaleDateString("en-GB", {
         weekday: "long",
-        year: "numeric",
-        month: "long",
         day: "numeric",
+        month: "long",
+        year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
     });

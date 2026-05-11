@@ -67,6 +67,12 @@ const userSchema = new Schema<IUser, UserModel, UserMethods>(
     { timestamps: true },
 );
 
+// Database indexes for performance
+userSchema.index({ name: 1 });
+userSchema.index({ role: 1 });
+userSchema.index({ createdAt: -1 });
+userSchema.index({ lastLogin: -1 });
+
 userSchema.pre("save", async function hashPassword() {
     if (!this.isModified("password")) return;
     const salt = await bcrypt.genSalt(10);

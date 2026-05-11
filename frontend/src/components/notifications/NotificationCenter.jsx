@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion"; // eslint-disable-line no-unused-vars
 import useNotificationStore from "../../stores/NotificationStore";
 import useThemeStore from "../../stores/ThemeStore";
 import {
@@ -12,7 +12,6 @@ import {
     Calendar,
 } from "lucide-react";
 import { format } from "date-fns";
-import useAuthStore from "../../stores/Authstore";
 
 // Glassmorphism styles - dark mode aware
 const glassStyle = (isDark) => ({
@@ -39,7 +38,6 @@ const iconColors = {
 
 function NotificationCenter({ isOpen, onClose }) {
     const { notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead } = useNotificationStore();
-    const { user, logout } = useAuthStore();
     const { theme } = useThemeStore();
     const isDark = theme === "night";
     

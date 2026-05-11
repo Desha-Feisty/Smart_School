@@ -14,7 +14,7 @@ function ProgressCard({
     value,
     total,
     subtitle,
-    icon: Icon,
+    icon: Icon, // eslint-disable-line no-unused-vars
     trend,
     trendValue,
     color = "violet",

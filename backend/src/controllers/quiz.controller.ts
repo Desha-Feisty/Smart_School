@@ -871,7 +871,7 @@ const generateQuestionsWithAI = async (req: AuthRequest, res: Response) => {
         // Validate each question has exactly one correct answer (for MCQ)
         for (const q of generatedQuestions) {
             if (questionType !== "written") {
-                const correctCount = q.choices?.filter((c) => c.isCorrect).length ?? 0;
+                const correctCount = q.choices?.filter((c: { isCorrect?: boolean }) => c.isCorrect).length ?? 0;
                 if (correctCount !== 1) {
                     return res.status(400).json({
                         errMsg: `AI generated a question with ${correctCount} correct answer(s) — expected exactly 1. Please try again.`,

@@ -40,7 +40,7 @@ export default function StudentCoursesTab({
                                         Joined{" "}
                                         {new Date(
                                             course.enrolledAt,
-                                        ).toLocaleDateString()}
+                                        ).toLocaleDateString("en-GB")}
                                     </span>
                                     <span className="badge badge-primary badge-sm shadow-sm">
                                         Active

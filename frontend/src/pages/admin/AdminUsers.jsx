@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useState, useEffect } from "react";
 import axios from "axios";
+import useAuthStore from "../../stores/Authstore";
 import toast from "react-hot-toast";
 import { 
     Search, 
@@ -8,24 +8,69 @@ import {
     UserPlus,
     Trash2,
     X,
-    Plus,
+    ChevronLeft,
+    ChevronRight,
 } from "lucide-react";
 
 function AdminUsers() {
-    const context = useOutletContext() || {};
-    const { users = [], setUsers = () => {}, token = "" } = context;
+    const { token } = useAuthStore();
+    const [users, setUsers] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [roleFilter, setRoleFilter] = useState("all");
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
     const [isAddUserOpen, setIsAddUserOpen] = useState(false);
     const [newUser, setNewUser] = useState({ name: "", email: "", password: "", role: "student" });
+    
+    const limit = 20;
+
+    const fetchUsers = async () => {
+        setIsLoading(true);
+        try {
+            const params = new URLSearchParams();
+            params.append("page", page.toString());
+            params.append("limit", limit.toString());
+            if (roleFilter !== "all") params.append("role", roleFilter);
+            if (searchTerm) params.append("search", searchTerm);
+            
+            const res = await axios.get(`/api/admin/users?${params}`, { 
+                headers: { Authorization: `Bearer ${token}` } 
+            });
+            setUsers(res.data.users || []);
+            setTotal(res.data.total || 0);
+            setTotalPages(res.data.totalPages || 0);
+        } catch (err) {
+            toast.error("Failed to fetch users");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchUsers();
+    }, [page, roleFilter, token]);
+
+    // Debounced search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (page !== 1) {
+                setPage(1);
+            } else {
+                fetchUsers();
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
 
     const handleDeleteUser = async (userId, name) => {
         if (!window.confirm(`Are you sure you want to delete user "${name}"? This action is permanent and will delete all their associated data.`)) return;
         
         try {
             await axios.delete(`/api/admin/users/${userId}`, { headers: { Authorization: `Bearer ${token}` } });
-            setUsers(users.filter(u => u._id !== userId));
             toast.success("User deleted successfully");
+            fetchUsers();
         } catch {
             toast.error("Failed to delete user");
         }
@@ -35,21 +80,14 @@ function AdminUsers() {
         e.preventDefault();
         try {
             const res = await axios.post("/api/admin/users", newUser, { headers: { Authorization: `Bearer ${token}` } });
-            setUsers([res.data.user, ...users]);
+            toast.success("User created successfully");
             setIsAddUserOpen(false);
             setNewUser({ name: "", email: "", password: "", role: "student" });
-            toast.success("User created successfully");
+            fetchUsers();
         } catch {
             toast.error("Failed to create user");
         }
     };
-
-    const filteredUsers = users.filter(u => {
-        const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                             u.email.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesRole = roleFilter === "all" || u.role === roleFilter;
-        return matchesSearch && matchesRole;
-    });
 
     return (
         <div className="space-y-6">
@@ -71,7 +109,7 @@ function AdminUsers() {
                         <select 
                             className="select select-bordered w-full pl-10 bg-white/50 dark:bg-base-300/50 rounded-xl"
                             value={roleFilter}
-                            onChange={(e) => setRoleFilter(e.target.value)}
+                            onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
                         >
                             <option value="all">All Roles</option>
                             <option value="student">Students</option>
@@ -102,45 +140,87 @@ function AdminUsers() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {filteredUsers.map((user) => (
-                                <tr key={user._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center font-black text-blue-600">
-                                                {user.name.charAt(0)}
-                                            </div>
-                                            <div>
-                                                <div className="font-bold text-slate-900 dark:text-white">{user.name}</div>
-                                                <div className="text-xs text-slate-500">{user.email}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`badge badge-sm py-3 px-3 border-none font-bold uppercase text-[10px] ${
-                                            user.role === 'admin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
-                                            user.role === 'teacher' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                            'bg-slate-100 text-slate-700 dark:bg-slate-700/50 dark:text-slate-400'
-                                        }`}>
-                                            {user.role}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-slate-500">
-                                        {user.createdAt ? new Date(user.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "N/A"}
-                                    </td>
-                                    <td className="px-6 py-4 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button 
-                                            onClick={() => handleDeleteUser(user._id, user.name)}
-                                            className="btn btn-ghost btn-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg"
-                                            disabled={user.role === 'admin'}
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan="4" className="px-6 py-8 text-center">
+                                        <span className="loading loading-spinner loading-md text-blue-500"></span>
                                     </td>
                                 </tr>
-                            ))}
+                            ) : users.length === 0 ? (
+                                <tr>
+                                    <td colSpan="4" className="px-6 py-8 text-center text-slate-500">
+                                        No users found
+                                    </td>
+                                </tr>
+                            ) : (
+                                users.map((user) => (
+                                    <tr key={user._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center font-black text-blue-600">
+                                                    {user.name?.charAt(0) || "U"}
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-slate-900 dark:text-white">{user.name}</div>
+                                                    <div className="text-xs text-slate-500">{user.email}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`badge badge-sm py-3 px-3 border-none font-bold uppercase text-[10px] ${
+                                                user.role === 'admin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                                                user.role === 'teacher' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                                'bg-slate-100 text-slate-700 dark:bg-slate-700/50 dark:text-slate-400'
+                                            }`}>
+                                                {user.role}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-slate-500">
+                                            {user.createdAt ? new Date(user.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "N/A"}
+                                        </td>
+                                        <td className="px-6 py-4 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button 
+                                                onClick={() => handleDeleteUser(user._id, user.name)}
+                                                className="btn btn-ghost btn-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg"
+                                                disabled={user.role === 'admin'}
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
+                
+                {/* Pagination */}
+                {total > 0 && (
+                    <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+                        <div className="text-sm text-slate-500">
+                            Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, total)} of {total} users
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button 
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                className="btn btn-sm btn-outline rounded-xl"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <span className="text-sm text-slate-500 px-2">
+                                Page {page} of {totalPages || 1}
+                            </span>
+                            <button 
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                disabled={page >= totalPages}
+                                className="btn btn-sm btn-outline rounded-xl"
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Add User Modal */}

@@ -33,7 +33,6 @@ export async function logActivity(entry: LogEntry): Promise<void> {
         }
         
         await ActivityLog.create(logData);
-        console.log(`[LOG] ${entry.action}: ${entry.details}`);
     } catch (err) {
         console.error("Failed to log activity:", err);
     }
@@ -48,7 +47,6 @@ export async function cleanOldLogs(): Promise<number> {
             createdAt: { $lt: cutoffDate },
         });
         
-        console.log(`[LOG] Cleaned up ${result.deletedCount} old log entries`);
         return result.deletedCount;
     } catch (err) {
         console.error("Failed to clean old logs:", err);
@@ -63,11 +61,18 @@ export async function getLogs(options: {
     endDate?: Date;
     limit?: number;
     skip?: number;
+    search?: string;
 }) {
     const filter: Record<string, unknown> = {};
     
     if (options.action) {
-        filter.action = options.action;
+        // Support comma-separated actions (e.g., "quiz_submitted_late,quiz_auto_submitted_late")
+        const actions = options.action.split(",");
+        if (actions.length > 1) {
+            filter.action = { $in: actions };
+        } else {
+            filter.action = options.action;
+        }
     }
     if (options.userId) {
         filter.user = new Types.ObjectId(options.userId);
@@ -80,6 +85,16 @@ export async function getLogs(options: {
         if (options.endDate) {
             (filter.createdAt as Record<string, Date>).$lte = options.endDate;
         }
+    }
+    
+    // Search by details, metadata.quizTitle, metadata.courseName, or user name
+    if (options.search) {
+        const searchRegex = new RegExp(options.search, "i");
+        filter.$or = [
+            { details: searchRegex },
+            { "metadata.quizTitle": searchRegex },
+            { "metadata.courseName": searchRegex },
+        ];
     }
 
     const [logs, total] = await Promise.all([

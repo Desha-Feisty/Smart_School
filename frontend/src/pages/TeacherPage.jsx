@@ -300,7 +300,7 @@ function TeacherPage() {
                                                 {chat.peer?.name || "Unknown"}
                                             </h4>
                                             <span className="text-xs text-slate-400 dark:text-slate-500 font-medium bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">
-                                                {chat.createdAt ? new Date(chat.createdAt).toLocaleDateString() : "N/A"}
+                                                {chat.createdAt ? new Date(chat.createdAt).toLocaleDateString("en-GB") : "N/A"}
                                             </span>
                                         </div>
                                         <div className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-3">

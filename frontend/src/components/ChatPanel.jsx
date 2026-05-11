@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import useAuthStore from "../stores/Authstore";
 import useSocketStore from "../stores/SocketStore";
 import { Send } from "lucide-react";
@@ -14,6 +14,15 @@ function ChatPanel({ courseId, peerId, peerName, courseName, onNewMessage }) {
     const setSocket = useSocketStore((state) => state.connect);
     const isConnected = useSocketStore((state) => state.isConnected);
     const status = isConnected ? "Connected" : "Connecting...";
+
+    // Keep onNewMessage ref to avoid stale closure and dependency issues
+    const onNewMessageRef = useRef(onNewMessage);
+    useEffect(() => { onNewMessageRef.current = onNewMessage; });
+    const onNewMessageCallback = useCallback((message) => {
+        if (onNewMessageRef.current) {
+            onNewMessageRef.current(message);
+        }
+    }, []);
 
     const scrollToBottom = (smooth = true) => {
         if (messagesContainerRef.current) {
@@ -77,8 +86,8 @@ function ChatPanel({ courseId, peerId, peerName, courseName, onNewMessage }) {
                 return [...prev, message];
             });
 
-            if (shouldNotify && onNewMessage) {
-                onNewMessage(message);
+            if (shouldNotify) {
+                onNewMessageCallback(message);
             }
         };
 
@@ -89,7 +98,7 @@ function ChatPanel({ courseId, peerId, peerName, courseName, onNewMessage }) {
             socket.off("chat-history", onHistory);
             socket.off("chat-message", onMessage);
         };
-    }, [socket, courseId, peerId]);
+    }, [socket, courseId, peerId, onNewMessageCallback]);
 
     useEffect(() => {
         scrollToBottom(true);
@@ -109,9 +118,7 @@ function ChatPanel({ courseId, peerId, peerName, courseName, onNewMessage }) {
         };
 
         setMessages((prev) => [...prev, localMessage]);
-        if (onNewMessage) {
-            onNewMessage(localMessage);
-        }
+        onNewMessageCallback(localMessage);
 
         socket.emit("send-chat-message", {
             courseId,

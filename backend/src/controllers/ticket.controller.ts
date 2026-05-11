@@ -111,12 +111,11 @@ const respondToTicket = async (req: AuthRequest, res: Response) => {
         const userId = ticket.user.toString();
         const subject = ticket.subject;
 
-        // Update ticket
+        // Update ticket - keep status as open, just add admin reply
         await Ticket.findByIdAndUpdate(
             ticketId,
             {
                 adminReply: adminReply.trim(),
-                status: "closed",
             },
             { new: true }
         );
@@ -145,9 +144,45 @@ const respondToTicket = async (req: AuthRequest, res: Response) => {
     }
 };
 
+const closeTicket = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id: ticketId } = req.params;
+        
+        if (!ticketId) {
+            return res.status(400).json({ errMsg: "ticket id is required" });
+        }
+
+        const ticket = await Ticket.findById(ticketId);
+        if (!ticket) {
+            return res.status(404).json({ errMsg: "ticket not found" });
+        }
+
+        // Check if user is admin or the ticket owner
+        const isAdmin = req.user?.role === "admin";
+        const isOwner = ticket.user.toString() === req.user?._id;
+        
+        if (!isAdmin && !isOwner) {
+            return res.status(403).json({ errMsg: "not authorized to close this ticket" });
+        }
+
+        // Update ticket status to closed
+        await Ticket.findByIdAndUpdate(
+            ticketId,
+            { status: "closed" },
+            { new: true }
+        );
+
+        return res.status(200).json({ message: "Ticket closed successfully" });
+    } catch (error) {
+        console.error("Close ticket error:", error);
+        return res.status(500).json({ errMsg: "failed to close ticket" });
+    }
+};
+
 export {
     createTicket,
     listMyTickets,
     listAllTickets,
     respondToTicket,
+    closeTicket,
 };

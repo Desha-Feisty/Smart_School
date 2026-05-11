@@ -54,7 +54,6 @@ const useQuizStore = create((set) => ({
                 error.response?.data?.error ||
                 error.message ||
                 "Failed to create quiz";
-            console.error("Quiz creation error:", errMsg);
             set({ errMsg });
             throw new Error(errMsg);
         }
@@ -326,8 +325,7 @@ const useQuizStore = create((set) => ({
                 { headers: { Authorization: `Bearer ${token}` } },
             );
             return true;
-        } catch (error) {
-            console.error("Failed to save answer:", error);
+        } catch {
             return false;
         }
     },
@@ -343,8 +341,7 @@ const useQuizStore = create((set) => ({
             set({ currentAttempt: null, attemptQuestions: [] });
             // Return the full response data including gradingMode
             return response.data;
-        } catch (error) {
-            console.error("Failed to submit attempt:", error);
+        } catch {
             return false;
         }
     },

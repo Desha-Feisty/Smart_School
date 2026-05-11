@@ -61,13 +61,13 @@ function StudentQuizPage() {
         }
         fetchedAttemptId.current = attemptId;
         
-        // Reset local state for new attempt
-        setIsSubmitted(false);
-        setAnswers({});
-        
-        // Fetch attempt data
+        // Fetch attempt data - state reset happens in .then() to avoid cascading renders
         fetchAttempt(attemptId)
                 .then((data) => {
+                    // Reset local state for new attempt
+                    setIsSubmitted(false);
+                    setAnswers({});
+                    
                     // Only load saved answers if the attempt is actually in progress
                     // Don't load answers from completed/submitted/graded attempts
                     if (data && data.responses && data.attempt?.status === "inProgress") {

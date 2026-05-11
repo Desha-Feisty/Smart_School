@@ -87,7 +87,7 @@ export default function CourseStudentsTab({
                                                     <div className="stat stat-sm">
                                                         <div className="stat-title">Enrolled</div>
                                                         <div className="stat-value text-sm">
-                                                            {new Date(enrollment.createdAt).toLocaleDateString()}
+                                                            {new Date(enrollment.createdAt).toLocaleDateString("en-GB")}
                                                         </div>
                                                     </div>
                                                 </div>

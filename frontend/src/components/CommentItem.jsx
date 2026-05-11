@@ -27,10 +27,10 @@ export default function CommentItem({ comment, isTeacher, onCommentDeleted }) {
     };
 
     const commentDate = new Date(comment.createdAt).toLocaleDateString(
-        "en-US",
+        "en-GB",
         {
-            month: "short",
             day: "numeric",
+            month: "short",
             year: "numeric",
             hour: "2-digit",
             minute: "2-digit",

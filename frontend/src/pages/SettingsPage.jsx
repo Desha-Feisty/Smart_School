@@ -16,6 +16,7 @@ import {
     CheckCircle,
     AlertCircle,
     Plus,
+    X,
 } from "lucide-react";
 
 function SettingsPage() {
@@ -65,7 +66,7 @@ function SettingsPage() {
             });
             setTickets(res.data.tickets || []);
         } catch (err) {
-            console.error("Failed to fetch tickets:", err);
+            // Silent fail
         } finally {
             setIsLoadingTickets(false);
         }
@@ -91,6 +92,20 @@ function SettingsPage() {
             toast.error(err.response?.data?.errMsg || "Failed to submit ticket");
         } finally {
             setIsSubmittingTicket(false);
+        }
+    };
+
+    const handleCloseTicket = async (ticketId) => {
+        try {
+            await axios.patch(
+                `/api/tickets/${ticketId}/close`,
+                {},
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            toast.success("Ticket closed successfully");
+            fetchTickets();
+        } catch (err) {
+            toast.error(err.response?.data?.errMsg || "Failed to close ticket");
         }
     };
 
@@ -130,7 +145,7 @@ function SettingsPage() {
     ];
 
     const formatDate = (dateString) => {
-        return new Date(dateString).toLocaleDateString("en-US", {
+        return new Date(dateString).toLocaleDateString("en-GB", {
             day: "numeric",
             month: "short",
             year: "numeric",
@@ -366,7 +381,7 @@ function SettingsPage() {
                                                     className="p-4 bg-slate-50 dark:bg-base-300/50 rounded-xl"
                                                 >
                                                     <div className="flex items-start justify-between gap-4 mb-2">
-                                                        <div>
+                                                        <div className="flex-1">
                                                             <p className="font-medium text-slate-900 dark:text-white">
                                                                 {ticket.subject}
                                                             </p>
@@ -374,20 +389,31 @@ function SettingsPage() {
                                                                 {ticket.message}
                                                             </p>
                                                         </div>
-                                                        <span
-                                                            className={`badge badge-sm ${
-                                                                ticket.status === "open"
-                                                                    ? "badge-warning"
-                                                                    : "badge-success"
-                                                            }`}
-                                                        >
-                                                            {ticket.status === "open" ? (
-                                                                <AlertCircle className="w-3 h-3 mr-1" />
-                                                            ) : (
-                                                                <CheckCircle className="w-3 h-3 mr-1" />
+                                                        <div className="flex items-center gap-2">
+                                                            {ticket.status === "open" && (
+                                                                <button
+                                                                    onClick={() => handleCloseTicket(ticket._id)}
+                                                                    className="btn btn-ghost btn-xs btn-circle"
+                                                                    title="Close ticket"
+                                                                >
+                                                                    <X className="w-4 h-4" />
+                                                                </button>
                                                             )}
-                                                            {ticket.status}
-                                                        </span>
+                                                            <span
+                                                                className={`badge badge-sm ${
+                                                                    ticket.status === "open"
+                                                                        ? "badge-warning"
+                                                                        : "badge-success"
+                                                                }`}
+                                                            >
+                                                                {ticket.status === "open" ? (
+                                                                    <AlertCircle className="w-3 h-3 mr-1" />
+                                                                ) : (
+                                                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                                                )}
+                                                                {ticket.status}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                     <div className="text-xs text-slate-400 dark:text-slate-500">
                                                         {formatDate(ticket.createdAt)}

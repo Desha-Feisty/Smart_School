@@ -8,9 +8,9 @@ export default function NoteCard({ note, isTeacher }) {
         navigate(`/note/${note._id}`);
     };
 
-    const createdDate = new Date(note.createdAt).toLocaleDateString("en-US", {
-        month: "short",
+    const createdDate = new Date(note.createdAt).toLocaleDateString("en-GB", {
         day: "numeric",
+        month: "short",
         year: "numeric",
     });
 

@@ -42,7 +42,7 @@ function AdminAnalytics() {
 
     // Prepare activity chart data
     const activityChartData = activityData?.dailyAttempts?.map(item => ({
-        date: new Date(item.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        date: new Date(item.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
         attempts: item.count
     })) || [];
 
