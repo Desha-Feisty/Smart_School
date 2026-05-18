@@ -36,7 +36,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Run ESLint
         working-directory: apps/frontend
@@ -58,7 +58,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Build application
         working-directory: apps/frontend
@@ -89,7 +89,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Restore build
         uses: actions/download-artifact@v4
