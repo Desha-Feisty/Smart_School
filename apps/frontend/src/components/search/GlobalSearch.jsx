@@ -97,7 +97,7 @@ function GlobalSearch({ isOpen, onClose, searchQuery, setSearchQuery, triggerRef
                 });
             }
         }
-    }, [isOpen, searchQuery]);
+    }, [isOpen, searchQuery, setQuery, triggerRef]);
 
     // Get all results based on active filter
     const getAllResults = () => {

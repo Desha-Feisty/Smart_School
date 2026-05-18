@@ -55,7 +55,7 @@ export function useFetch(url, options = {}) {
         if (immediate) {
             fetch();
         }
-    }, [fetch, ...deps]);
+    }, [fetch, immediate, deps]);
 
     const refetch = useCallback(() => {
         if (url) {

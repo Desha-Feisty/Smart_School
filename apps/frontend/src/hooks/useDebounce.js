@@ -57,5 +57,5 @@ export function useDebouncedEffect(callback, deps, delay = 500) {
                 clearTimeout(timeoutRef.current);
             }
         };
-    }, deps);
+    }, [callback, delay, ...deps]);
 }

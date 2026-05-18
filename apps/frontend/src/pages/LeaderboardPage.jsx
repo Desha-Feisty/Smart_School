@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import useAuthStore from "../stores/Authstore";
 import useTeacherStore from "../stores/Teacherstore";
@@ -23,8 +23,11 @@ function LeaderboardPage() {
         }
     }, [token, navigate, role, listMyCourses]);
 
+    const isInitializedRef = useRef(false);
+
     useEffect(() => {
-        if (allCourses.length > 0 && !selectedCourseId) {
+        if (allCourses.length > 0 && !selectedCourseId && !isInitializedRef.current) {
+            isInitializedRef.current = true;
             setSelectedCourseId(allCourses[0]._id);
         }
     }, [allCourses, selectedCourseId]);

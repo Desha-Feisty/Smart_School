@@ -46,7 +46,7 @@ export default function CourseEventsTab({ courseId, _course }) {
         if (courseId) {
             listCourseCalendarEvents(courseId);
         }
-    }, [courseId]);
+    }, [courseId, listCourseCalendarEvents]);
 
     useEffect(() => {
         const timer = setTimeout(() => {

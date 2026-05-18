@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import useQuizStore from "../stores/Quizstore";
 import useAuthStore from "../stores/Authstore";
@@ -8,14 +8,11 @@ import {
     Plus,
     Edit,
     Trash2,
-    X,
-    CheckCircle,
-    Circle,
-    Copy,
-    Sparkles,
-    Eye,
-    EyeOff,
     Send,
+    EyeOff,
+    CheckCircle,
+    X,
+    Sparkles,
 } from "lucide-react";
 import PageWrapper from "../components/layout/PageWrapper";
 
@@ -61,19 +58,32 @@ function QuizQuestionsPage() {
         rubric: "",
     });
 
-    const fetchQuestions = async () => {
+    const fetchQuestions = useCallback(async () => {
         setIsLoading(true);
-        const data = await listQuizQuestions(quizId);
-        setQuestions(data.questions || data);
-        if (data.quiz) {
-            setQuizPublished(data.quiz.published || false);
-            const courseIdValue = data.quiz.course?._id || data.quiz.course;
-            if (courseIdValue) {
-                setCourseId(courseIdValue);
+        try {
+            const data = await listQuizQuestions(quizId);
+            setQuestions(data.questions || data);
+            if (data.quiz) {
+                setQuizPublished(data.quiz.published || false);
+                const courseIdValue = data.quiz.course?._id || data.quiz.course;
+                if (courseIdValue) {
+                    setCourseId(courseIdValue);
+                }
             }
+        } catch {
+            // Silent error
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
-    };
+    }, [quizId, listQuizQuestions]);
+
+    useEffect(() => {
+        if (!token) {
+            navigate("/login");
+            return;
+        }
+        fetchQuestions();
+    }, [quizId, token, navigate, fetchQuestions]);
 
     const handlePublish = async () => {
         try {
@@ -94,14 +104,6 @@ function QuizQuestionsPage() {
             toast.error(err.message || "Failed to unpublish quiz");
         }
     };
-
-    useEffect(() => {
-        if (!token) {
-            navigate("/login");
-            return;
-        }
-        fetchQuestions();
-    }, [quizId, token, navigate]);
 
     const handleChoiceChange = (index, field, value) => {
         const newChoices = [...formData.choices];
@@ -653,11 +655,14 @@ function QuizQuestionsPage() {
                                             setEditingId(null);
                                             setFormData({
                                                 prompt: "",
+                                                questionType: "mcq_single",
                                                 points: 1,
                                                 choices: [
                                                     { text: "", isCorrect: true },
                                                     { text: "", isCorrect: false },
                                                 ],
+                                                sampleAnswer: "",
+                                                rubric: "",
                                             });
                                         }}
                                         className="btn btn-ghost px-6 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"
@@ -673,7 +678,14 @@ function QuizQuestionsPage() {
                 {/* Questions List */}
                 <div className="space-y-6">
                     {!isAdding && (
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setIsAiModalOpen(true)}
+                                className="btn bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white shadow-lg shadow-purple-500/20 border-0 rounded-xl"
+                            >
+                                <Sparkles className="w-5 h-5 mr-1" />
+                                Magic Generate
+                            </button>
                             <button
                                 onClick={() => setIsAdding(true)}
                                 className="btn btn-primary shadow-lg shadow-blue-500/20 rounded-xl"
@@ -729,6 +741,9 @@ function QuizQuestionsPage() {
                                                 <div className="badge badge-ghost font-medium text-slate-600 dark:text-slate-400 mb-1 border-slate-200 dark:border-slate-700">
                                                     {q.points} {q.points === 1 ? "Point" : "Points"}
                                                 </div>
+                                                <div className="text-[10px] uppercase tracking-wider font-bold text-slate-400">
+                                                    {q.questionType === "written" ? "Written Question" : "Multiple Choice"}
+                                                </div>
                                             </div>
                                         </div>
                                         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -754,28 +769,45 @@ function QuizQuestionsPage() {
                                         {q.prompt}
                                     </h3>
 
-                                    {/* Answer Choices */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {q.choices.map((c, i) => (
-                                            <div
-                                                key={i}
-                                                className={`p-4 sm:p-5 rounded-2xl border-2 transition-all flex items-center gap-4 ${
-                                                    c.isCorrect
-                                                        ? "bg-emerald-50/80 dark:bg-emerald-900/20 border-emerald-400 dark:border-emerald-500/50 shadow-sm shadow-emerald-500/10"
-                                                        : "bg-slate-50/50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700"
-                                                }`}
-                                            >
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 ${c.isCorrect ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 dark:border-slate-600 text-slate-400'}`}>
-                                                    {c.isCorrect ? <CheckCircle className="w-5 h-5" /> : <span className="text-sm font-semibold">{String.fromCharCode(65 + i)}</span>}
+                                    {/* Answer Choices or Sample Answer */}
+                                    {q.questionType === "written" ? (
+                                        <div className="space-y-4">
+                                            {q.sampleAnswer && (
+                                                <div className="bg-slate-50 dark:bg-slate-800/30 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Sample Answer</p>
+                                                    <p className="text-slate-700 dark:text-slate-300 italic">"{q.sampleAnswer}"</p>
                                                 </div>
-                                                <div className="flex-1">
-                                                    <p className={`text-lg ${c.isCorrect ? "font-bold text-emerald-900 dark:text-emerald-100" : "font-medium text-slate-700 dark:text-slate-300"}`}>
-                                                        {c.text}
-                                                    </p>
+                                            )}
+                                            {q.rubric && (
+                                                <div className="bg-slate-50 dark:bg-slate-800/30 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Grading Rubric</p>
+                                                    <p className="text-slate-700 dark:text-slate-300">{q.rubric}</p>
                                                 </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {q.choices?.map((c, i) => (
+                                                <div
+                                                    key={i}
+                                                    className={`p-4 sm:p-5 rounded-2xl border-2 transition-all flex items-center gap-4 ${
+                                                        c.isCorrect
+                                                            ? "bg-emerald-50/80 dark:bg-emerald-900/20 border-emerald-400 dark:border-emerald-500/50 shadow-sm shadow-emerald-500/10"
+                                                            : "bg-slate-50/50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700"
+                                                    }`}
+                                                >
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 ${c.isCorrect ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 dark:border-slate-600 text-slate-400'}`}>
+                                                        {c.isCorrect ? <CheckCircle className="w-5 h-5" /> : <span className="text-sm font-semibold">{String.fromCharCode(65 + i)}</span>}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <p className={`text-lg ${c.isCorrect ? "font-bold text-emerald-900 dark:text-emerald-100" : "font-medium text-slate-700 dark:text-slate-300"}`}>
+                                                            {c.text}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))

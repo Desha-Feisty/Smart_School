@@ -173,7 +173,7 @@ function StudentQuizPage() {
         updateTimer();
         const interval = setInterval(updateTimer, 1000);
         return () => clearInterval(interval);
-    }, [currentAttempt?.endAt, showWarning, handleAutoSubmit]);
+    }, [currentAttempt?.endAt, showWarning, handleAutoSubmit, isSubmitting, isSubmitted]);
 
     const handleAnswerChange = useCallback(
         async (questionId, choiceId, textAnswer) => {

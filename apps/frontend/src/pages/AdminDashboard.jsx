@@ -39,10 +39,7 @@ function AdminDashboard() {
         totalQuizzes: 0,
         completedAttempts: 0
     });
-    const [enhancedStats, setEnhancedStats] = useState(null);
     const [courseAnalytics, setCourseAnalytics] = useState([]);
-    const [activityData, setActivityData] = useState(null);
-    const [teacherStats, setTeacherStats] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [roleFilter, setRoleFilter] = useState("all");
@@ -84,26 +81,20 @@ function AdminDashboard() {
     useEffect(() => { logDateToRef.current = logDateTo; }, [logDateTo]);
 
     useEffect(() => {
-const fetchData = async () => {
+        const fetchData = async () => {
             if (!token) return;
             setLoading(true);
             try {
-                const [statsRes, usersRes, analyticsRes, healthRes, enhancedRes, activityRes, teacherRes] = await Promise.all([
+                const [statsRes, usersRes, analyticsRes, healthRes] = await Promise.all([
                     axios.get("/api/admin/stats", { headers: { Authorization: `Bearer ${token}` } }),
                     axios.get("/api/admin/users", { headers: { Authorization: `Bearer ${token}` } }),
                     axios.get("/api/admin/analytics", { headers: { Authorization: `Bearer ${token}` } }),
-                    axios.get("/api/admin/system-health", { headers: { Authorization: `Bearer ${token}` } }),
-                    axios.get("/api/admin/stats/enhanced", { headers: { Authorization: `Bearer ${token}` } }),
-                    axios.get("/api/admin/activity?days=7", { headers: { Authorization: `Bearer ${token}` } }),
-                    axios.get("/api/admin/teachers", { headers: { Authorization: `Bearer ${token}` } })
+                    axios.get("/api/admin/system-health", { headers: { Authorization: `Bearer ${token}` } })
                 ]);
                 setStats(statsRes.data.stats);
                 setUsers(usersRes.data.users);
                 setCourseAnalytics(analyticsRes.data.courseAnalytics);
                 setSystemHealth(healthRes.data);
-                setEnhancedStats(enhancedRes.data.stats);
-                setActivityData(activityRes.data);
-                setTeacherStats(teacherRes.data.teachers || []);
             } catch (err) {
                 console.error("Admin data fetch error:", err);
                 toast.error("Failed to load dashboard data");
@@ -139,7 +130,7 @@ const fetchData = async () => {
         }
     };
 
-    const fetchLogs = async () => {
+    const fetchLogs = useCallback(async () => {
         setLogsLoading(true);
         try {
             const params = new URLSearchParams();
@@ -158,16 +149,29 @@ const fetchData = async () => {
         } finally {
             setLogsLoading(false);
         }
-    };
+    }, [token]);
 
-    const fetchLogStats = async () => {
+    const fetchLogStats = useCallback(async () => {
         try {
             const res = await axios.get("/api/admin/logs/stats?days=30", { headers: { Authorization: `Bearer ${token}` } });
             setLogStats(res.data);
         } catch (err) {
             console.error("Failed to fetch log stats:", err);
         }
-    };
+    }, [token]);
+
+    const fetchSystemHealth = useCallback(async () => {
+        setHealthLoading(true);
+        try {
+            const res = await axios.get("/api/admin/system-health", { headers: { Authorization: `Bearer ${token}` } });
+            setSystemHealth(res.data);
+        } catch (err) {
+            console.error("Failed to fetch system health:", err);
+            toast.error("Failed to fetch system health");
+        } finally {
+            setHealthLoading(false);
+        }
+    }, [token]);
 
     // Poll for new data only — uses refs for all params to avoid stale closures
     const pollForNewLogs = useCallback(async () => {
@@ -211,19 +215,6 @@ const fetchData = async () => {
         }
     }, []); // No dependencies needed - all values come from refs
 
-    const fetchSystemHealth = async () => {
-        setHealthLoading(true);
-        try {
-            const res = await axios.get("/api/admin/system-health", { headers: { Authorization: `Bearer ${token}` } });
-            setSystemHealth(res.data);
-        } catch (err) {
-            console.error("Failed to fetch system health:", err);
-            toast.error("Failed to fetch system health");
-        } finally {
-            setHealthLoading(false);
-        }
-    };
-
     const exportLogs = async () => {
         if (!logDateFrom || !logDateTo) {
             toast.error("Please select date range for export");
@@ -262,7 +253,7 @@ const fetchData = async () => {
                 }
             })();
         }
-    }, [activeTab, token]);
+    }, [activeTab, token, fetchLogs, fetchLogStats, fetchSystemHealth]);
 
     // Auto-refresh logs — uses refs for stable interval lifecycle
     useEffect(() => {

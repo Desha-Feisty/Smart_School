@@ -17,9 +17,9 @@ function StudentCoursesPage() {
 
     const [joinCode, setJoinCode] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [_viewContentCourse, _setViewContentCourse] = useState(null);
-    const [_courseContentNotes, _setCourseContentNotes] = useState([]);
-    const [_contentNotesLoading, _setContentNotesLoading] = useState(false);
+    const [viewContentCourse, setViewContentCourse] = useState(null); // eslint-disable-line no-unused-vars
+    const [courseContentNotes, setCourseContentNotes] = useState([]); // eslint-disable-line no-unused-vars
+    const [contentNotesLoading, setContentNotesLoading] = useState(false); // eslint-disable-line no-unused-vars
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatCourseId, setChatCourseId] = useState(null);
     const [chatPeerId, setChatPeerId] = useState(null);

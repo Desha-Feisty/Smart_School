@@ -94,4 +94,4 @@ export function useAdmin() {
     return context;
 }
 
-export default AdminContext;
+export default AdminProvider;

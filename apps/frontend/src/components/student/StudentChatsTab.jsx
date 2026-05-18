@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { MessageSquare, Loader } from "lucide-react";
 import useAuthStore from "../../stores/Authstore";
@@ -14,7 +14,7 @@ function StudentChatsTab({ allCourses }) {
     const [loading, setLoading] = useState(false);
     const [unreadCounts, setUnreadCounts] = useState({}); // { "courseId_peerId": count }
 
-    const fetchConversations = async () => {
+    const fetchConversations = useCallback(async () => {
         setLoading(true);
         try {
             const response = await axios.get("/api/chats/v2/recent", {
@@ -71,13 +71,13 @@ function StudentChatsTab({ allCourses }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [token, selectedChatId]);
 
     useEffect(() => {
         if (token && allCourses.length > 0) {
             fetchConversations();
         }
-    }, [token, allCourses]);
+    }, [token, allCourses, fetchConversations]);
 
     const updateConversationPreview = (conversationId, message) => {
         setConversations((prev) => {

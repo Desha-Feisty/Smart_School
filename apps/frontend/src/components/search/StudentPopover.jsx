@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import useAuthStore from "../../stores/Authstore";
 import useChatStore from "../../stores/ChatStore";
@@ -29,9 +29,9 @@ function StudentPopover({ student, onClose, onChatStarted }) {
         if (student?._id) {
             fetchGrades();
         }
-    }, [student]);
+    }, [student, fetchGrades]);
 
-    const fetchGrades = async () => {
+    const fetchGrades = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
@@ -44,7 +44,7 @@ function StudentPopover({ student, onClose, onChatStarted }) {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [student?._id, token]);
 
     const handleStartChat = () => {
         if (gradesData?.courseId) {

@@ -13,7 +13,7 @@ import { LoadingPage } from "./components/common/Loading";
 import ErrorBoundary from "./components/common/ErrorBoundary";
 import AppLayout from "./components/layout/AppLayout";
 import { useDebouncedCallback } from "./hooks/useDebounce";
-import { AdminProvider } from "./contexts/AdminContext";
+import AdminProvider from "./contexts/AdminContext";
 
 // Regular imports (non-lazy)
 import LoginPage from "./pages/LoginPage.jsx";
