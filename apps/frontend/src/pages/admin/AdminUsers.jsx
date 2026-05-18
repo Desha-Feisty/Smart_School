@@ -79,7 +79,7 @@ function AdminUsers() {
     const handleAddUser = async (e) => {
         e.preventDefault();
         try {
-            const res = await axios.post("/api/admin/users", newUser, { headers: { Authorization: `Bearer ${token}` } });
+            await axios.post("/api/admin/users", newUser, { headers: { Authorization: `Bearer ${token}` } });
             toast.success("User created successfully");
             setIsAddUserOpen(false);
             setNewUser({ name: "", email: "", password: "", role: "student" });

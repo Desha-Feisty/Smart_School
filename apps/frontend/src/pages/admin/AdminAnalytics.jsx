@@ -80,7 +80,7 @@ function AdminAnalytics() {
     }, [token, cacheVersion]);
 
     // Manual refetch - clears cache and re-fetches (fixes duplicate call bug)
-    const refetch = () => {
+    const _refetch = () => {
         cacheRef.current = {
             analytics: null,
             activity: null,

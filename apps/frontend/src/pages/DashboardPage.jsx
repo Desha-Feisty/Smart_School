@@ -23,7 +23,7 @@ import {
 
 function DashboardPage() {
     const navigate = useNavigate();
-    const { user, role, token, listEnrolledCalendarEvents, calendarEvents, setCalendarEvents } = useAuthStore();
+    const { user, role, token, listEnrolledCalendarEvents, calendarEvents } = useAuthStore();
     const { allCourses, listMyCourses } = useTeacherStore();
     const { availableQuizzes, myGrades, fetchAvailableQuizzes, listMyGrades } = useQuizStore();
     
@@ -124,7 +124,7 @@ function DashboardPage() {
         .filter((g) => g.score !== null)
         .slice(0, 5);
 
-    const isStudent = role === "student";
+    const _isStudent = role === "student";
 
     if (isLoading) {
         return (
@@ -613,7 +613,7 @@ function DashboardPage() {
                         <div className="space-y-4">
                             {role === "teacher" ? (
                                 /* Teacher: Show progress based on published quizzes */
-                                allCourses.slice(0, 3).map((course, index) => {
+                                allCourses.slice(0, 3).map((course, _index) => {
                                     const publishedCount = course.publishedQuizCount || 0;
                                     const progress = Math.min(publishedCount * 25, 100);
                                     return (
@@ -631,7 +631,7 @@ function DashboardPage() {
                                 })
                             ) : (
                                 /* Student: Show progress based on published quizzes */
-                                allCourses.slice(0, 3).map((course, index) => {
+                                allCourses.slice(0, 3).map((course, _index) => {
                                     const publishedCount = course.publishedQuizCount || 0;
                                     const progress = Math.min(publishedCount * 25, 100);
                                     return (

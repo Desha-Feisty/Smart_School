@@ -61,7 +61,7 @@ function AdminLayout() {
         setHealthLoading(true);
         try {
             await refreshSystemHealth();
-        } catch (err) {
+        } catch (_err) {
             toast.error("Failed to fetch system health");
         } finally {
             setHealthLoading(false);
@@ -144,7 +144,7 @@ export function useAdminData() {
 }
 
 // Export shared data for child components
-export function AdminOverviewContent({ stats, enhancedStats, systemHealth, healthLoading, fetchSystemHealth }) {
+export function AdminOverviewContent({ stats, enhancedStats, systemHealth, _healthLoading, _fetchSystemHealth }) {
     return (
         <div className="space-y-8">
             {/* Stats Grid */}

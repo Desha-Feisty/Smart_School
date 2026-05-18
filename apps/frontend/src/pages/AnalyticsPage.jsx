@@ -39,8 +39,8 @@ import {
 
 function AnalyticsPage() {
     const navigate = useNavigate();
-    const { user, role, token } = useAuthStore();
-    const { myGrades, listMyGrades, availableQuizzes, fetchAvailableQuizzes } = useQuizStore();
+    const { role, token } = useAuthStore();
+    const { myGrades, listMyGrades, fetchAvailableQuizzes } = useQuizStore();
     const { allCourses, listMyCourses } = useTeacherStore();
     
     const [isLoading, setIsLoading] = useState(true);
