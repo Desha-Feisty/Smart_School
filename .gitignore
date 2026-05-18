@@ -1,19 +1,85 @@
-node_modules
+# ============================================
+# Node.js
+# ============================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ============================================
+# Monorepo Workspaces
+# ============================================
+apps/*/node_modules/
+packages/*/node_modules/
+package-lock.json
+
+# ============================================
+# Environment
+# ============================================
 .env
-dist
-/.qodo
-/.vscode
-/.opencode
-AGENTS.md
-backend/tests/*.js
-backend/tests/*.js.map
-backend/tests/*.d.ts
-backend/tests/*.d.ts.map
-backend/tests/*.test.js
-backend/tests/*.test.js.map
-/backend/tests
+.env.local
+.env.*.local
+
+# ============================================
+# Build Outputs
+# ============================================
+dist/
+build/
+*.tsbuildinfo
+
+# ============================================
+# IDE
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ============================================
+# OpenCode
+# ============================================
+.opencode/
+.qodo/
+
+# ============================================
+# Test Outputs
+# ============================================
+coverage/
+.nyc_output/
+apps/frontend/coverage/
+apps/backend/coverage/
+
+# ============================================
+# Test Files
+# ============================================
+apps/frontend/src/**/__tests__/
+apps/frontend/src/test/
+apps/backend/tests/
+
+# ============================================
+# Temporary Files
+# ============================================
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# ============================================
+# Documentation (root level)
+# ============================================
+*.md
+!README.md
+
+# ============================================
+# API Test Files (root level)
+# ============================================
 test-api.js
 test-api.cjs
 comprehensive.test.js
-/tests/
-*.md
+
+# ============================================
+# AGENTS.md
+# ============================================
+AGENTS.md

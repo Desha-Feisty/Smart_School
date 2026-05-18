@@ -4,12 +4,14 @@ on:
   push:
     branches: [main]
     paths:
-      - "backend/**"
+      - "apps/backend/**"
+      - "packages/shared/**"
       - ".github/workflows/backend-ci.yml"
   pull_request:
     branches: [main]
     paths:
-      - "backend/**"
+      - "apps/backend/**"
+      - "packages/shared/**"
 
 env:
   NODE_VERSION: "20"
@@ -20,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        working-directory: apps/backend
 
     steps:
       - name: Checkout code
@@ -31,12 +33,12 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: apps/backend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Run ESLint
+      - name: TypeScript type check
         run: npx tsc --noEmit
 
   build:
@@ -45,7 +47,7 @@ jobs:
     needs: lint
     defaults:
       run:
-        working-directory: backend
+        working-directory: apps/backend
 
     steps:
       - name: Checkout code
@@ -56,7 +58,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: apps/backend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -68,7 +70,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: backend-dist
-          path: backend/dist
+          path: apps/backend/dist
           retention-days: 1
 
   test:
@@ -77,7 +79,7 @@ jobs:
     needs: build
     defaults:
       run:
-        working-directory: backend
+        working-directory: apps/backend
 
     steps:
       - name: Checkout code
@@ -88,7 +90,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: apps/backend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -97,7 +99,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: backend-dist
-          path: backend/dist
+          path: apps/backend/dist
 
       - name: Run tests
         run: npm test

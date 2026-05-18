@@ -1,0 +1,35 @@
+{
+    "name": "edubox",
+    "version": "1.0.0",
+    "private": true,
+    "description": "EduBox Learning Management System - Monorepo",
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ],
+    "scripts": {
+        "dev": "npm run dev -w @edubox/backend && npm run dev -w @edubox/frontend",
+        "dev:frontend": "npm run dev -w @edubox/frontend",
+        "dev:backend": "npm run dev -w @edubox/backend",
+        "build": "npm run build -w @edubox/backend && npm run build -w @edubox/frontend",
+        "build:frontend": "npm run build -w @edubox/frontend",
+        "build:backend": "npm run build -w @edubox/backend",
+        "lint": "npm run lint -w @edubox/frontend",
+        "lint:backend": "npm run lint -w @edubox/backend",
+        "test": "npm run test -w @edubox/backend",
+        "test:frontend": "npm run test -w @edubox/frontend",
+        "test:watch": "npm run test:watch -w @edubox/backend",
+        "clean": "npm run clean -w @edubox/backend"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "keywords": [
+        "lms",
+        "education",
+        "learning-management-system",
+        "monorepo"
+    ],
+    "author": "Mostafa Abo-Hamar",
+    "license": "ISC"
+}
