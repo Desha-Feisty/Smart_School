@@ -8,7 +8,7 @@
         "packages/*"
     ],
     "scripts": {
-        "dev": "npm run dev -w @edubox/backend && npm run dev -w @edubox/frontend",
+        "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
         "dev:frontend": "npm run dev -w @edubox/frontend",
         "dev:backend": "npm run dev -w @edubox/backend",
         "build": "npm run build -w @edubox/backend && npm run build -w @edubox/frontend",
@@ -31,5 +31,8 @@
         "monorepo"
     ],
     "author": "Mostafa Abo-Hamar",
-    "license": "ISC"
+    "license": "ISC",
+    "devDependencies": {
+        "concurrently": "^8.2.0"
+    }
 }
