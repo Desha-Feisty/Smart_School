@@ -29,7 +29,7 @@ function AdminTickets() {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setTickets(res.data.tickets || []);
-        } catch (err) {
+        } catch (_err) {
             toast.error("Failed to fetch tickets");
         } finally {
             setIsLoading(false);

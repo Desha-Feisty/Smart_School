@@ -77,7 +77,7 @@ function AdminLogs() {
             const res = await axios.get(`/api/admin/logs?${params}`, { headers: { Authorization: `Bearer ${token}` } });
             setLogs(res.data.logs);
             setLogsTotal(res.data.total);
-        } catch (err) {
+        } catch (_err) {
             toast.error("Failed to fetch logs");
         } finally {
             setLogsLoading(false);

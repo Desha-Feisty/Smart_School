@@ -41,7 +41,7 @@ function AdminUsers() {
             setUsers(res.data.users || []);
             setTotal(res.data.total || 0);
             setTotalPages(res.data.totalPages || 0);
-        } catch (err) {
+        } catch (_err) {
             toast.error("Failed to fetch users");
         } finally {
             setIsLoading(false);

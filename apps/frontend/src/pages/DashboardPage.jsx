@@ -1,6 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import useAuthStore from "../stores/Authstore";
 import useTeacherStore from "../stores/Teacherstore";
 import useQuizStore from "../stores/Quizstore";

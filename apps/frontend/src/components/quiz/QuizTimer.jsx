@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { differenceInSeconds } from "date-fns";
 import {
     Clock,

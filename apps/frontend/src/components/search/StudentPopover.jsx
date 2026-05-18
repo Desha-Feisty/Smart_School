@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import axios from "axios";
 import useAuthStore from "../../stores/Authstore";
 import useChatStore from "../../stores/ChatStore";

@@ -20,14 +20,14 @@ import {
 } from "lucide-react";
 
 function SettingsPage() {
-    const { token, user, role, setUser } = useAuthStore();
+    const { token, user, role } = useAuthStore();
     const navigate = useNavigate();
 
     const [activeTab, setActiveTab] = useState("profile");
     const [isLoading, setIsLoading] = useState(false);
 
     // Profile state
-    const [profileData, setProfileData] = useState({
+    const [profileData] = useState({
         name: user?.name || "",
         email: user?.email || "",
     });
@@ -65,7 +65,7 @@ function SettingsPage() {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setTickets(res.data.tickets || []);
-        } catch (err) {
+        } catch (_err) {
             // Silent fail
         } finally {
             setIsLoadingTickets(false);

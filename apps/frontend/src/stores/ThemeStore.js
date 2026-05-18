@@ -9,7 +9,7 @@ const getInitialTheme = () => {
                 return saved;
             }
         }
-    } catch (e) {
+    } catch (_e) {
         // Ignore errors during init
     }
     return "winter";
@@ -22,7 +22,7 @@ const applyThemeToDocument = (theme) => {
             document.documentElement.setAttribute("data-theme", theme);
             document.documentElement.classList.toggle("dark", theme === "night");
         }
-    } catch (e) {
+    } catch (_e) {
         // Ignore errors
     }
 };

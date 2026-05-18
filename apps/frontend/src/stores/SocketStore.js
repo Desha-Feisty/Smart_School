@@ -4,7 +4,7 @@ import { io } from "socket.io-client";
 const useSocketStore = create((set) => {
     let socket = null;
 
-    const backendUrl = "http://localhost:3000";
+    const _backendUrl = "http://localhost:3000";
 
     return {
         isConnected: false,

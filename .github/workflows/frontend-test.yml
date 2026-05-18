@@ -41,6 +41,9 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
 
+      - name: Rebuild native modules
+        run: npm rebuild
+
       - name: Run tests
         run: npm run test -- --reporter=verbose
         env:
@@ -78,6 +81,9 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
 
+      - name: Rebuild native modules
+        run: npm rebuild
+
       - name: Run ESLint
         run: npm run lint
 
@@ -105,6 +111,9 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm install
+
+      - name: Rebuild native modules
+        run: npm rebuild
 
       - name: Build application
         run: npm run build

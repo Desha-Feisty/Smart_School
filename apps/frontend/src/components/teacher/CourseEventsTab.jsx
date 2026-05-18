@@ -22,7 +22,7 @@ const TABS = [
     { id: "community", label: "Community" },
 ];
 
-export default function CourseEventsTab({ courseId, course }) {
+export default function CourseEventsTab({ courseId, _course }) {
     const { 
         calendarEvents, 
         listCourseCalendarEvents,
@@ -31,7 +31,7 @@ export default function CourseEventsTab({ courseId, course }) {
         deleteCalendarEvent,
     } = useTeacherStore();
 
-    const [isLoading, setIsLoading] = useState(true);
+    const [_isLoading, setIsLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [editingEvent, setEditingEvent] = useState(null);
     const [formData, setFormData] = useState({
