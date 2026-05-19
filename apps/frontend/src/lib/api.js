@@ -167,4 +167,88 @@ export const adminApi = {
     deleteUser: (id) => api.delete(`/admin/users/${id}`),
 };
 
+// ============================================
+// API Health Check & Demo Mode
+// ============================================
+
+let _isBackendAvailable = null;
+let _isCheckingBackend = false;
+
+/**
+ * Check if backend API is available
+ * Returns cached result to avoid multiple checks
+ */
+export async function checkBackendHealth() {
+    if (_isCheckingBackend) {
+        // Wait for ongoing check to complete
+        return new Promise((resolve) => {
+            const checkInterval = setInterval(() => {
+                if (!_isCheckingBackend) {
+                    clearInterval(checkInterval);
+                    resolve(_isBackendAvailable);
+                }
+            }, 100);
+        });
+    }
+
+    if (_isBackendAvailable !== null) {
+        return _isBackendAvailable;
+    }
+
+    _isCheckingBackend = true;
+    console.log("🔍 [api.js] Checking backend availability...");
+
+    try {
+        // Try to hit a simple endpoint
+        await api.get("/health", { timeout: 5000 });
+        _isBackendAvailable = true;
+        console.log("✅ [api.js] Backend is available");
+    } catch (error) {
+        // Any error means backend is not available
+        _isBackendAvailable = false;
+        console.warn("⚠️ [api.js] Backend not available:", error.message);
+    }
+
+    _isCheckingBackend = false;
+    return _isBackendAvailable;
+}
+
+/**
+ * Get current backend availability status
+ */
+export function getBackendStatus() {
+    return _isBackendAvailable;
+}
+
+/**
+ * Reset backend status (for testing or reconnection)
+ */
+export function resetBackendStatus() {
+    _isBackendAvailable = null;
+    _isCheckingBackend = false;
+}
+
+// Demo mode data
+export const demoData = {
+    user: {
+        _id: "demo-user-1",
+        name: "Demo Student",
+        email: "demo@example.com",
+        role: "student",
+    },
+    courses: [
+        { _id: "demo-c1", title: "Introduction to React", description: "Learn React basics", enrollmentCount: 25 },
+        { _id: "demo-c2", title: "Advanced JavaScript", description: "Master JS", enrollmentCount: 18 },
+        { _id: "demo-c3", title: "Web Development", description: "Full stack development", enrollmentCount: 32 },
+    ],
+    quizzes: [
+        { _id: "demo-q1", title: "React Basics Quiz", timingStatus: "open", isAttempted: false },
+        { _id: "demo-q2", title: "JavaScript Fundamentals", timingStatus: "open", isAttempted: false },
+    ],
+    grades: [
+        { _id: "demo-g1", quizTitle: "React Basics Quiz", score: 85, status: "graded" },
+        { _id: "demo-g2", quizTitle: "JavaScript Fundamentals", score: 92, status: "graded" },
+    ],
+};
+
 export default api;

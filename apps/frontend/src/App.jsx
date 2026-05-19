@@ -11,6 +11,7 @@ import useChatStore from "./stores/ChatStore";
 import ChatWindow from "./components/ChatWindow";
 import { LoadingPage } from "./components/common/Loading";
 import ErrorBoundary from "./components/common/ErrorBoundary";
+import ConnectionStatus from "./components/common/ConnectionStatus";
 import AppLayout from "./components/layout/AppLayout";
 import { useDebouncedCallback } from "./hooks/useDebounce";
 import AdminProvider from "./contexts/AdminContext";
@@ -214,23 +215,27 @@ function ChatWindowWrapper() {
 function App() {
     // Set up auth interceptor after React is initialized
     useEffect(() => {
+        console.log("🔄 [App.jsx] Setting up auth interceptor...");
         setupAuthInterceptor();
         
         // Initialize theme store after React mounts
         try {
             const { initTheme } = useThemeStore.getState();
             if (initTheme) initTheme();
-        } catch {
-            // Silent theme init fail
+            console.log("✅ [App.jsx] Theme initialized");
+        } catch (err) {
+            console.warn("⚠️ [App.jsx] Theme init failed:", err.message);
         }
     }, []);
 
-    return (
-        <ErrorBoundary>
-            <Toaster position="top-right" />
-            <SocketListener />
-            <Suspense fallback={<LoadingPage />}>
-                <Routes>
+    // Wrap render in try-catch to catch initialization errors
+    try {
+        return (
+            <ErrorBoundary>
+                <Toaster position="top-right" />
+                <SocketListener />
+                <Suspense fallback={<LoadingPage />}>
+                    <Routes>
                     {/* Public Routes */}
                     <Route path="/" element={<Navigate to="/login" />} />
                     <Route path="/login" element={<LoginPage />} />
@@ -292,8 +297,29 @@ function App() {
 
             {/* Global Chat Window */}
             <ChatWindowWrapper />
+            
+            {/* Connection Status - Shows backend availability */}
+            <ConnectionStatus />
         </ErrorBoundary>
-    );
+        );
+    } catch (err) {
+        // Catch any initialization errors
+        console.error("❌ [App.jsx] Render error:", err);
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4">
+                <div className="text-center">
+                    <h1 className="text-2xl font-bold text-red-600 mb-2">Something went wrong</h1>
+                    <p className="text-slate-600 dark:text-slate-400 mb-4">{err.message}</p>
+                    <button 
+                        onClick={() => window.location.reload()}
+                        className="btn btn-primary"
+                    >
+                        Reload Page
+                    </button>
+                </div>
+            </div>
+        );
+    }
 }
 
 export default App;
