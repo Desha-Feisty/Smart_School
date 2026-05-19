@@ -25,13 +25,8 @@ function StudentPopover({ student, onClose, onChatStarted }) {
 
     const glassBorder = isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.3)";
 
-    useEffect(() => {
-        if (student?._id) {
-            fetchGrades();
-        }
-    }, [student, fetchGrades]);
-
     const fetchGrades = useCallback(async () => {
+        if (!student?._id) return;
         setIsLoading(true);
         setError(null);
         try {
@@ -45,6 +40,12 @@ function StudentPopover({ student, onClose, onChatStarted }) {
             setIsLoading(false);
         }
     }, [student?._id, token]);
+
+    useEffect(() => {
+        if (student?._id) {
+            fetchGrades();
+        }
+    }, [student?._id, fetchGrades]);
 
     const handleStartChat = () => {
         if (gradesData?.courseId) {

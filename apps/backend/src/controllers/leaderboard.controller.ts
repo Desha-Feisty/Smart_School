@@ -7,7 +7,7 @@ import { Types } from "mongoose";
 
 const getCourseLeaderboard = async (req: AuthRequest, res: Response) => {
     try {
-        const { courseId } = req.params;
+        const courseId = req.params.courseId as string;
         const courseObjectId = new Types.ObjectId(courseId);
 
         const quizzes = await Quiz.find({ course: courseObjectId }).select("_id");

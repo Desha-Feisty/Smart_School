@@ -14,6 +14,39 @@ function StudentChatsTab({ allCourses }) {
     const [loading, setLoading] = useState(false);
     const [unreadCounts, setUnreadCounts] = useState({}); // { "courseId_peerId": count }
 
+    const openChat = (conversation) => {
+        const chatId = conversation.id;
+
+        setSelectedChatId(chatId);
+        // Clear unread for this conversation
+        setUnreadCounts((prev) => ({
+            ...prev,
+            [chatId]: 0,
+        }));
+
+        setOpenChats((prev) => {
+            if (
+                prev.some(
+                    (c) =>
+                        c.courseId === conversation.courseId &&
+                        c.peerId === conversation.peerId,
+                )
+            ) {
+                return prev;
+            }
+
+            return [
+                ...prev,
+                {
+                    courseId: conversation.courseId,
+                    peerId: conversation.peerId,
+                    peerName: conversation.peerName,
+                    courseName: conversation.courseName,
+                },
+            ];
+        });
+    };
+
     const fetchConversations = useCallback(async () => {
         setLoading(true);
         try {
@@ -99,39 +132,6 @@ function StudentChatsTab({ allCourses }) {
             );
 
             return updated;
-        });
-    };
-
-    const openChat = (conversation) => {
-        const chatId = conversation.id;
-
-        setSelectedChatId(chatId);
-        // Clear unread for this conversation
-        setUnreadCounts((prev) => ({
-            ...prev,
-            [chatId]: 0,
-        }));
-
-        setOpenChats((prev) => {
-            if (
-                prev.some(
-                    (c) =>
-                        c.courseId === conversation.courseId &&
-                        c.peerId === conversation.peerId,
-                )
-            ) {
-                return prev;
-            }
-
-            return [
-                ...prev,
-                {
-                    courseId: conversation.courseId,
-                    peerId: conversation.peerId,
-                    peerName: conversation.peerName,
-                    courseName: conversation.courseName,
-                },
-            ];
         });
     };
 

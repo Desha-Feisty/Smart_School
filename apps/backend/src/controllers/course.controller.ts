@@ -19,7 +19,7 @@ const createCourseSchema = Joi.object({
 
 const createCourse = async (req: AuthRequest, res: Response) => {
     try {
-        if (!req.user || req.user.role !== "teacher") {
+        if (!req.user || !req.user._id || req.user.role !== "teacher") {
             return res.status(403).json({ errMsg: "forbidden" });
         }
         const { value, error } = createCourseSchema.validate(req.body);
@@ -29,7 +29,7 @@ const createCourse = async (req: AuthRequest, res: Response) => {
             title,
             description,
             joinCode: createJoinCode(),
-            teacher: req.user._id,
+            teacher: new Types.ObjectId(req.user._id),
         });
         return res.status(201).json({ msg: "Course created Successfully", course });
     } catch (error) {

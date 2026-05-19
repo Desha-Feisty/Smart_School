@@ -23,7 +23,7 @@ const createNoteSchema = Joi.object({
 const createNote = async (req: AuthRequest, res: Response) => {
     try {
         const { courseId } = req.params;
-        if (!courseId) {
+        if (!courseId || typeof courseId !== "string") {
             return res.status(400).json({ errMsg: "Course ID required" });
         }
 
@@ -44,7 +44,7 @@ const createNote = async (req: AuthRequest, res: Response) => {
         }
 
         // Only teacher of course can create notes
-        if (course.teacher.toString() !== req.user._id) {
+        if (course.teacher.toString() !== req.user._id.toString()) {
             return res
                 .status(403)
                 .json({ errMsg: "Only course teacher can post notes" });
@@ -93,7 +93,7 @@ const createNote = async (req: AuthRequest, res: Response) => {
 const listCourseNotes = async (req: AuthRequest, res: Response) => {
     try {
         const { courseId } = req.params;
-        if (!courseId) {
+        if (!courseId || typeof courseId !== "string") {
             return res.status(400).json({ errMsg: "Course ID required" });
         }
 
@@ -108,10 +108,10 @@ const listCourseNotes = async (req: AuthRequest, res: Response) => {
         }
 
         // Allow access if user is the course teacher OR enrolled as a student
-        const isTeacher = course.teacher.toString() === req.user._id;
+        const isTeacher = course.teacher.toString() === req.user._id.toString();
         const enrolled = isTeacher
             ? true
-            : await ensureEnrolled(req.user._id, courseId);
+            : await ensureEnrolled(req.user._id.toString(), courseId);
 
         if (!enrolled) {
             return res

@@ -9,7 +9,7 @@ import { Types } from "mongoose";
 const createCalendarEvent = async (req: AuthRequest, res: Response) => {
     try {
         const { courseId } = req.params;
-        if (!courseId) {
+        if (!courseId || typeof courseId !== "string") {
             return res.status(400).json({ errMsg: "course id is required" });
         }
 
@@ -101,18 +101,32 @@ const createCalendarEvent = async (req: AuthRequest, res: Response) => {
 const listCourseCalendarEvents = async (req: AuthRequest, res: Response) => {
     try {
         const { courseId } = req.params;
-        if (!courseId) {
+        if (!courseId || typeof courseId !== "string") {
             return res.status(400).json({ errMsg: "course id is required" });
         }
 
-        const events = await CalendarEvent.find({ course: courseId } as any)
-            .populate("createdBy", "name email")
+        // Verify course exists and teacher owns it
+        const course = await Course.findById(courseId);
+        if (!course) {
+            return res.status(404).json({ errMsg: "course not found" });
+        }
+
+        const teacherId = course.teacher instanceof Types.ObjectId
+            ? course.teacher.toString()
+            : (course.teacher as any)._id?.toString() || course.teacher.toString();
+
+        if (!req.user?._id || teacherId !== req.user._id.toString()) {
+            return res.status(403).json({ errMsg: "forbidden - you do not own this course" });
+        }
+
+        // Fetch calendar events for the course
+        const calendarEvents = await CalendarEvent.find({ course: courseId as any })
             .sort({ startAt: 1 });
 
-        return res.status(200).json({ events });
+        return res.status(200).json({ calendarEvents });
     } catch (error) {
         console.error("List calendar events error:", error);
-        return res.status(500).json({ errMsg: "failed to fetch calendar events" });
+        return res.status(500).json({ errMsg: "failed to list calendar events" });
     }
 };
 
@@ -139,7 +153,7 @@ const updateCalendarEvent = async (req: AuthRequest, res: Response) => {
             ? course.teacher.toString()
             : (course.teacher as any)._id?.toString() || course.teacher.toString();
 
-        if (teacherId !== req.user._id) {
+        if (teacherId !== req.user._id.toString()) {
             return res.status(403).json({ errMsg: "forbidden - you do not own this course" });
         }
 

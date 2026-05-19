@@ -491,10 +491,10 @@ const getQuizDetails = async (req: AuthRequest, res: Response) => {
                 .status(500)
                 .json({ errMsg: "failed to populate course" });
         }
-        if (!req.user) return res.status(401).json({ errMsg: "forbidden" });
-        const isTeacher = quiz.course.teacher.toString() === req.user?._id;
+        if (!req.user || !req.user._id) return res.status(401).json({ errMsg: "forbidden" });
+        const isTeacher = quiz.course.teacher.toString() === req.user._id.toString();
         const isStudent = await Enrollment.exists({
-            course: quiz.course,
+            course: (quiz.course as any)._id,
             user: req.user._id,
             status: "active",
         });

@@ -86,14 +86,6 @@ function TeacherCoursePage() {
         }
     }, [selectedQuiz, listQuizGrades]);
 
-    useEffect(() => {
-        if (activeTab === "community") {
-            loadCourseNotes();
-        } else if (activeTab === "students") {
-            loadEnrolledStudents();
-        }
-    }, [activeTab]);
-
     const loadCourseNotes = async () => {
         setNotesLoading(true);
         try {
@@ -133,25 +125,31 @@ function TeacherCoursePage() {
                         console.error(
                             "Failed to load grades for student",
                             student.user._id,
-                            ":",
-                            response.status,
                         );
                     }
-                } catch (err) {
+                } catch (gradeErr) {
                     console.error(
-                        `Failed to load grades for student ${student.user._id}:`,
-                        err,
+                        "Error loading grades for student",
+                        student.user._id,
+                        gradeErr,
                     );
                 }
             }
             setStudentGrades(gradesMap);
-        } catch (err) {
-            console.error("Failed to load enrolled students:", err);
-            toast.error("Failed to load enrolled students");
+        } catch {
+            toast.error("Failed to load students");
         } finally {
             setStudentsLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (activeTab === "community") {
+            loadCourseNotes();
+        } else if (activeTab === "students") {
+            loadEnrolledStudents();
+        }
+    }, [activeTab, loadCourseNotes, loadEnrolledStudents]);
 
     const handleRemoveStudent = async (studentId, studentName) => {
         if (

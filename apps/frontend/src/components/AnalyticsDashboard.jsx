@@ -18,6 +18,22 @@ import { TrendingUp, Users, Zap, Award } from "lucide-react";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
+const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+        return (
+            <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700">
+                <p className="font-bold text-slate-900 dark:text-white mb-1">{label}</p>
+                {payload.map((entry, index) => (
+                    <p key={index} className="text-sm" style={{ color: entry.color || entry.fill }}>
+                        {entry.name}: <span className="font-bold">{entry.value}%</span>
+                    </p>
+                ))}
+            </div>
+        );
+    }
+    return null;
+};
+
 function AnalyticsDashboard({ courseId, mode = "student" }) {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -65,22 +81,6 @@ function AnalyticsDashboard({ courseId, mode = "student" }) {
             </div>
         );
     }
-
-    const CustomTooltip = ({ active, payload, label }) => {
-        if (active && payload && payload.length) {
-            return (
-                <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700">
-                    <p className="font-bold text-slate-900 dark:text-white mb-1">{label}</p>
-                    {payload.map((entry, index) => (
-                        <p key={index} className="text-sm" style={{ color: entry.color || entry.fill }}>
-                            {entry.name}: <span className="font-bold">{entry.value}%</span>
-                        </p>
-                    ))}
-                </div>
-            );
-        }
-        return null;
-    };
 
     return ( mode === "teacher" ? (
         <div className="space-y-6">

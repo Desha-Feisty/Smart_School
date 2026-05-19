@@ -29,7 +29,7 @@ const markAsRead = async (req: AuthRequest, res: Response) => {
         const userId = req.user?._id;
         const { id } = req.params;
 
-        if (!userId || !id) {
+        if (!userId || typeof userId !== "string" || !id || typeof id !== "string") {
             return res.status(400).json({ error: "Missing user ID or notification ID" });
         }
 
@@ -72,7 +72,7 @@ const deleteNotification = async (req: AuthRequest, res: Response) => {
         const userId = req.user?._id;
         const { id } = req.params;
 
-        if (!userId || !id) {
+        if (!userId || typeof userId !== "string" || !id || typeof id !== "string") {
             return res.status(400).json({ error: "Missing user ID or notification ID" });
         }
 

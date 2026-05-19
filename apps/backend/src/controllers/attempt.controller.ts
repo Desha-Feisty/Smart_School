@@ -65,7 +65,7 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
         }
         
         // Validate quizId format
-        if (!quizId.match(/^[0-9a-fA-F]{24}$/)) {
+        if (typeof quizId !== "string" || !quizId.match(/^[0-9a-fA-F]{24}$/)) {
             
             return res.status(400).json({ errMsg: "Invalid quiz ID format" });
         }
@@ -144,7 +144,7 @@ const startAttempt = async (req: AuthRequest, res: Response) => {
                 })),
             });
         }
-        const taken = await countAttempts(req.user._id, quizId);
+        const taken = await countAttempts(req.user._id, quizId as string);
         if (taken >= (quiz.attemptsAllowed || 1)) {
             return res.status(400).json({
                 errMsg: `Attempts exhausted (${taken}/${
@@ -698,7 +698,7 @@ const getAttemptDetails = async (req: AuthRequest, res: Response) => {
         }
 
         // Validate attemptId format (must be valid ObjectId)
-        if (!attemptId.match(/^[0-9a-fA-F]{24}$/)) {
+        if (typeof attemptId !== "string" || !attemptId.match(/^[0-9a-fA-F]{24}$/)) {
             return res.status(400).json({ error: "Invalid attempt ID format" });
         }
 
@@ -821,7 +821,7 @@ const getStudentCourseGrades = async (req: AuthRequest, res: Response) => {
         }
 
         const attempts = await Attempt.find({
-            user: new Types.ObjectId(studentId),
+            user: new Types.ObjectId(studentId as string),
             status: { $in: ["graded", "late"] },
         })
             .populate({
@@ -873,12 +873,12 @@ const getBatchStudentGrades = async (req: AuthRequest, res: Response) => {
     try {
         const { courseId, studentIds } = req.params;
         
-        if (!studentIds) {
+        if (!studentIds || typeof studentIds !== "string") {
             return res.status(400).json({ error: "No student IDs provided" });
         }
         
         // Parse comma-separated student IDs
-        const studentIdList = studentIds.split(",").map(id => id.trim()).filter(Boolean);
+        const studentIdList = studentIds.split(",").map((id: string) => id.trim()).filter(Boolean);
         
         if (!studentIdList.length) {
             return res.status(400).json({ error: "No student IDs provided" });
@@ -897,7 +897,7 @@ const getBatchStudentGrades = async (req: AuthRequest, res: Response) => {
         }
 
         // Fetch all attempts for all students in a single query
-        const objectIds = studentIdList.map(id => new Types.ObjectId(id));
+        const objectIds = studentIdList.map((id: string) => new Types.ObjectId(id));
         const attempts = await Attempt.find({
             user: { $in: objectIds },
             status: { $in: ["graded", "late"] },
@@ -961,7 +961,7 @@ const updateResponseScore = async (req: AuthRequest, res: Response) => {
         const { attemptId, responseIndex } = req.params;
         const { score, feedback } = req.body;
 
-        if (!responseIndex) {
+        if (!responseIndex || typeof responseIndex !== "string") {
             return res.status(400).json({ error: "Response index is required" });
         }
 

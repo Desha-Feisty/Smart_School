@@ -22,7 +22,7 @@ const createCommentSchema = Joi.object({
 const addComment = async (req: AuthRequest, res: Response) => {
     try {
         const { noteId } = req.params;
-        if (!noteId) {
+        if (!noteId || typeof noteId !== "string") {
             return res.status(400).json({ errMsg: "Note ID required" });
         }
 
