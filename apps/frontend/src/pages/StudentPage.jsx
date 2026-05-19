@@ -95,6 +95,7 @@ function StudentPage() {
         }
     }, [activeTab, listMyGrades]);
 
+     
     useEffect(() => {
         if (activeTab === "community") {
             loadAllCourseNotes();

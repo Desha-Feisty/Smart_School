@@ -45,6 +45,7 @@ function AdminLayout() {
     const [isInitializing, setIsInitializing] = useState(true);
 
     // Mark initialization complete after first render — prevents double loading flash
+     
     useLayoutEffect(() => {
         setIsInitializing(false);
     }, []);
@@ -52,6 +53,7 @@ function AdminLayout() {
     // Sync activeTab from URL
     const location = useLocation();
 
+     
     useEffect(() => {
         const tabId = pathToTabId[location.pathname] || "overview";
         setActiveTab(tabId);
@@ -140,7 +142,7 @@ function AdminLayout() {
 
 
 // Export shared data for child components
-// eslint-disable-next-line no-unused-vars, react-refresh/only-export-components
+ 
 export function AdminOverviewContent({ stats, enhancedStats, systemHealth }) {
     return (
         <div className="space-y-8">

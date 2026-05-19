@@ -88,6 +88,7 @@ function DashboardPage() {
         }
     }, [role, allCourses, listEnrolledCalendarEvents]);
 
+     
     useEffect(() => {
         // Calculate stats based on role
         let totalStudents = 0;

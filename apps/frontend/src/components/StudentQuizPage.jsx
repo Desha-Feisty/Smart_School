@@ -106,7 +106,7 @@ function StudentQuizPage() {
     // Initialize selectedQuestionId when attemptQuestions becomes available
     useEffect(() => {
         if (attemptQuestions.length > 0 && !selectedQuestionId) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
+             
             setSelectedQuestionId(attemptQuestions[0]._id);
         }
     }, [attemptQuestions, selectedQuestionId]);

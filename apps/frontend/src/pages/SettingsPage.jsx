@@ -65,6 +65,7 @@ function SettingsPage() {
         }
     }, [token]);
 
+     
     useEffect(() => {
         if (activeTab === "support") {
             fetchTickets();

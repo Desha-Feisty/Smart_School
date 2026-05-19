@@ -39,8 +39,9 @@ function StudentPopover({ student, onClose, onChatStarted }) {
         } finally {
             setIsLoading(false);
         }
-    }, [student?._id, token]);
+    }, [student, token]);
 
+     
     useEffect(() => {
         if (student?._id) {
             fetchGrades();

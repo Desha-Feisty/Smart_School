@@ -77,6 +77,7 @@ function QuizQuestionsPage() {
         }
     }, [quizId, listQuizQuestions]);
 
+     
     useEffect(() => {
         if (!token) {
             navigate("/login");

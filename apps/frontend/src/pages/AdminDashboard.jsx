@@ -238,6 +238,7 @@ function AdminDashboard() {
         }
     };
 
+     
     useEffect(() => {
         if (activeTab === "logs") {
             fetchLogs();

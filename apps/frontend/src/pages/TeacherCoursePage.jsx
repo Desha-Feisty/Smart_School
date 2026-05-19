@@ -143,6 +143,7 @@ function TeacherCoursePage() {
         }
     };
 
+     
     useEffect(() => {
         if (activeTab === "community") {
             loadCourseNotes();
@@ -168,6 +169,7 @@ function TeacherCoursePage() {
         }
     };
 
+     
     useEffect(() => {
         const currentCourse = allCourses.find((c) => (c._id || c.id) === id);
         if (currentCourse) {

@@ -48,6 +48,7 @@ function GlobalSearch({ isOpen, onClose, searchQuery, setSearchQuery, triggerRef
     const glassBorder = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 255, 255, 0.5)";
 
     // Debounced search
+     
     useEffect(() => {
         if (!query.trim() || !isOpen) {
             setResults({ courses: [], notes: [], quizzes: [], users: [], tickets: [], students: [] });
@@ -73,6 +74,7 @@ function GlobalSearch({ isOpen, onClose, searchQuery, setSearchQuery, triggerRef
         return () => clearTimeout(timer);
     }, [query, token, isOpen, activeFilter]);
 
+     
     useEffect(() => {
         if (isOpen) {
             setSelectedIndex(0);

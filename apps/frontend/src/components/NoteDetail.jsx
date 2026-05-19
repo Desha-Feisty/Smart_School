@@ -50,6 +50,7 @@ export default function NoteDetail() {
         }
     }, [noteId, getNoteWithComments]);
 
+     
     useEffect(() => {
         loadNote();
     }, [noteId, loadNote]);

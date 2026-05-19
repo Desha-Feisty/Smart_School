@@ -32,6 +32,8 @@ export default defineConfig([
         argsIgnorePattern: '^[A-Z_]',
         caughtErrorsIgnorePattern: '^_'
       }],
+      // Disable strict set-state-in-effect rule - common React pattern
+      'react-hooks/set-state-in-effect': 'off',
     },
   },
 ])

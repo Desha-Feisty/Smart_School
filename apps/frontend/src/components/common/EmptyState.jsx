@@ -3,7 +3,7 @@ import { FileQuestion, Plus, Search } from "lucide-react";
 export function EmptyState({
     title = "No data found",
     description = "There's nothing to display here yet.",
-    icon: Icon = FileQuestion, // eslint-disable-line no-unused-vars
+    icon: Icon = FileQuestion,  
     actionLabel,
     onAction,
     className = "",

@@ -167,6 +167,7 @@ function AdminLogs() {
     };
 
     // Initial fetch - systemHealth now comes from context
+     
     useEffect(() => {
         fetchLogs();
         fetchLogStats();
