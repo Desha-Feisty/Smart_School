@@ -27,6 +27,8 @@ packages/*/node_modules/
 dist/
 build/
 *.tsbuildinfo
+vite.config.js.timestamp*
+*.tsbuildinfo
 
 # ============================================
 # IDE
@@ -44,19 +46,12 @@ build/
 .qodo/
 
 # ============================================
-# Test Outputs
+# Test Outputs (NOT test files themselves)
 # ============================================
 coverage/
 .nyc_output/
 apps/frontend/coverage/
 apps/backend/coverage/
-
-# ============================================
-# Test Files
-# ============================================
-apps/frontend/src/**/__tests__/
-apps/frontend/src/test/
-apps/backend/tests/
 
 # ============================================
 # Temporary Files
@@ -71,13 +66,6 @@ Thumbs.db
 # ============================================
 *.md
 !README.md
-
-# ============================================
-# API Test Files (root level)
-# ============================================
-test-api.js
-test-api.cjs
-comprehensive.test.js
 
 # ============================================
 # AGENTS.md

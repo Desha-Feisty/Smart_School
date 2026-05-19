@@ -10,6 +10,7 @@ export function LoadingSpinner({ size = "md", className = "" }) {
 
     return (
         <Loader2
+            data-testid="loading-spinner"
             className={`animate-spin text-blue-600 ${sizeClasses[size]} ${className}`}
         />
     );
@@ -17,7 +18,7 @@ export function LoadingSpinner({ size = "md", className = "" }) {
 
 export function LoadingOverlay({ message = "Loading..." }) {
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+        <div data-testid="loading-overlay" className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="glass-panel p-8 flex flex-col items-center gap-4">
                 <LoadingSpinner size="lg" />
                 <p className="text-slate-600 dark:text-slate-300 font-medium">
@@ -30,7 +31,7 @@ export function LoadingOverlay({ message = "Loading..." }) {
 
 export function LoadingPage({ message = "Loading..." }) {
     return (
-        <div className="min-h-screen flex items-center justify-center">
+        <div data-testid="loading-page" className="min-h-screen flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
                 <LoadingSpinner size="xl" />
                 <p className="text-slate-500 dark:text-slate-400">{message}</p>

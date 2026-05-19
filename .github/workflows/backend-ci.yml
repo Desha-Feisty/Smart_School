@@ -99,7 +99,7 @@ jobs:
         working-directory: apps/backend
         run: npm test
         env:
-          MONGO_URI: ${{ secrets.MONGODB_URI }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           JWT_LIFETIME: ${{ secrets.JWT_LIFETIME }}
           JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
