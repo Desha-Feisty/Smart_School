@@ -1,7 +1,7 @@
 {
     "name": "@edubox/backend",
     "version": "1.0.0",
-    "description": "EduBox Learning Management System - Backend API",
+    "description": "EduBox - Learning Management System - Backend API",
     "main": "src/server.ts",
     "scripts": {
         "clean": "rimraf dist",
