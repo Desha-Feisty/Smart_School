@@ -63,12 +63,13 @@ describe("useLocalStorage", () => {
         expect(result.current[0]).toEqual(jsonValue);
     });
 
-    it("should handle invalid JSON gracefully", () => {
-        // Set invalid JSON (not a parse error, but the hook catches it)
-        localStorage.setItem("test-key", JSON.stringify("not-valid-json"));
+    it("should return default when localStorage contains invalid JSON", () => {
+        // Set genuinely malformed JSON that will fail JSON.parse
+        localStorage.setItem("test-key", '{invalidJson: }');
 
         const { result } = renderHook(() => useLocalStorage("test-key", "default"));
-        expect(result.current[0]).toBe("not-valid-json");
+        // When JSON.parse fails, the hook should return the provided default
+        expect(result.current[0]).toBe("default");
     });
 
     it("should handle localStorage errors gracefully", () => {

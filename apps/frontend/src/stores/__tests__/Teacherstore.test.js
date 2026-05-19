@@ -49,7 +49,7 @@ describe("TeacherStore", () => {
 
     describe("listMyCourses", () => {
         it("should fetch courses successfully", async () => {
-            // Set token - required for API call
+            // Clear errMsg before API call
             useTeacherStore.setState({ errMsg: null });
             
             const mockCourses = [
@@ -82,7 +82,7 @@ describe("TeacherStore", () => {
 
     describe("listRecentChats", () => {
         it("should fetch recent chats successfully", async () => {
-            // Set token and user - required for API call
+            // Set recentChatsLoading to false
             useTeacherStore.setState({ recentChatsLoading: false });
             
             const mockChats = [

@@ -2,6 +2,8 @@
 
 This directory contains comprehensive tests for the Learning Management System.
 
+**Note:** Run all commands in this README from the `apps/backend` directory.
+
 ## Test Files
 
 ### 1. comprehensive.test.cjs
@@ -97,7 +99,7 @@ node tests/edge-cases.test.cjs
 ### Prerequisites
 1. Start the backend server:
    ```bash
-   cd backend
+   cd apps/backend
    npm run dev
    ```
 
@@ -123,7 +125,10 @@ node tests/edge-cases.test.cjs
 
 ### Run All Tests Sequentially
 ```bash
-# From project root
+# From apps/backend directory
+# Note: socket.test.cjs is omitted here as it requires socket.io-client
+# dependency and special prerequisites. Run it separately after installing:
+# npm install socket.io-client
 node tests/comprehensive.test.cjs && \
 node tests/analytics.test.cjs && \
 node tests/edge-cases.test.cjs
@@ -158,7 +163,7 @@ Each test file follows this pattern:
 
 ### edge-cases.test.cjs
 - **Tests**: 15 test categories
-- **Expected**: All pass (tests should fail for invalid inputs)
+- **Expected**: All tests should pass; they verify the system correctly rejects invalid inputs
 
 ---
 
@@ -166,7 +171,7 @@ Each test file follows this pattern:
 
 ### Server Not Ready
 If tests fail with "Server not ready":
-1. Ensure backend is running: `cd backend && npm run dev`
+1. Ensure backend is running: `cd apps/backend && npm run dev`
 2. Wait for MongoDB to connect
 3. Check port 3000 is available
 

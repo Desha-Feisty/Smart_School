@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act } from "@testing-library/react";
-
+import axios from "axios";
 vi.mock("axios", () => ({
     default: {
         get: vi.fn(),
@@ -73,7 +73,7 @@ describe("NotificationStore", () => {
     });
 
     describe("fetchNotifications", () => {
-        it("should fetch notifications successfully", async () => {
+        it("should handle missing token gracefully", async () => {
             // Note: fetchNotifications checks for token internally and returns early if not present
             // The function returns early without setting state if no token
             // So we just verify the function can be called without error
@@ -85,6 +85,28 @@ describe("NotificationStore", () => {
 
             // Without token, it returns early - state should remain unchanged
             expect(useNotificationStore.getState().loading).toBe(false);
+        });
+
+        it("should fetch notifications successfully with valid token", async () => {
+            // Set a valid token in the store
+            useNotificationStore.setState({ token: "valid-token" });
+
+            // Mock the API response
+            const mockNotifications = [
+                { _id: "n1", read: false, title: "Test Notification 1" },
+                { _id: "n2", read: true, title: "Test Notification 2" }
+            ];
+            axios.get.mockResolvedValueOnce({ data: { notifications: mockNotifications } });
+
+            const { fetchNotifications } = useNotificationStore.getState();
+
+            await act(async () => {
+                await fetchNotifications();
+            });
+
+            // Verify loading toggled and notifications were updated
+            expect(useNotificationStore.getState().loading).toBe(false);
+            expect(useNotificationStore.getState().notifications).toEqual(mockNotifications);
         });
     });
 

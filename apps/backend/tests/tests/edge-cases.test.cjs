@@ -113,7 +113,7 @@ async function runTests() {
     log('\n--- TEST 3: Name Validation ---', 'SECTION');
 
     const shortName = await makeRequest('/api/auth/register', 'POST', {
-        name: 'AB',  // Less than 6 chars
+        name: 'AB',  // 2 chars, should be rejected for being too short
         email: `shortname${uniqueId}@test.com`,
         password: 'password123',
         role: 'student'
@@ -324,7 +324,7 @@ async function runTests() {
     // ============================================
     log('\n--- TEST 13: Long Input ---', 'SECTION');
 
-    const longName = 'A'.repeat(100);  // More than 40 chars
+    const longName = 'A'.repeat(100);  // 100 chars, exceeds max name length of 40
     const longNameReg = await makeRequest('/api/auth/register', 'POST', {
         name: longName,
         email: `longname${uniqueId}@test.com`,
@@ -344,8 +344,8 @@ async function runTests() {
         password: 'password123',
         role: 'student'
     });
-    // Should either reject or sanitize - not crash
-    assert(maliciousEmail.status === 400 || maliciousEmail.status === 201, 'Malicious input handled');
+    // Should reject or sanitize malicious input, not accept it
+    assert(maliciousEmail.status === 400, 'Malicious input rejected');
 
     // ============================================
     // TEST 15: Concurrent Quiz Submissions
@@ -374,13 +374,17 @@ async function runTests() {
     }, teacherToken);
     await makeRequest(`/api/quizzes/${concurrentQuizId}/publish`, 'POST', {}, teacherToken);
 
-    // Start two attempts concurrently
-    const attemptA = await makeRequest('/api/attempts/start', 'POST', { quizId: concurrentQuizId }, token);
-    const attemptB = await makeRequest('/api/attempts/start', 'POST', { quizId: concurrentQuizId }, token);
+    // Start two attempts concurrently using Promise.all
+    const [attemptA, attemptB] = await Promise.all([
+        makeRequest('/api/attempts/start', 'POST', { quizId: concurrentQuizId }, token),
+        makeRequest('/api/attempts/start', 'POST', { quizId: concurrentQuizId }, token)
+    ]);
 
     // Only one should succeed (since attemptsAllowed = 1)
-    const successCount = [attemptA.status, attemptB.status].filter(s => s === 201).length;
-    assert(successCount === 1, 'Only one concurrent attempt allowed');
+    const statuses = [attemptA.status, attemptB.status];
+    const successCount = statuses.filter(s => s === 201).length;
+    const rejectionCount = statuses.filter(s => s === 409 || s === 400).length;
+    assert(successCount === 1 && rejectionCount === 1, 'Only one concurrent attempt allowed, other rejected');
 
     // ============================================
     // SUMMARY

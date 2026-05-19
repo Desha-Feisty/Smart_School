@@ -334,17 +334,17 @@ async function runTests() {
     assert(leaderboard.status === 200, 'Get course leaderboard');
 
     // ============================================
-    // TEST 13: Notifications
+    // TEST 14: Notifications
     // ============================================
-    log('\n--- TEST 13: Notifications ---', 'SECTION');
+    log('\n--- TEST 14: Notifications ---', 'SECTION');
 
     const notifications = await makeRequest('/api/notifications', 'GET', null, studentToken);
     assert(notifications.status === 200, 'Get notifications');
 
     // ============================================
-    // TEST 14: Authorization Tests
+    // TEST 15: Authorization Tests
     // ============================================
-    log('\n--- TEST 14: Authorization ---', 'SECTION');
+    log('\n--- TEST 15: Authorization ---', 'SECTION');
 
     // Student cannot access admin routes
     const studentAdminStats = await makeRequest('/api/admin/stats', 'GET', null, studentToken);
@@ -378,12 +378,12 @@ async function runTests() {
     assert(otherCourseAccess.status === 403 || otherCourseAccess.status === 404, 'Teacher cannot access other teacher\'s course');
 
     // ============================================
-    // TEST 15: Error Handling
+    // TEST 16: Error Handling
     // ============================================
-    log('\n--- TEST 15: Error Handling ---', 'SECTION');
+    log('\n--- TEST 16: Error Handling ---', 'SECTION');
 
     const badLogin = await makeRequest('/api/auth/login', 'POST', {
-        email: 'student1@test.com',
+        email: `student${uniqueId}@test.com`,
         password: 'wrongpassword'
     });
     assert(badLogin.status === 401, 'Wrong password rejected');
@@ -396,7 +396,7 @@ async function runTests() {
 
     const dupEmail = await makeRequest('/api/auth/register', 'POST', {
         name: 'Duplicate',
-        email: 'student1@test.com',
+        email: `student${uniqueId}@test.com`,
         password: 'password123',
         role: 'student'
     });

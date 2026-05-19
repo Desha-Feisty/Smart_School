@@ -28,7 +28,6 @@ dist/
 build/
 *.tsbuildinfo
 vite.config.js.timestamp*
-*.tsbuildinfo
 
 # ============================================
 # IDE
