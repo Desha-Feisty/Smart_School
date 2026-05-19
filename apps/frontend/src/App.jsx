@@ -228,14 +228,13 @@ function App() {
         }
     }, []);
 
-    // Wrap render in try-catch to catch initialization errors
-    try {
-        return (
-            <ErrorBoundary>
-                <Toaster position="top-right" />
-                <SocketListener />
-                <Suspense fallback={<LoadingPage />}>
-                    <Routes>
+    // Render app with ErrorBoundary for error handling
+    return (
+        <ErrorBoundary>
+            <Toaster position="top-right" />
+            <SocketListener />
+            <Suspense fallback={<LoadingPage />}>
+                <Routes>
                     {/* Public Routes */}
                     <Route path="/" element={<Navigate to="/login" />} />
                     <Route path="/login" element={<LoginPage />} />
@@ -301,25 +300,7 @@ function App() {
             {/* Connection Status - Shows backend availability */}
             <ConnectionStatus />
         </ErrorBoundary>
-        );
-    } catch (err) {
-        // Catch any initialization errors
-        console.error("❌ [App.jsx] Render error:", err);
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4">
-                <div className="text-center">
-                    <h1 className="text-2xl font-bold text-red-600 mb-2">Something went wrong</h1>
-                    <p className="text-slate-600 dark:text-slate-400 mb-4">{err.message}</p>
-                    <button 
-                        onClick={() => window.location.reload()}
-                        className="btn btn-primary"
-                    >
-                        Reload Page
-                    </button>
-                </div>
-            </div>
-        );
-    }
+    );
 }
 
 export default App;

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Wifi, WifiOff, AlertTriangle, Loader2 } from "lucide-react";
-import { checkBackendHealth, getBackendStatus, demoData } from "../../lib/api";
+import { Wifi, AlertTriangle } from "lucide-react";
+import { checkBackendHealth, demoData } from "../../lib/api";
 import useAuthStore from "../../stores/Authstore";
 
 export default function ConnectionStatus() {
